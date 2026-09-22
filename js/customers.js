@@ -3,12 +3,13 @@
   if(!screen||!detail||!window.CKHubCustomerData)return;
   var records=window.CKHubCustomerData.map(function(row,index){
     var stopped=row[0]==='Dìn Ký';
-    return {id:'customer-'+index,name:row[0],owner:row[1],area:row[2],projectCode:'DA-2026-'+String(index+1).padStart(3,'0'),state:stopped?'stopped':'active',attention:!stopped&&index<12,newCustomer:index===3||index===54||index===55,cycle:index<12?'30.09.2026':'Chưa cập nhật',service:index%2?'Social Content':'Content duy trì',contact:index%3?'Đủ đầu mối':'Thiếu đầu mối chính'};
+    return {id:'customer-'+index,name:row[0],owner:row[1],area:row[2],projectCode:'DA-2026-'+String(index+1).padStart(3,'0'),state:stopped?'stopped':'active',attention:!stopped&&index<12,newCustomer:index===3||index===54||index===55,cycle:index<12?'30.09.2026':'Chưa cập nhật',service:index%2?'Social Content':'Content duy trì',contact:index%3?'Đủ đầu mối':'Thiếu đầu mối chính',activities:seedActivities(row[1],index)};
   });
-  records.push({id:'customer-phuoc-quan',name:'Ẩm Thực Phước Quắn',owner:'Hải',area:'HCM',projectCode:'DA-2026-056',state:'active',attention:false,newCustomer:false,cycle:'30.09.2026',service:'Content duy trì',contact:'Đủ đầu mối'});
+  records.push({id:'customer-phuoc-quan',name:'Ẩm Thực Phước Quắn',owner:'Hải',area:'HCM',projectCode:'DA-2026-056',state:'active',attention:false,newCustomer:false,cycle:'30.09.2026',service:'Content duy trì',contact:'Đủ đầu mối',activities:seedActivities('Hải',55)});
   var state={kpi:'active',query:'',status:'',owner:'',area:'',attention:false,page:1,pageSize:20,period:loadPeriod(),selected:null};
   function loadPeriod(){try{return JSON.parse(localStorage.getItem('ckhub-customer-period'))||{mode:'month',month:'09',year:'2026'}}catch(error){return {mode:'month',month:'09',year:'2026'}}}
   function savePeriod(){try{localStorage.setItem('ckhub-customer-period',JSON.stringify(state.period))}catch(error){}}
+  function seedActivities(owner,index){var code='DA-2026-'+String(index+1).padStart(3,'0'),shooting=index%3===0?'Lịch shooting đã xác nhận':'Content Plan đã cập nhật',detail=index%3===0?'25.09.2026 · Chu kỳ tháng 09':code+' · Chu kỳ tháng 09';return [{title:'Account đã rà soát tiến độ chu kỳ',time:'Hôm nay',detail:'Chu kỳ 4 · '+owner,icon:'clock-3'},{title:shooting,time:'Hôm qua',detail:detail,icon:index%3===0?'calendar-clock':'file-check-2'},{title:'Đã cập nhật kế hoạch triển khai',time:'19.09.2026',detail:code+' · Theo dõi tiến độ và công việc',icon:'list-checks'}]}
   function esc(value){return String(value).replace(/[&<>"']/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]})}
   function renameDeployment(root){
     if(!root)return;
