@@ -1099,7 +1099,7 @@
           );
         })
         .join("") +
-      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><label class="field">Ngày kết thúc dự kiến<input name="plannedEnd" type="date" readonly tabindex="-1"></label><div class="customer-data-rules"><p>Chu kỳ luôn tính một tháng từ ngày bắt đầu đã chọn. Ngày kết thúc dự kiến tự tính; ngày kết thúc thực tế chỉ ghi khi chốt chu kỳ. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
+      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><div class="customer-data-rules"><p>Chu kỳ luôn tính một tháng từ ngày bắt đầu đã chọn. Ngày kết thúc dự kiến được hệ thống tự tính; ngày kết thúc thực tế chỉ ghi khi chốt chu kỳ. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
     document.body.appendChild(modal);
     var form = modal.querySelector("form"),
       selectedCustomer = null;
@@ -1136,15 +1136,10 @@
         })
         .join("");
     }
-    function syncPlannedEnd() {
-      form.plannedEnd.value = inputDate(cycleEndDate(form.cycleStart.value));
-    }
     syncOwner();
     syncPackages();
-    syncPlannedEnd();
     form.customer.addEventListener("input", syncOwner);
     form.serviceCategory.addEventListener("change", syncPackages);
-    form.cycleStart.addEventListener("change", syncPlannedEnd);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
         modal.remove();
