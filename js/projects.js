@@ -68,17 +68,33 @@
     });
   }
   function formatDate(date) {
-    return String(date.getDate()).padStart(2, "0") + "." + String(date.getMonth() + 1).padStart(2, "0") + "." + date.getFullYear();
+    return (
+      String(date.getDate()).padStart(2, "0") +
+      "." +
+      String(date.getMonth() + 1).padStart(2, "0") +
+      "." +
+      date.getFullYear()
+    );
   }
   function cycleEndDate(startValue) {
     var start = new Date(startValue + "T00:00:00");
-    return new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1);
+    return new Date(
+      start.getFullYear(),
+      start.getMonth() + 1,
+      start.getDate() - 1,
+    );
   }
   function cycleEnd(startValue) {
     return formatDate(cycleEndDate(startValue));
   }
   function inputDate(date) {
-    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+    return (
+      date.getFullYear() +
+      "-" +
+      String(date.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(date.getDate()).padStart(2, "0")
+    );
   }
   function plannedEndInput(item) {
     var parts = item.due.split(".");
@@ -362,7 +378,7 @@
       esc(item.service) +
       " · Account " +
       esc(item.owner) +
-      '</p></div><button class="secondary" id="editProjectDetail"><i data-lucide="pencil"></i> Sửa dự án</button></div></div><section class="project-overview"><div class="project-overview-main"><span>Sức khỏe triển khai</span><strong>' +
+      '</p></div><div class="project-detail-actions"><button class="secondary" id="editProjectDetail"><i data-lucide="pencil"></i> Sửa dự án</button><button class="primary" id="openCycleWorkspace"><i data-lucide="calendar-range"></i> Mở chu kỳ</button></div></div></div><section class="project-overview"><div class="project-overview-main"><span>Sức khỏe triển khai</span><strong>' +
       (item.risk ? "Cần theo dõi" : "Đúng tiến độ") +
       "</strong><p>" +
       (item.risk
@@ -378,7 +394,7 @@
       cycleRange(item) +
       '</strong><small>mốc dự kiến, tính từ ngày bắt đầu</small></div><div class="project-overview-stat"><span>Kết thúc thực tế</span><strong>' +
       (item.actualEnd || "Chưa ghi nhận") +
-      '</strong><small>' +
+      "</strong><small>" +
       (item.actualEnd ? "mốc hoàn thành thực tế" : "ghi nhận khi chốt chu kỳ") +
       '</small></div></section><div class="project-detail-grid"><main><section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
       kind(item) +
@@ -433,13 +449,20 @@
           "Prototype ghi nhận quyền sửa cho Account phụ trách. Trường chỉnh sửa: Account, gói dịch vụ, ngày bắt đầu chu kỳ, trạng thái và rủi ro.",
         );
       });
+    detail
+      .querySelector("#openCycleWorkspace")
+      .addEventListener("click", function () {
+        renderCycleWorkspace(item);
+      });
     detail.querySelector("#toggleRisk").addEventListener("click", function () {
       item.risk = !item.risk;
       renderDetail();
     });
-    detail.querySelector("#recordActualEnd").addEventListener("click", function () {
-      openActualEnd(item);
-    });
+    detail
+      .querySelector("#recordActualEnd")
+      .addEventListener("click", function () {
+        openActualEnd(item);
+      });
     detail
       .querySelector("#toggleProjectState")
       .addEventListener("click", function () {
@@ -448,6 +471,485 @@
       });
     icons();
     navigate("projectWorkspaceDetail");
+  }
+  function ensureCycleData(item) {
+    if (item.cycleData) return item.cycleData;
+    var seed = Number(String(item.id).replace(/\D/g, "")) || 1,
+      planStatus =
+        item.state === "draft"
+          ? "draft"
+          : seed % 5 === 0
+            ? "sent"
+            : seed % 7 === 0
+              ? "changes"
+              : "approved";
+    item.cycleData = {
+      plan: {
+        status: planStatus,
+        version: 1,
+        link: "",
+        sentAt: planStatus === "draft" ? "" : "22.09.2026",
+        approvedAt: planStatus === "approved" ? "23.09.2026" : "",
+        feedback:
+          planStatus === "changes"
+            ? "Cần điều chỉnh ưu tiên nội dung tuần đầu."
+            : "",
+      },
+      tasks: [
+        {
+          id: "plan",
+          name: "Hoàn thiện Content Plan",
+          owner: item.owner,
+          deadline: "23.09.2026",
+          status: planStatus === "approved" ? "Đã hoàn thành" : "Việc cần làm",
+          type: "Plan",
+        },
+        {
+          id: "scripts",
+          name: "Chuẩn bị 6 script đợt 1",
+          owner: "Planner/Content",
+          deadline: "27.09.2026",
+          status: planStatus === "approved" ? "Đang thực hiện" : "Nháp",
+          type: "Nội dung",
+        },
+        {
+          id: "media",
+          name: "Bàn giao script và tư liệu cho Media",
+          owner: "Planner/Content",
+          deadline: "29.09.2026",
+          status: "Nháp",
+          type: "Sản xuất",
+        },
+      ],
+      shootings: [],
+      demo: { status: "Chưa gửi", link: "", sentAt: "", approvedAt: "" },
+      posts: { planned: item.posts || 12, actual: 0 },
+      exceptions: [],
+      activity: [
+        {
+          title: "Chu kỳ được tạo",
+          detail: "Mốc dự kiến " + item.due,
+          time: "Hôm nay",
+        },
+      ],
+    };
+    return item.cycleData;
+  }
+  function planLabel(status) {
+    return (
+      {
+        draft: "Nháp",
+        sent: "Đã gửi khách",
+        changes: "Cần chỉnh sửa",
+        approved: "Đã duyệt",
+      }[status] || "Nháp"
+    );
+  }
+  function statusTone(status) {
+    if (
+      status === "Đã duyệt" ||
+      status === "Đã hoàn thành" ||
+      status === "Đã xác nhận"
+    )
+      return "ok";
+    if (
+      status === "Cần chỉnh sửa" ||
+      status === "Có nguy cơ trễ" ||
+      status === "Trễ chu kỳ"
+    )
+      return "danger";
+    if (
+      status === "Đang thực hiện" ||
+      status === "Đã gửi khách" ||
+      status === "Đã gửi"
+    )
+      return "info";
+    return "muted";
+  }
+  function cycleActivity(cycle, title, detail) {
+    cycle.activity.unshift({ title: title, detail: detail, time: "Vừa xong" });
+  }
+  function renderCycleWorkspace(item) {
+    var cycle = ensureCycleData(item),
+      old = document.getElementById("cycleWorkspace"),
+      completed = cycle.tasks.filter(function (task) {
+        return task.status === "Đã hoàn thành";
+      }).length,
+      needsAttention =
+        cycle.exceptions.length ||
+        cycle.tasks.some(function (task) {
+          return task.status !== "Nháp" && (!task.owner || !task.deadline);
+        }),
+      shootingLocked = cycle.plan.status !== "approved";
+    if (old) old.remove();
+    var workspace = document.createElement("section");
+    workspace.id = "cycleWorkspace";
+    workspace.className = "screen";
+    workspace.innerHTML =
+      '<div class="cycle-head"><div><button class="project-detail-back" id="backToProject"><i data-lucide="arrow-left"></i> Dự án</button><h1>Chu kỳ ' +
+      item.cycle +
+      " / " +
+      item.total +
+      "</h1><p>" +
+      esc(item.customer) +
+      " · " +
+      cycleRange(item) +
+      '</p></div><button class="secondary" id="openCycleException"><i data-lucide="flag"></i> Ghi nhận ngoại lệ</button></div><section class="cycle-rail"><div><span>Bắt đầu</span><b>' +
+      cycleRange(item).split(" – ")[0] +
+      "</b></div><i></i><div><span>Kết thúc dự kiến</span><b>" +
+      item.due +
+      "</b></div><i></i><div><span>Kết thúc thực tế</span><b>" +
+      (item.actualEnd || "Chưa ghi nhận") +
+      '</b></div><div class="cycle-health ' +
+      (needsAttention ? "attention" : "") +
+      '"><span>Sức khỏe</span><b>' +
+      (needsAttention ? "Cần theo dõi" : "Đúng tiến độ") +
+      '</b></div></section><div class="cycle-layout"><main><section class="panel cycle-panel"><div class="panel-head"><div><h2>Content Plan</h2><p class="subline">Hạn gửi khách: T0 + 3 ngày làm việc.</p></div><span class="cycle-status ' +
+      statusTone(planLabel(cycle.plan.status)) +
+      '">' +
+      planLabel(cycle.plan.status) +
+      '</span></div><dl class="cycle-definition"><div><dt>Phiên bản</dt><dd>v' +
+      cycle.plan.version +
+      "</dd></div><div><dt>Đã gửi</dt><dd>" +
+      (cycle.plan.sentAt || "Chưa gửi") +
+      "</dd></div><div><dt>Đã duyệt</dt><dd>" +
+      (cycle.plan.approvedAt || "Chưa duyệt") +
+      "</dd></div></dl>" +
+      (cycle.plan.feedback
+        ? '<p class="cycle-note">' + esc(cycle.plan.feedback) + "</p>"
+        : "") +
+      '<button class="text-btn" id="openPlanModal">Cập nhật Content Plan</button></section><section class="panel cycle-panel"><div class="panel-head"><div><h2>Công việc chu kỳ</h2><p class="subline">Owner và deadline là điều kiện để bắt đầu.</p></div><button class="text-btn" id="addCycleTask">+ Công việc</button></div><div class="cycle-task-list">' +
+      cycle.tasks
+        .map(function (task) {
+          return (
+            '<button class="cycle-task" data-task-id="' +
+            esc(task.id) +
+            '"><span><b>' +
+            esc(task.name) +
+            "</b><small>" +
+            esc(task.owner || "Chưa giao") +
+            " · " +
+            esc(task.deadline || "Chưa có hạn") +
+            '</small></span><em class="cycle-status ' +
+            statusTone(task.status) +
+            '">' +
+            esc(task.status) +
+            "</em></button>"
+          );
+        })
+        .join("") +
+      '</div><div class="cycle-foot">Hoàn thành <b>' +
+      completed +
+      " / " +
+      cycle.tasks.length +
+      '</b> công việc</div></section><section class="panel cycle-panel"><div class="panel-head"><div><h2>Nhật ký chu kỳ</h2><p class="subline">Dấu vết thay đổi mốc và đầu ra.</p></div></div><div class="cycle-log">' +
+      cycle.activity
+        .slice(0, 5)
+        .map(function (log) {
+          return (
+            '<div><i data-lucide="clock-3"></i><span><b>' +
+            esc(log.title) +
+            "</b><small>" +
+            esc(log.detail) +
+            " · " +
+            esc(log.time) +
+            "</small></span></div>"
+          );
+        })
+        .join("") +
+      '</div></section></main><aside><section class="panel cycle-panel"><div class="panel-head"><div><h2>Shooting Plan</h2><p class="subline">Chỉ tạo sau khi khách duyệt Plan.</p></div><span class="cycle-status ' +
+      (shootingLocked ? "muted" : "info") +
+      '">' +
+      (shootingLocked ? "Đang khóa" : cycle.shootings.length + " lịch") +
+      '</span></div><div class="cycle-compact-list">' +
+      (cycle.shootings.length
+        ? cycle.shootings
+            .map(function (shooting) {
+              return (
+                "<div><b>" +
+                esc(shooting.date) +
+                "</b><small>" +
+                esc(shooting.media) +
+                " · " +
+                esc(shooting.status) +
+                "</small></div>"
+              );
+            })
+            .join("")
+        : '<p class="empty-copy">Chưa có lịch shooting trong chu kỳ.</p>') +
+      '</div><button class="text-btn" id="openShootingModal" ' +
+      (shootingLocked ? "disabled" : "") +
+      '>Tạo lịch shooting</button></section><section class="panel cycle-panel"><div class="panel-head"><div><h2>Post Demo</h2><p class="subline">Gửi khách sau shoot 1 ngày làm việc.</p></div><span class="cycle-status ' +
+      statusTone(cycle.demo.status) +
+      '">' +
+      esc(cycle.demo.status) +
+      '</span></div><p class="cycle-meta">Đã gửi: ' +
+      (cycle.demo.sentAt || "Chưa gửi") +
+      " · Đã duyệt: " +
+      (cycle.demo.approvedAt || "Chưa duyệt") +
+      '</p><button class="text-btn" id="openDemoModal">Cập nhật Post Demo</button></section><section class="panel cycle-panel"><div class="panel-head"><div><h2>Bài đăng</h2><p class="subline">Phân phối mục tiêu 2–3 bài mỗi tuần.</p></div></div><div class="cycle-post-progress"><b>' +
+      cycle.posts.actual +
+      " / " +
+      cycle.posts.planned +
+      '</b><span>đã xuất bản</span></div><button class="text-btn" id="openPostsModal">Cập nhật bài đăng</button></section><section class="panel cycle-panel"><div class="panel-head"><h2>Ngoại lệ</h2></div><div class="cycle-compact-list">' +
+      (cycle.exceptions.length
+        ? cycle.exceptions
+            .map(function (exception) {
+              return (
+                "<div><b>" +
+                esc(exception.type) +
+                "</b><small>" +
+                esc(exception.reason) +
+                "</small></div>"
+              );
+            })
+            .join("")
+        : '<p class="empty-copy">Không có ngoại lệ đang mở.</p>') +
+      "</div></section></aside></div>";
+    screen.insertAdjacentElement("afterend", workspace);
+    workspace
+      .querySelector("#backToProject")
+      .addEventListener("click", function () {
+        workspace.remove();
+        renderDetail();
+      });
+    workspace
+      .querySelector("#openPlanModal")
+      .addEventListener("click", function () {
+        openPlanModal(item);
+      });
+    workspace
+      .querySelector("#addCycleTask")
+      .addEventListener("click", function () {
+        openCycleTaskModal(item);
+      });
+    workspace.querySelectorAll("[data-task-id]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        openCycleTaskModal(
+          item,
+          cycle.tasks.find(function (task) {
+            return task.id === button.dataset.taskId;
+          }),
+        );
+      });
+    });
+    workspace
+      .querySelector("#openShootingModal")
+      .addEventListener("click", function () {
+        openShootingModal(item);
+      });
+    workspace
+      .querySelector("#openDemoModal")
+      .addEventListener("click", function () {
+        openDemoModal(item);
+      });
+    workspace
+      .querySelector("#openPostsModal")
+      .addEventListener("click", function () {
+        openPostsModal(item);
+      });
+    workspace
+      .querySelector("#openCycleException")
+      .addEventListener("click", function () {
+        openExceptionModal(item);
+      });
+    icons();
+    navigate("cycleWorkspace");
+  }
+  function bindCycleModal(modal) {
+    document.body.appendChild(modal);
+    modal.querySelectorAll(".close,.secondary").forEach(function (button) {
+      button.addEventListener("click", function () {
+        modal.remove();
+      });
+    });
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) modal.remove();
+    });
+  }
+  function openPlanModal(item) {
+    var cycle = ensureCycleData(item),
+      modal = document.createElement("div"),
+      plan = cycle.plan;
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Content Plan</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Trạng thái<select name="status"><option value="draft">Nháp</option><option value="sent">Đã gửi khách</option><option value="changes">Cần chỉnh sửa</option><option value="approved">Đã duyệt</option></select></label><label class="field">Link tài liệu<input name="link" type="url" value="' +
+      esc(plan.link) +
+      '" placeholder="https://..."></label><label class="field">Feedback khách<textarea name="feedback" placeholder="Ghi phản hồi hoặc phạm vi cần chỉnh">' +
+      esc(plan.feedback) +
+      '</textarea></label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu Content Plan</button></div></div></form>';
+    bindCycleModal(modal);
+    var form = modal.querySelector("form");
+    form.status.value = plan.status;
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      plan.status = form.status.value;
+      plan.link = form.link.value.trim();
+      plan.feedback = form.feedback.value.trim();
+      if (plan.status === "sent" && !plan.sentAt) plan.sentAt = "Hôm nay";
+      if (plan.status === "approved") plan.approvedAt = "Hôm nay";
+      cycleActivity(cycle, "Content Plan đã cập nhật", planLabel(plan.status));
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
+  }
+  function openCycleTaskModal(item, task) {
+    var cycle = ensureCycleData(item),
+      editing = !!task,
+      modal = document.createElement("div");
+    task = task || {
+      id: "task-" + Date.now(),
+      name: "",
+      owner: "",
+      deadline: "",
+      status: "Nháp",
+      type: "Nội dung",
+    };
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>' +
+      (editing ? "Cập nhật công việc" : "Tạo công việc") +
+      '</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Công việc<input name="name" required value="' +
+      esc(task.name) +
+      '"></label><label class="field">Owner<select name="owner"><option value="">Chưa giao</option>' +
+      owners
+        .concat(["Planner/Content", "Media"])
+        .map(function (owner) {
+          return (
+            '<option value="' + esc(owner) + '">' + esc(owner) + "</option>"
+          );
+        })
+        .join("") +
+      '</select></label><label class="field">Deadline<input name="deadline" type="date" value="' +
+      (task.deadline ? plannedEndInput({ due: task.deadline }) : "") +
+      '"></label><label class="field">Trạng thái<select name="status"><option>Nháp</option><option>Việc cần làm</option><option>Đang thực hiện</option><option>Đang chờ</option><option>Đã hoàn thành</option></select></label><div class="customer-data-rules"><p>Công việc thiếu Owner hoặc deadline chỉ được lưu ở trạng thái Nháp.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu công việc</button></div></div></form>';
+    bindCycleModal(modal);
+    var form = modal.querySelector("form");
+    form.owner.value = task.owner;
+    form.status.value = task.status;
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var isDraft = form.status.value === "Nháp";
+      if (!isDraft && (!form.owner.value || !form.deadline.value)) {
+        form.owner.setCustomValidity(
+          "Cần Owner và deadline trước khi bắt đầu.",
+        );
+        form.owner.reportValidity();
+        return;
+      }
+      form.owner.setCustomValidity("");
+      task.name = form.name.value.trim();
+      task.owner = form.owner.value;
+      task.deadline = form.deadline.value
+        ? form.deadline.value.split("-").reverse().join(".")
+        : "";
+      task.status = form.status.value;
+      if (!editing) cycle.tasks.push(task);
+      cycleActivity(
+        cycle,
+        editing ? "Công việc đã cập nhật" : "Công việc đã tạo",
+        task.name,
+      );
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
+  }
+  function openShootingModal(item) {
+    var cycle = ensureCycleData(item);
+    if (cycle.plan.status !== "approved") {
+      if (window.showToast)
+        window.showToast(
+          "Cần khách duyệt Content Plan trước khi tạo Shooting Plan.",
+        );
+      return;
+    }
+    var modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Lịch shooting</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Ngày shooting<input name="date" type="date" required></label><label class="field">Media<select name="media"><option>Media</option><option>Media Hùng</option><option>Media Linh</option></select></label><label class="field">Trạng thái<select name="status"><option>Chờ xác nhận</option><option>Đã xác nhận</option><option>Đã hoàn thành</option></select></label><label class="field">Tài nguyên / link<input name="assets" placeholder="Link script, tư liệu hoặc ghi chú"></label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu lịch shooting</button></div></div></form>';
+    bindCycleModal(modal);
+    modal.querySelector("form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      cycle.shootings.push({
+        date: form.date.value.split("-").reverse().join("."),
+        media: form.media.value,
+        status: form.status.value,
+        assets: form.assets.value.trim(),
+      });
+      cycleActivity(
+        cycle,
+        "Lịch shooting đã tạo",
+        form.date.value.split("-").reverse().join("."),
+      );
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
+  }
+  function openDemoModal(item) {
+    var cycle = ensureCycleData(item),
+      demo = cycle.demo,
+      modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Post Demo</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Trạng thái<select name="status"><option>Chưa gửi</option><option>Đã gửi</option><option>Cần chỉnh sửa</option><option>Đã duyệt</option></select></label><label class="field">Link Demo<input name="link" type="url" value="' +
+      esc(demo.link) +
+      '" placeholder="https://..."></label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu Post Demo</button></div></div></form>';
+    bindCycleModal(modal);
+    var form = modal.querySelector("form");
+    form.status.value = demo.status;
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      demo.status = form.status.value;
+      demo.link = form.link.value.trim();
+      if (demo.status === "Đã gửi" && !demo.sentAt) demo.sentAt = "Hôm nay";
+      if (demo.status === "Đã duyệt") demo.approvedAt = "Hôm nay";
+      cycleActivity(cycle, "Post Demo đã cập nhật", demo.status);
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
+  }
+  function openPostsModal(item) {
+    var cycle = ensureCycleData(item),
+      modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Bài đăng chu kỳ</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Kế hoạch trong kỳ<input name="planned" type="number" min="0" required value="' +
+      cycle.posts.planned +
+      '"></label><label class="field">Đã xuất bản<input name="actual" type="number" min="0" required value="' +
+      cycle.posts.actual +
+      '"></label><div class="customer-data-rules"><p>Mục tiêu chuẩn: phân phối đều 2–3 bài mỗi tuần cho gói 12 nội dung/tháng.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu bài đăng</button></div></div></form>';
+    bindCycleModal(modal);
+    modal.querySelector("form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      cycle.posts.planned = Number(form.planned.value);
+      cycle.posts.actual = Number(form.actual.value);
+      cycleActivity(
+        cycle,
+        "Tiến độ bài đăng đã cập nhật",
+        cycle.posts.actual + " / " + cycle.posts.planned + " đã xuất bản",
+      );
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
+  }
+  function openExceptionModal(item) {
+    var cycle = ensureCycleData(item),
+      modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Ghi nhận ngoại lệ</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Loại ngoại lệ<select name="type"><option>Chờ khách duyệt</option><option>Có nguy cơ trễ</option><option>Trễ chu kỳ</option><option>Đang bù chu kỳ</option><option>Media quá tải</option></select></label><label class="field">Lý do và hành động tiếp theo<textarea name="reason" required placeholder="Nêu nguyên nhân, người xử lý và mốc theo dõi"></textarea></label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu ngoại lệ</button></div></div></form>';
+    bindCycleModal(modal);
+    modal.querySelector("form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target,
+        exception = { type: form.type.value, reason: form.reason.value.trim() };
+      cycle.exceptions.push(exception);
+      cycleActivity(cycle, "Ngoại lệ đã ghi nhận", exception.type);
+      modal.remove();
+      renderCycleWorkspace(item);
+    });
   }
   function openProjectStop(item) {
     var currentAccount = window.CKHubActiveAccount || "Tuyền";
@@ -509,7 +1011,8 @@
       item.actualEndNote = form.actualEndNote.value.trim();
       modal.remove();
       renderDetail();
-      if (window.showToast) window.showToast("Đã ghi nhận ngày kết thúc thực tế.");
+      if (window.showToast)
+        window.showToast("Đã ghi nhận ngày kết thúc thực tế.");
     });
   }
   function showInfo(title, message) {
