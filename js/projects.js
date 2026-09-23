@@ -6,6 +6,12 @@
   var base = window.CKHubCustomerData.concat([
     ["Ẩm Thực Phước Quắn", "Hải", "HCM"],
   ]);
+  var servicePackages = (window.serviceCatalog && window.serviceCatalog.packages
+    ? window.serviceCatalog.packages
+    : []
+  ).filter(function (item) {
+    return item.status === "Đang áp dụng";
+  });
   var owners = ["Tuyền", "Nguyên", "Hiền", "Minh Anh", "Hải"];
   var state = {
     query: "",
@@ -36,7 +42,8 @@
           ? ""
           : ["23.09.2026", "29.09.2026", "30.09.2026", "01.10.2026"][
               index % 4
-            ];
+            ],
+      servicePackage = servicePackages[index % servicePackages.length];
     return {
       id: "project-" + (index + 1),
       code: "DA-2026-" + String(index + 1).padStart(3, "0"),
@@ -44,12 +51,12 @@
       owner: owners[index % owners.length],
       createdBy: owners[(index + 2) % owners.length],
       area: row[2],
-      service:
-        index % 3 === 0
-          ? "Social Content"
-          : index % 3 === 1
-            ? "Content duy trì"
-            : "Ads duy trì",
+      service: servicePackage
+        ? servicePackage.group + " · " + servicePackage.name
+        : "Chưa có dịch vụ áp dụng",
+      servicePackageId: servicePackage ? servicePackage.id : "",
+      serviceScope: servicePackage ? servicePackage.scope : "",
+      servicePrice: servicePackage ? servicePackage.price : 0,
       state: stateName,
       risk: risk,
       cycle: stateName === "draft" ? 0 : cycle,
