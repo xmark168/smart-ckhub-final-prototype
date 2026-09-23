@@ -703,7 +703,7 @@
 }
 .project-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(160px, 0.55fr));
+  grid-template-columns: minmax(280px, 1.35fr) repeat(3, minmax(155px, 0.55fr));
   overflow: hidden;
   border: 1px solid #2b2018;
   border-radius: 14px;
@@ -793,6 +793,44 @@
   font-family: var(--font-display);
   font-size: 19px;
 }
+.project-service-panel {
+  margin-top: 14px;
+}
+.project-service-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(130px, 0.65fr));
+  border-top: 1px solid #eee5dd;
+}
+.project-service-grid > div {
+  min-width: 0;
+  padding: 12px 14px 0;
+  border-right: 1px solid #eee5dd;
+}
+.project-service-grid > div:first-child {
+  padding-left: 0;
+}
+.project-service-grid > div:last-child {
+  border-right: 0;
+}
+.project-service-grid span,
+.project-service-grid small {
+  display: block;
+  color: #826e5f;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.project-service-grid b {
+  display: block;
+  margin: 4px 0;
+  color: #2e2119;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.project-empty-log {
+  margin: 12px 0 0;
+  color: #806c5d;
+  font-size: 12px;
+}
 .project-status-row {
   display: grid;
   grid-template-columns: 24px 1fr;
@@ -827,7 +865,20 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .project-overview {
-    grid-template-columns: 1.2fr repeat(2, 0.7fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .project-overview-main {
+    grid-column: 1 / -1;
+  }
+  .project-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .project-service-grid > div:last-child {
+    grid-column: 1 / -1;
+    margin-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid #eee5dd;
+    border-right: 0;
   }
 }
 @media (max-width: 620px) {
@@ -854,6 +905,20 @@
   }
   .project-delivery-grid {
     grid-template-columns: 1fr;
+  }
+  .project-service-grid {
+    grid-template-columns: 1fr;
+  }
+  .project-service-grid > div,
+  .project-service-grid > div:last-child {
+    margin-top: 0;
+    padding: 10px 0;
+    border-right: 0;
+    border-bottom: 1px solid #eee5dd;
+    border-top: 0;
+  }
+  .project-service-grid > div:last-child {
+    border-bottom: 0;
   }
   .project-delivery-grid > div {
     padding: 10px 0;

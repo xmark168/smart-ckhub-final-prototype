@@ -57,6 +57,38 @@
       servicePackageId: servicePackage ? servicePackage.id : "",
       serviceScope: servicePackage ? servicePackage.scope : "",
       servicePrice: servicePackage ? servicePackage.price : 0,
+      contractCode:
+        stateName === "draft"
+          ? ""
+          : "HĐ-2026-" + String(index + 1).padStart(3, "0"),
+      activities:
+        stateName === "draft"
+          ? [
+              {
+                icon: "file-plus-2",
+                title: "Dự án nháp đã tạo",
+                detail: "Chờ Account bắt đầu triển khai và tạo chu kỳ 1.",
+              },
+            ]
+          : [
+              {
+                icon: "calendar-check-2",
+                title: "Account đã rà soát tiến độ chu kỳ",
+                detail: "Hôm nay · Chu kỳ " + cycle + " / " + total,
+              },
+              {
+                icon: "package-check",
+                title: "Gói dịch vụ đã áp dụng",
+                detail: servicePackage
+                  ? servicePackage.group + " · " + servicePackage.name
+                  : "Chưa có dịch vụ áp dụng",
+              },
+              {
+                icon: "list-checks",
+                title: "Đầu ra chu kỳ đang được theo dõi",
+                detail: "Bài đăng, shooting và công việc theo kế hoạch.",
+              },
+            ],
       state: stateName,
       risk: risk,
       cycle: stateName === "draft" ? 0 : cycle,
@@ -149,6 +181,32 @@
         : item.state === "draft"
           ? "muted"
           : "waiting";
+  }
+  function money(value) {
+    return Number(value || 0).toLocaleString("vi-VN") + "đ";
+  }
+  function addActivity(item, icon, title, detail) {
+    item.activities = item.activities || [];
+    item.activities.unshift({ icon: icon, title: title, detail: detail });
+    item.activities = item.activities.slice(0, 8);
+  }
+  function projectActivityRows(item) {
+    var activity = item.activities || [];
+    if (!activity.length)
+      return '<p class="project-empty-log">Chưa có hoạt động được ghi nhận.</p>';
+    return activity
+      .map(function (entry) {
+        return (
+          '<div class="project-status-row"><i data-lucide="' +
+          esc(entry.icon || "history") +
+          '"></i><span><b>' +
+          esc(entry.title) +
+          "</b><small>" +
+          esc(entry.detail) +
+          "</small></span></div>"
+        );
+      })
+      .join("");
   }
   function filtered() {
     return records.filter(function (item) {
@@ -440,17 +498,28 @@
       String(item.tasks).padStart(2, "0") +
       "</b><small>" +
       (item.risk ? "cần xử lý" : "đang theo dõi") +
-      '</small></div></div></section><section class="panel"><div class="panel-head"><h2>Tiến độ gần đây</h2></div><div class="project-status-row"><i data-lucide="list-checks"></i><span><b>Account đã rà soát tiến độ chu kỳ</b><small>Hôm nay · ' +
-      item.code +
-      '</small></span></div><div class="project-status-row"><i data-lucide="file-check-2"></i><span><b>Content Plan đã cập nhật</b><small>Hôm qua · Chu kỳ ' +
-      item.cycle +
-      '</small></span></div><div class="project-status-row"><i data-lucide="calendar-clock"></i><span><b>Lịch shooting đang được theo dõi</b><small>Tuần này · ' +
-      item.shooting +
-      ' lịch trong kỳ</small></span></div></section></main><aside><section class="panel"><div class="panel-head"><h2>Account phụ trách</h2></div><button class="customer-account-card"><i>' +
+      '</small></div></div></section><section class="panel project-service-panel"><div class="panel-head"><div><h2>Dịch vụ áp dụng</h2><p class="subline">Snapshot tại thời điểm gán vào dự án.</p></div></div><div class="project-service-grid"><div><span>Gói dịch vụ</span><b>' +
+      esc(item.service) +
+      '</b><small>' +
+      esc(item.serviceScope || "Chưa có phạm vi dịch vụ.") +
+      '</small></div><div><span>Đơn giá</span><b>' +
+      (item.servicePackageId ? money(item.servicePrice) : "Chưa xác định") +
+      '</b><small>Chưa VAT · không tự đổi theo danh mục</small></div><div><span>Hợp đồng</span><b>' +
+      esc(item.contractCode || "Chưa liên kết") +
+      '</b><small>' +
+      (item.contractCode
+        ? item.total + " chu kỳ theo hợp đồng"
+        : "Cần liên kết trước khi triển khai") +
+      '</small></div></div></section><section class="panel"><div class="panel-head"><div><h2>Nhật ký dự án</h2><p class="subline">Các thay đổi quan trọng được lưu trên dự án.</p></div></div>' +
+      projectActivityRows(item) +
+      '</section></main><aside><section class="panel"><div class="panel-head"><h2>Account phụ trách</h2></div><button class="customer-account-card"><i>' +
       esc(item.owner).slice(0, 2).toUpperCase() +
       "</i><span><b>" +
       esc(item.owner) +
-      '</b><small>Điều phối timeline và nguồn lực</small></span><em data-lucide="chevron-right"></em></button></section><section class="panel"><div class="panel-head"><h2>Kiểm soát dự án</h2></div><button class="customer-control ' +
+      '</b><small>Điều phối timeline và nguồn lực</small></span><em data-lucide="chevron-right"></em></button></section><section class="panel"><div class="panel-head"><h2>Kiểm soát dự án</h2></div>' +
+      (item.state === "draft"
+        ? ""
+        : '<button class="customer-control ' +
       (item.risk ? "is-attention" : "") +
       '" id="toggleRisk"><i data-lucide="flag"></i><span><b>' +
       (item.risk ? "Đang gắn cờ cần chú ý" : "Đánh dấu cần chú ý") +
@@ -458,9 +527,13 @@
       (item.risk
         ? "Account cần xử lý trong chu kỳ này"
         : "Tạo điểm theo dõi cho Account") +
-      '</small></span></button><button class="customer-control" id="recordActualEnd"><i data-lucide="calendar-check-2"></i><span><b>' +
+      '</small></span></button>') +
+      (item.state === "draft"
+        ? ""
+        : '<button class="customer-control" id="recordActualEnd"><i data-lucide="calendar-check-2"></i><span><b>' +
       (item.actualEnd ? "Sửa kết thúc thực tế" : "Ghi nhận kết thúc thực tế") +
-      '</b><small>Không thay đổi ngày kết thúc dự kiến</small></span></button><button class="customer-control" id="toggleProjectState"><i data-lucide="circle-pause"></i><span><b>' +
+      '</b><small>Không thay đổi ngày kết thúc dự kiến</small></span></button>') +
+      '<button class="customer-control" id="toggleProjectState"><i data-lucide="circle-pause"></i><span><b>' +
       (item.state === "active"
         ? "Dừng dự án"
         : item.state === "draft"
@@ -484,10 +557,7 @@
     detail
       .querySelector("#editProjectDetail")
       .addEventListener("click", function () {
-        showInfo(
-          "Sửa dự án",
-          "Prototype ghi nhận quyền sửa cho Account phụ trách. Trường chỉnh sửa: Account, gói dịch vụ, trạng thái và rủi ro. Ngày bắt đầu chu kỳ chỉ ghi khi bắt đầu triển khai.",
-        );
+        openProjectEdit(item);
       });
     detail
       .querySelector("#openCycleWorkspace")
@@ -495,13 +565,23 @@
         if (item.state === "draft") openProjectStart(item);
         else renderCycleWorkspace(item);
       });
-    detail.querySelector("#toggleRisk").addEventListener("click", function () {
-      item.risk = !item.risk;
-      renderDetail();
-    });
-    detail
-      .querySelector("#recordActualEnd")
-      .addEventListener("click", function () {
+    var riskControl = detail.querySelector("#toggleRisk");
+    if (riskControl)
+      riskControl.addEventListener("click", function () {
+        item.risk = !item.risk;
+        addActivity(
+          item,
+          "flag",
+          item.risk ? "Đã gắn cờ cần chú ý" : "Đã gỡ cờ cần chú ý",
+          item.risk
+            ? "Account cần kiểm soát tiến độ trong chu kỳ hiện tại."
+            : "Không còn điểm rủi ro đang mở.",
+        );
+        renderDetail();
+      });
+    var actualEndControl = detail.querySelector("#recordActualEnd");
+    if (actualEndControl)
+      actualEndControl.addEventListener("click", function () {
         openActualEnd(item);
       });
     detail
@@ -573,6 +653,7 @@
           time: "Hôm nay",
         },
       ],
+      projectId: item.id,
     };
     return item.cycleData;
   }
@@ -609,6 +690,10 @@
   }
   function cycleActivity(cycle, title, detail) {
     cycle.activity.unshift({ title: title, detail: detail, time: "Vừa xong" });
+    var item = records.find(function (entry) {
+      return entry.id === cycle.projectId;
+    });
+    if (item) addActivity(item, "list-checks", title, detail);
   }
   function renderCycleWorkspace(item) {
     var cycle = ensureCycleData(item),
@@ -1022,8 +1107,86 @@
       event.preventDefault();
       item.state = "stopped";
       item.risk = false;
+      addActivity(
+        item,
+        "circle-stop",
+        "Dự án đã dừng",
+        "Lý do: " + event.target.reason.value.trim(),
+      );
       modal.remove();
       renderDetail();
+    });
+  }
+  function openProjectEdit(item) {
+    var packages = servicePackages,
+      modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Sửa dự án</h2><button class="close" type="button">×</button></div><div class="form"><label class="field">Account phụ trách<select name="owner">' +
+      owners
+        .map(function (owner) {
+          return (
+            '<option value="' +
+            esc(owner) +
+            '" ' +
+            (owner === item.owner ? "selected" : "") +
+            ">" +
+            esc(owner) +
+            "</option>"
+          );
+        })
+        .join("") +
+      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required>' +
+      packages
+        .map(function (service) {
+          return (
+            '<option value="' +
+            esc(service.id) +
+            '" ' +
+            (service.id === item.servicePackageId ? "selected" : "") +
+            ">" +
+            esc(service.group + " · " + service.name) +
+            "</option>"
+          );
+        })
+        .join("") +
+      '</select></label><label class="field">Mã hợp đồng<input name="contractCode" value="' +
+      esc(item.contractCode || "") +
+      '" placeholder="Ví dụ: HĐ-2026-001"></label><label class="field">Tổng chu kỳ hợp đồng<input name="total" type="number" min="1" required value="' +
+      esc(item.total) +
+      '"></label><div class="customer-data-rules"><p>Đổi gói chỉ áp dụng từ thời điểm lưu và tạo snapshot mới cho dự án. Ngày bắt đầu chu kỳ không sửa ở đây.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu thay đổi</button></div></div></form>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll(".close,.secondary").forEach(function (button) {
+      button.addEventListener("click", function () {
+        modal.remove();
+      });
+    });
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) modal.remove();
+    });
+    modal.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target,
+        service = packages.find(function (entry) {
+          return entry.id === form.servicePackage.value;
+        });
+      if (!service) return;
+      item.owner = form.owner.value;
+      item.servicePackageId = service.id;
+      item.service = service.group + " · " + service.name;
+      item.serviceScope = service.scope;
+      item.servicePrice = service.price;
+      item.contractCode = form.contractCode.value.trim().toUpperCase();
+      item.total = Math.max(Number(form.total.value || 1), item.cycle || 0, 1);
+      addActivity(
+        item,
+        "pencil",
+        "Thông tin dự án đã cập nhật",
+        "Account, gói dịch vụ hoặc hợp đồng được điều chỉnh.",
+      );
+      modal.remove();
+      renderDetail();
+      if (window.showToast) window.showToast("Đã lưu thay đổi dự án.");
     });
   }
   function openProjectStart(item) {
@@ -1050,6 +1213,15 @@
       item.risk = false;
       item.actualEnd = "";
       item.cycleData = null;
+      addActivity(
+        item,
+        "play",
+        "Đã bắt đầu triển khai",
+        "Chu kỳ 1: " +
+          formatDate(new Date(item.cycleStart + "T00:00:00")) +
+          " – " +
+          item.due,
+      );
       modal.remove();
       renderDetail();
       if (window.showToast)
@@ -1080,6 +1252,12 @@
       var form = event.target;
       item.actualEnd = form.actualEnd.value.split("-").reverse().join(".");
       item.actualEndNote = form.actualEndNote.value.trim();
+      addActivity(
+        item,
+        "calendar-check-2",
+        "Đã ghi nhận kết thúc thực tế",
+        item.actualEnd + " · " + item.actualEndNote,
+      );
       modal.remove();
       renderDetail();
       if (window.showToast)
@@ -1242,6 +1420,7 @@
         servicePackageId: service.id,
         serviceScope: service.scope,
         servicePrice: service.price,
+        contractCode: "",
         state: "draft",
         risk: false,
         cycle: 0,
@@ -1252,6 +1431,13 @@
         posts: 0,
         shooting: 0,
         tasks: 0,
+        activities: [
+          {
+            icon: "file-plus-2",
+            title: "Dự án nháp đã tạo",
+            detail: "Chờ Account bắt đầu triển khai và tạo chu kỳ 1.",
+          },
+        ],
       });
       state.kpi = "all";
       state.page = 1;
@@ -1280,6 +1466,12 @@
       else if (state.selected.state === "draft") openProjectStart(state.selected);
       else {
         state.selected.state = "active";
+        addActivity(
+          state.selected,
+          "play",
+          "Đã tiếp tục triển khai",
+          "Tiến độ hợp đồng được giữ nguyên.",
+        );
         renderDetail();
       }
     },
