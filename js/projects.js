@@ -92,7 +92,7 @@
       state: stateName,
       risk: risk,
       cycle: stateName === "draft" ? 0 : cycle,
-      total: total,
+      total: stateName === "draft" ? 0 : total,
       progress: progress,
       due: due,
       posts: stateName === "draft" ? 0 : index % 3 === 0 ? 8 : 12,
@@ -100,6 +100,7 @@
       tasks: stateName === "draft" ? 0 : risk ? 3 : (index % 4) + 1,
     };
   });
+  window.CKHubProjectRecords = records;
   function esc(value) {
     return String(value).replace(/[&<>"']/g, function (char) {
       return {
@@ -471,7 +472,7 @@
       '</p></div><div class="project-overview-stat"><span>Tiến độ hợp đồng</span><strong>' +
       (item.cycle || "–") +
       " / " +
-      item.total +
+      (item.total || "–") +
       '</strong><small>chu kỳ đã triển khai</small></div><div class="project-overview-stat"><span>Chu kỳ hiện tại</span><strong>' +
       cycleRange(item) +
       '</strong><small>' +
@@ -1150,11 +1151,7 @@
           );
         })
         .join("") +
-      '</select></label><label class="field">Mã hợp đồng<input name="contractCode" value="' +
-      esc(item.contractCode || "") +
-      '" placeholder="Ví dụ: HĐ-2026-001"></label><label class="field">Tổng chu kỳ hợp đồng<input name="total" type="number" min="1" required value="' +
-      esc(item.total) +
-      '"></label><div class="customer-data-rules"><p>Đổi gói chỉ áp dụng từ thời điểm lưu và tạo snapshot mới cho dự án. Ngày bắt đầu chu kỳ không sửa ở đây.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu thay đổi</button></div></div></form>';
+      '</select></label><div class="customer-data-rules"><p>Đổi gói chỉ áp dụng từ thời điểm lưu và tạo snapshot mới cho dự án. Hợp đồng chính và số chu kỳ chỉ quản lý tại Hợp đồng & công nợ. Ngày bắt đầu chu kỳ không sửa ở đây.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu thay đổi</button></div></div></form>';
     document.body.appendChild(modal);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -1176,8 +1173,6 @@
       item.service = service.group + " · " + service.name;
       item.serviceScope = service.scope;
       item.servicePrice = service.price;
-      item.contractCode = form.contractCode.value.trim().toUpperCase();
-      item.total = Math.max(Number(form.total.value || 1), item.cycle || 0, 1);
       addActivity(
         item,
         "pencil",
@@ -1190,6 +1185,11 @@
     });
   }
   function openProjectStart(item) {
+    if (!item.contractCode) {
+      if (window.showToast)
+        window.showToast("Cần liên kết hợp đồng chính trước khi bắt đầu triển khai.");
+      return;
+    }
     var modal = document.createElement("div");
     modal.className = "modal-backdrop show customer-modal";
     modal.innerHTML =
@@ -1424,7 +1424,7 @@
         state: "draft",
         risk: false,
         cycle: 0,
-        total: 1,
+        total: 0,
         progress: 0,
         cycleStart: "",
         due: "",
