@@ -30,8 +30,13 @@
       risk = stateName === "active" && index % 6 === 0,
       cycle = (index % 6) + 1,
       total = index % 4 === 0 ? 3 : 6,
-      progress = Math.min(92, 24 + ((index * 9) % 69)),
-      due = ["23.09.2026", "29.09.2026", "30.09.2026", "01.10.2026"][index % 4];
+      progress = stateName === "draft" ? 0 : Math.min(92, 24 + ((index * 9) % 69)),
+      due =
+        stateName === "draft"
+          ? ""
+          : ["23.09.2026", "29.09.2026", "30.09.2026", "01.10.2026"][
+              index % 4
+            ];
     return {
       id: "project-" + (index + 1),
       code: "DA-2026-" + String(index + 1).padStart(3, "0"),
@@ -47,13 +52,13 @@
             : "Ads duy trì",
       state: stateName,
       risk: risk,
-      cycle: cycle,
+      cycle: stateName === "draft" ? 0 : cycle,
       total: total,
       progress: progress,
       due: due,
-      posts: index % 3 === 0 ? 8 : 12,
-      shooting: index % 4 === 0 ? 2 : 1,
-      tasks: risk ? 3 : (index % 4) + 1,
+      posts: stateName === "draft" ? 0 : index % 3 === 0 ? 8 : 12,
+      shooting: stateName === "draft" ? 0 : index % 4 === 0 ? 2 : 1,
+      tasks: stateName === "draft" ? 0 : risk ? 3 : (index % 4) + 1,
     };
   });
   function esc(value) {
@@ -97,6 +102,7 @@
     );
   }
   function plannedEndInput(item) {
+    if (!item.due) return "";
     var parts = item.due.split(".");
     return parts[2] + "-" + parts[1] + "-" + parts[0];
   }
@@ -106,6 +112,7 @@
       start = new Date(item.cycleStart + "T00:00:00");
       return formatDate(start) + " – " + cycleEnd(item.cycleStart);
     }
+    if (!item.due) return "Chưa bắt đầu";
     var parts = item.due.split("."),
       end = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     start = new Date(end.getFullYear(), end.getMonth() - 1, end.getDate() + 1);
@@ -345,7 +352,7 @@
     screen.querySelector("#projectHelp").addEventListener("click", function () {
       showInfo(
         "Quy tắc dự án",
-        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Chu kỳ luôn tính một tháng từ ngày bắt đầu; ngày kết thúc dự kiến tự tính, còn ngày kết thúc thực tế ghi khi chốt chu kỳ. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
+        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chưa có chu kỳ. Khi Account bắt đầu triển khai, hệ thống tạo chu kỳ 1 từ ngày bắt đầu và tự tính hạn một tháng. Ngày kết thúc thực tế chỉ ghi khi chốt chu kỳ. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
       );
     });
     screen
@@ -353,7 +360,7 @@
       .addEventListener("click", function () {
         showInfo(
           "Tạo dự án",
-          "Tạo dự án cần chọn khách hàng, Account, gói dịch vụ và ngày bắt đầu chu kỳ.",
+          "Tạo dự án cần chọn khách hàng, Account và gói dịch vụ. Ngày bắt đầu chỉ được nhập khi Account bắt đầu triển khai dự án.",
         );
       });
   }
@@ -378,24 +385,42 @@
       esc(item.service) +
       " · Account " +
       esc(item.owner) +
-      '</p></div><div class="project-detail-actions"><button class="secondary" id="editProjectDetail"><i data-lucide="pencil"></i> Sửa dự án</button><button class="primary" id="openCycleWorkspace"><i data-lucide="calendar-range"></i> Mở chu kỳ</button></div></div></div><section class="project-overview"><div class="project-overview-main"><span>Sức khỏe triển khai</span><strong>' +
-      (item.risk ? "Cần theo dõi" : "Đúng tiến độ") +
+      '</p></div><div class="project-detail-actions"><button class="secondary" id="editProjectDetail"><i data-lucide="pencil"></i> Sửa dự án</button><button class="primary" id="openCycleWorkspace"><i data-lucide="' +
+      (item.state === "draft" ? "play" : "calendar-range") +
+      '"></i> ' +
+      (item.state === "draft" ? "Bắt đầu triển khai" : "Mở chu kỳ") +
+      '</button></div></div></div><section class="project-overview"><div class="project-overview-main"><span>Sức khỏe triển khai</span><strong>' +
+      (item.state === "draft"
+        ? "Chưa bắt đầu"
+        : item.risk
+          ? "Cần theo dõi"
+          : "Đúng tiến độ") +
       "</strong><p>" +
-      (item.risk
+      (item.state === "draft"
+        ? "Bắt đầu triển khai để tạo chu kỳ đầu tiên."
+        : item.risk
         ? "Có " +
           item.tasks +
           " công việc cần Account rà soát trước khi kết thúc chu kỳ."
         : "Không có rủi ro đang mở trong chu kỳ này.") +
       '</p></div><div class="project-overview-stat"><span>Tiến độ hợp đồng</span><strong>' +
-      item.cycle +
+      (item.cycle || "–") +
       " / " +
       item.total +
       '</strong><small>chu kỳ đã triển khai</small></div><div class="project-overview-stat"><span>Chu kỳ hiện tại</span><strong>' +
       cycleRange(item) +
-      '</strong><small>mốc dự kiến, tính từ ngày bắt đầu</small></div><div class="project-overview-stat"><span>Kết thúc thực tế</span><strong>' +
-      (item.actualEnd || "Chưa ghi nhận") +
+      '</strong><small>' +
+      (item.state === "draft"
+        ? "sẽ tạo khi bắt đầu triển khai"
+        : "mốc dự kiến, tính từ ngày bắt đầu") +
+      '</small></div><div class="project-overview-stat"><span>Kết thúc thực tế</span><strong>' +
+      (item.actualEnd || (item.state === "draft" ? "Chưa bắt đầu" : "Chưa ghi nhận")) +
       "</strong><small>" +
-      (item.actualEnd ? "mốc hoàn thành thực tế" : "ghi nhận khi chốt chu kỳ") +
+      (item.actualEnd
+        ? "mốc hoàn thành thực tế"
+        : item.state === "draft"
+          ? "ghi nhận sau khi triển khai"
+          : "ghi nhận khi chốt chu kỳ") +
       '</small></div></section><div class="project-detail-grid"><main><section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
       kind(item) +
       '">' +
@@ -429,11 +454,19 @@
       '</small></span></button><button class="customer-control" id="recordActualEnd"><i data-lucide="calendar-check-2"></i><span><b>' +
       (item.actualEnd ? "Sửa kết thúc thực tế" : "Ghi nhận kết thúc thực tế") +
       '</b><small>Không thay đổi ngày kết thúc dự kiến</small></span></button><button class="customer-control" id="toggleProjectState"><i data-lucide="circle-pause"></i><span><b>' +
-      (item.state === "active" ? "Dừng dự án" : "Mở lại dự án") +
+      (item.state === "active"
+        ? "Dừng dự án"
+        : item.state === "draft"
+          ? "Bắt đầu triển khai"
+          : item.state === "pending"
+            ? "Tiếp tục triển khai"
+            : "Mở lại dự án") +
       "</b><small>" +
       (item.state === "active"
         ? "Yêu cầu lý do và xác nhận"
-        : "Giữ nguyên tiến độ hợp đồng") +
+        : item.state === "draft"
+          ? "Chọn ngày bắt đầu chu kỳ 1"
+          : "Giữ nguyên tiến độ hợp đồng") +
       "</small></span></button></section></aside></div>";
     screen.insertAdjacentElement("afterend", detail);
     detail
@@ -446,13 +479,14 @@
       .addEventListener("click", function () {
         showInfo(
           "Sửa dự án",
-          "Prototype ghi nhận quyền sửa cho Account phụ trách. Trường chỉnh sửa: Account, gói dịch vụ, ngày bắt đầu chu kỳ, trạng thái và rủi ro.",
+          "Prototype ghi nhận quyền sửa cho Account phụ trách. Trường chỉnh sửa: Account, gói dịch vụ, trạng thái và rủi ro. Ngày bắt đầu chu kỳ chỉ ghi khi bắt đầu triển khai.",
         );
       });
     detail
       .querySelector("#openCycleWorkspace")
       .addEventListener("click", function () {
-        renderCycleWorkspace(item);
+        if (item.state === "draft") openProjectStart(item);
+        else renderCycleWorkspace(item);
       });
     detail.querySelector("#toggleRisk").addEventListener("click", function () {
       item.risk = !item.risk;
@@ -985,6 +1019,36 @@
       renderDetail();
     });
   }
+  function openProjectStart(item) {
+    var modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Bắt đầu triển khai</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Tạo chu kỳ 1</b><p>Chọn ngày dự án chính thức bắt đầu. Hệ thống tự tạo hạn dự kiến sau một tháng; không cần nhập ngày kết thúc.</p></div><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><label class="filter-check"><input name="confirmed" type="checkbox" required> Tôi xác nhận dự án đã đủ điều kiện triển khai.</label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Bắt đầu triển khai</button></div></div></form>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll(".close,.secondary").forEach(function (button) {
+      button.addEventListener("click", function () {
+        modal.remove();
+      });
+    });
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) modal.remove();
+    });
+    modal.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      item.cycleStart = form.cycleStart.value;
+      item.due = cycleEnd(item.cycleStart);
+      item.cycle = 1;
+      item.state = "active";
+      item.risk = false;
+      item.actualEnd = "";
+      item.cycleData = null;
+      modal.remove();
+      renderDetail();
+      if (window.showToast)
+        window.showToast("Đã bắt đầu triển khai và tạo chu kỳ 1.");
+    });
+  }
   function openActualEnd(item) {
     var modal = document.createElement("div"),
       plannedEnd = plannedEndInput(item);
@@ -1099,7 +1163,7 @@
           );
         })
         .join("") +
-      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><div class="customer-data-rules"><p>Chu kỳ luôn tính một tháng từ ngày bắt đầu đã chọn. Ngày kết thúc dự kiến được hệ thống tự tính; ngày kết thúc thực tế chỉ ghi khi chốt chu kỳ. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
+      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><div class="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Ngày bắt đầu và hạn chu kỳ chỉ được tạo khi Account bấm Bắt đầu triển khai. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
     document.body.appendChild(modal);
     var form = modal.querySelector("form"),
       selectedCustomer = null;
@@ -1176,8 +1240,8 @@
         cycle: 0,
         total: 1,
         progress: 0,
-        cycleStart: form.cycleStart.value,
-        due: cycleEnd(form.cycleStart.value),
+        cycleStart: "",
+        due: "",
         posts: 0,
         shooting: 0,
         tasks: 0,
@@ -1206,6 +1270,7 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       if (state.selected.state === "active") openProjectStop(state.selected);
+      else if (state.selected.state === "draft") openProjectStart(state.selected);
       else {
         state.selected.state = "active";
         renderDetail();
