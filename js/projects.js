@@ -70,10 +70,19 @@
   function formatDate(date) {
     return String(date.getDate()).padStart(2, "0") + "." + String(date.getMonth() + 1).padStart(2, "0") + "." + date.getFullYear();
   }
+  function cycleEndDate(startValue) {
+    var start = new Date(startValue + "T00:00:00");
+    return new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1);
+  }
   function cycleEnd(startValue) {
-    var start = new Date(startValue + "T00:00:00"),
-      end = new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1);
-    return formatDate(end);
+    return formatDate(cycleEndDate(startValue));
+  }
+  function inputDate(date) {
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+  function plannedEndInput(item) {
+    var parts = item.due.split(".");
+    return parts[2] + "-" + parts[1] + "-" + parts[0];
   }
   function cycleRange(item) {
     var start;
@@ -320,7 +329,7 @@
     screen.querySelector("#projectHelp").addEventListener("click", function () {
       showInfo(
         "Quy tắc dự án",
-        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Chu kỳ luôn tính một tháng từ ngày bắt đầu chu kỳ. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
+        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Chu kỳ luôn tính một tháng từ ngày bắt đầu; ngày kết thúc dự kiến tự tính, còn ngày kết thúc thực tế ghi khi chốt chu kỳ. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
       );
     });
     screen
@@ -367,7 +376,11 @@
       item.total +
       '</strong><small>chu kỳ đã triển khai</small></div><div class="project-overview-stat"><span>Chu kỳ hiện tại</span><strong>' +
       cycleRange(item) +
-      '</strong><small>tính từ ngày bắt đầu chu kỳ</small></div></section><div class="project-detail-grid"><main><section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
+      '</strong><small>mốc dự kiến, tính từ ngày bắt đầu</small></div><div class="project-overview-stat"><span>Kết thúc thực tế</span><strong>' +
+      (item.actualEnd || "Chưa ghi nhận") +
+      '</strong><small>' +
+      (item.actualEnd ? "mốc hoàn thành thực tế" : "ghi nhận khi chốt chu kỳ") +
+      '</small></div></section><div class="project-detail-grid"><main><section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
       kind(item) +
       '">' +
       label(item) +
@@ -397,7 +410,9 @@
       (item.risk
         ? "Account cần xử lý trong chu kỳ này"
         : "Tạo điểm theo dõi cho Account") +
-      '</small></span></button><button class="customer-control" id="toggleProjectState"><i data-lucide="circle-pause"></i><span><b>' +
+      '</small></span></button><button class="customer-control" id="recordActualEnd"><i data-lucide="calendar-check-2"></i><span><b>' +
+      (item.actualEnd ? "Sửa kết thúc thực tế" : "Ghi nhận kết thúc thực tế") +
+      '</b><small>Không thay đổi ngày kết thúc dự kiến</small></span></button><button class="customer-control" id="toggleProjectState"><i data-lucide="circle-pause"></i><span><b>' +
       (item.state === "active" ? "Dừng dự án" : "Mở lại dự án") +
       "</b><small>" +
       (item.state === "active"
@@ -421,6 +436,9 @@
     detail.querySelector("#toggleRisk").addEventListener("click", function () {
       item.risk = !item.risk;
       renderDetail();
+    });
+    detail.querySelector("#recordActualEnd").addEventListener("click", function () {
+      openActualEnd(item);
     });
     detail
       .querySelector("#toggleProjectState")
@@ -463,6 +481,35 @@
       item.risk = false;
       modal.remove();
       renderDetail();
+    });
+  }
+  function openActualEnd(item) {
+    var modal = document.createElement("div"),
+      plannedEnd = plannedEndInput(item);
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal"><div class="modal-top"><h2>Kết thúc thực tế</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Ngày dự kiến: ' +
+      item.due +
+      '</b><p>Ngày thực tế được ghi nhận khi chu kỳ hoàn tất. Không làm thay đổi mốc dự kiến hoặc tiến độ hợp đồng.</p></div><label class="field">Ngày kết thúc thực tế<input name="actualEnd" type="date" required value="' +
+      (item.actualEnd ? plannedEndInput({ due: item.actualEnd }) : plannedEnd) +
+      '"></label><label class="field">Ghi chú<textarea name="actualEndNote" required placeholder="Nêu lý do nếu khác ngày dự kiến"></textarea></label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu ngày thực tế</button></div></div></form>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll(".close,.secondary").forEach(function (button) {
+      button.addEventListener("click", function () {
+        modal.remove();
+      });
+    });
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) modal.remove();
+    });
+    modal.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      item.actualEnd = form.actualEnd.value.split("-").reverse().join(".");
+      item.actualEndNote = form.actualEndNote.value.trim();
+      modal.remove();
+      renderDetail();
+      if (window.showToast) window.showToast("Đã ghi nhận ngày kết thúc thực tế.");
     });
   }
   function showInfo(title, message) {
@@ -549,7 +596,7 @@
           );
         })
         .join("") +
-      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><div class="customer-data-rules"><p>Chu kỳ luôn tính một tháng từ ngày bắt đầu đã chọn. Hệ thống tự xác định ngày kết thúc chu kỳ. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
+      '</select></label><label class="field">Gói dịch vụ<select name="servicePackage" required></select></label><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><label class="field">Ngày kết thúc dự kiến<input name="plannedEnd" type="date" readonly tabindex="-1"></label><div class="customer-data-rules"><p>Chu kỳ luôn tính một tháng từ ngày bắt đầu đã chọn. Ngày kết thúc dự kiến tự tính; ngày kết thúc thực tế chỉ ghi khi chốt chu kỳ. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Tạo dự án nháp</button></div></div></form>';
     document.body.appendChild(modal);
     var form = modal.querySelector("form"),
       selectedCustomer = null;
@@ -586,10 +633,15 @@
         })
         .join("");
     }
+    function syncPlannedEnd() {
+      form.plannedEnd.value = inputDate(cycleEndDate(form.cycleStart.value));
+    }
     syncOwner();
     syncPackages();
+    syncPlannedEnd();
     form.customer.addEventListener("input", syncOwner);
     form.serviceCategory.addEventListener("change", syncPackages);
+    form.cycleStart.addEventListener("change", syncPlannedEnd);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
         modal.remove();
