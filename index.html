@@ -256,6 +256,7 @@
       {id:'ads-management',category:'growth',group:'Ads Management',name:'Quản trị quảng cáo',unit:'Tháng',priceType:'fixed',price:2000000,status:'Đang áp dụng',scope:'Quản trị quảng cáo theo chu kỳ.'}
     ]
   };
+  window.serviceCatalog=serviceCatalog;
   function serviceMoney(item){if(item.priceType==='quote')return 'Báo giá riêng';if(item.priceType==='from')return 'Từ '+Number(item.price||0).toLocaleString('vi-VN')+'đ';if(item.priceType==='range')return Number(item.price||0).toLocaleString('vi-VN')+'–'+Number(item.maxPrice||0).toLocaleString('vi-VN')+'đ';return Number(item.price||0).toLocaleString('vi-VN')+'đ'}
   function categoryName(id){var row=serviceCatalog.categories.find(function(x){return x.id===id});return row?row.name:'—'}
   function packageLabel(item){return item.group+' · '+item.name}
