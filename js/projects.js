@@ -1302,28 +1302,12 @@
     });
   }
   function openOnboarding(item) {
-    var data = item.onboarding || {}, modal = document.createElement("div");
+    var data = item.onboarding || {}, items = onboardingItems(item), completed = items.filter(function (entry) { return entry.ready; }).length, modal = document.createElement("div");
     modal.className = "modal-backdrop show customer-modal";
     modal.innerHTML =
-      '<form class="modal onboarding-modal"><div class="modal-top"><h2>Cập nhật Onboarding</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Điều kiện khởi động</b><p>Account kiểm tra tài liệu và điều phối. Sale, Kế toán xác nhận phần việc thuộc trách nhiệm của họ.</p></div><div class="onboarding-form-section"><b>1. Hợp đồng chính</b><p>' +
-      (item.contractCode ? "Đã liên kết " + esc(item.contractCode) : "Chưa liên kết. Tạo hợp đồng chính hiệu lực trước khi khởi động.") +
-      '</p><button class="secondary" type="button" id="goContracts"><i data-lucide="file-plus-2"></i> Mở hợp đồng</button></div><div class="onboarding-form-section"><label class="filter-check"><input name="financeVerified" type="checkbox" ' +
-      (data.financeVerified ? "checked" : "") +
-      '> Kế toán đã xác nhận cọc hoặc thanh toán theo điều khoản</label><label class="field">Mã chứng từ / ghi chú tài chính<input name="financeRef" value="' +
-      esc(data.financeRef || "") +
-      '" placeholder="Ví dụ: UNC-0926-018"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="handoverReady" type="checkbox" ' +
-      (data.handoverReady ? "checked" : "") +
-      '> Sale đã bàn giao Sales Brief và phạm vi đã chốt</label><label class="field">Link Sales Brief<input name="handoverLink" value="' +
-      esc(data.handoverLink || "") +
-      '" placeholder="Link tài liệu bàn giao"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="briefReady" type="checkbox" ' +
-      (data.briefReady ? "checked" : "") +
-      '> Brief và tài liệu nguồn đã đủ để triển khai</label><label class="field">Link brief / thư mục tài liệu<input name="briefLink" value="' +
-      esc(data.briefLink || "") +
-      '" placeholder="Link brief hoặc thư mục"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="setupReady" type="checkbox" ' +
-      (data.setupReady ? "checked" : "") +
-      '> Đã thiết lập workspace và quyền truy cập phù hợp gói dịch vụ</label><label class="field">Ghi chú thiết lập<input name="setupNote" value="' +
-      esc(data.setupNote || "") +
-      '" placeholder="Ví dụ: Đã cấp quyền Meta Business Suite"></label></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu điều kiện</button></div></div></form>';
+      '<form class="modal onboarding-modal"><div class="modal-top"><h2>Cập nhật Onboarding</h2><button class="close" type="button">×</button></div><div class="form"><div class="onboarding-modal-intro"><div><b>Điều kiện khởi động</b><p>Sale, Kế toán xác nhận phần việc của mình. Account kiểm tra và điều phối.</p></div><strong>' + completed + ' / 5</strong></div><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Hợp đồng</span><b>Hợp đồng chính</b><p>' +
+      (item.contractCode ? "Đã liên kết " + esc(item.contractCode) : "Chưa có hợp đồng chính hiệu lực.") +
+      '</p></div><span class="onboarding-form-status ' + (item.contractCode ? "complete" : "") + '">' + (item.contractCode ? "Đã liên kết" : "Cần tạo") + '</span></div><button class="secondary" type="button" id="goContracts"><i data-lucide="file-plus-2"></i> Mở hợp đồng</button></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Kế toán</span><b>Xác nhận tài chính</b><p>Cọc hoặc thanh toán theo điều khoản hợp đồng.</p></div><span class="onboarding-form-status ' + (data.financeVerified ? "complete" : "") + '">' + (data.financeVerified ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="financeVerified" type="checkbox" ' + (data.financeVerified ? "checked" : "") + '><span>Kế toán đã xác nhận</span></label><label class="field onboarding-field"><span>Mã chứng từ / ghi chú tài chính</span><input name="financeRef" value="' + esc(data.financeRef || "") + '" placeholder="Ví dụ: UNC-0926-018"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Sale</span><b>Bàn giao Sales Brief</b><p>Brief bán hàng và phạm vi khách hàng đã chốt.</p></div><span class="onboarding-form-status ' + (data.handoverReady ? "complete" : "") + '">' + (data.handoverReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="handoverReady" type="checkbox" ' + (data.handoverReady ? "checked" : "") + '><span>Sale đã bàn giao</span></label><label class="field onboarding-field"><span>Link Sales Brief</span><input name="handoverLink" value="' + esc(data.handoverLink || "") + '" placeholder="Dán link tài liệu bàn giao"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Account</span><b>Brief và tài liệu</b><p>Đủ brief, hình ảnh, thông tin nguồn để triển khai.</p></div><span class="onboarding-form-status ' + (data.briefReady ? "complete" : "") + '">' + (data.briefReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="briefReady" type="checkbox" ' + (data.briefReady ? "checked" : "") + '><span>Account đã kiểm tra đủ tài liệu</span></label><label class="field onboarding-field"><span>Link brief / thư mục tài liệu</span><input name="briefLink" value="' + esc(data.briefLink || "") + '" placeholder="Dán link brief hoặc thư mục"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Account</span><b>Thiết lập vận hành</b><p>Workspace và quyền truy cập theo gói dịch vụ.</p></div><span class="onboarding-form-status ' + (data.setupReady ? "complete" : "") + '">' + (data.setupReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="setupReady" type="checkbox" ' + (data.setupReady ? "checked" : "") + '><span>Account đã hoàn tất thiết lập</span></label><label class="field onboarding-field"><span>Thông tin thiết lập</span><input name="setupNote" value="' + esc(data.setupNote || "") + '" placeholder="Ví dụ: Đã cấp quyền Meta Business Suite"></label></section><p class="onboarding-remain">' + (completed === 5 ? "Đủ điều kiện khởi động dự án." : "Còn " + (5 - completed) + " điều kiện cần hoàn tất.") + '</p><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu điều kiện</button></div></div></form>';
     document.body.appendChild(modal);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () { modal.remove(); });
@@ -1331,6 +1315,13 @@
     modal.querySelector("#goContracts").addEventListener("click", function () {
       modal.remove();
       navigate("contracts");
+    });
+    [["financeVerified", "financeRef"], ["handoverReady", "handoverLink"], ["briefReady", "briefLink"], ["setupReady", "setupNote"]].forEach(function (pair) {
+      function syncField() {
+        modal.querySelector('[name="' + pair[1] + '"]').disabled = !modal.querySelector('[name="' + pair[0] + '"]').checked;
+      }
+      modal.querySelector('[name="' + pair[0] + '"]').addEventListener("change", syncField);
+      syncField();
     });
     modal.addEventListener("click", function (event) { if (event.target === modal) modal.remove(); });
     modal.addEventListener("submit", function (event) {
