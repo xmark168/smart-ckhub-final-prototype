@@ -1002,28 +1002,6 @@
   }
   function bindCycleModal(modal) {
     document.body.appendChild(modal);
-    modal.querySelectorAll(".onboarding-form-section").forEach(function (section, index) {
-      var head = section.querySelector(".onboarding-section-head"), status = head.querySelector(".onboarding-form-status"), owner = head.querySelector(".onboarding-owner"), body = document.createElement("div"), statusText = status.textContent.trim(), children = Array.from(section.children);
-      owner.innerHTML = "<b>" + (index + 1) + ".</b> " + owner.textContent;
-      status.innerHTML = '<i class="onboarding-status-dot" aria-hidden="true"></i><span>' + statusText + "</span>";
-      children.forEach(function (child) { if (child !== head) body.appendChild(child); });
-      body.className = "onboarding-section-body";
-      section.appendChild(body);
-      head.classList.add("onboarding-collapse-head");
-      head.setAttribute("role", "button");
-      head.setAttribute("tabindex", "0");
-      head.setAttribute("aria-expanded", index === 0 ? "true" : "false");
-      head.insertAdjacentHTML("beforeend", '<i class="onboarding-chevron" data-lucide="chevron-down"></i>');
-      if (index !== 0) section.classList.add("collapsed");
-      function toggle() {
-        var collapsed = section.classList.toggle("collapsed");
-        head.setAttribute("aria-expanded", String(!collapsed));
-      }
-      head.addEventListener("click", toggle);
-      head.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); }
-      });
-    });
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
         modal.remove();
@@ -1323,12 +1301,37 @@
       if (window.showToast) window.showToast("Đã lưu thay đổi dự án.");
     });
   }
+  function setupOnboardingCollapses(modal) {
+    modal.querySelectorAll(".onboarding-form-section").forEach(function (section, index) {
+      var head = section.querySelector(".onboarding-section-head"), status = head.querySelector(".onboarding-form-status"), owner = head.querySelector(".onboarding-owner"), body = document.createElement("div"), statusText = status.textContent.trim(), children = Array.from(section.children);
+      owner.innerHTML = "<b>" + (index + 1) + ".</b> " + owner.textContent;
+      status.innerHTML = '<i class="onboarding-status-dot" aria-hidden="true"></i><span>' + statusText + "</span>";
+      children.forEach(function (child) { if (child !== head) body.appendChild(child); });
+      body.className = "onboarding-section-body";
+      section.appendChild(body);
+      head.classList.add("onboarding-collapse-head");
+      head.setAttribute("role", "button");
+      head.setAttribute("tabindex", "0");
+      head.setAttribute("aria-expanded", index === 0 ? "true" : "false");
+      head.insertAdjacentHTML("beforeend", '<i class="onboarding-chevron" data-lucide="chevron-down"></i>');
+      if (index !== 0) section.classList.add("collapsed");
+      function toggle() {
+        var collapsed = section.classList.toggle("collapsed");
+        head.setAttribute("aria-expanded", String(!collapsed));
+      }
+      head.addEventListener("click", toggle);
+      head.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); }
+      });
+    });
+  }
   function openOnboarding(item) {
     var data = item.onboarding || {}, items = onboardingItems(item), completed = items.filter(function (entry) { return entry.ready; }).length, contractSection = item.contractCode ? '<section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Hợp đồng</span><b>Hợp đồng chính</b><p>Đã liên kết ' + esc(item.contractCode) + '.</p></div><span class="onboarding-form-status complete">Đã liên kết</span></div></section>' : '<section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Hợp đồng</span><b>Hoàn tất hợp đồng chính</b><p>Nhập thông tin và tải file hợp đồng để liên kết trực tiếp với dự án.</p></div><span class="onboarding-form-status">Cần tạo</span></div><div class="onboarding-contract-grid"><label class="field onboarding-field"><span>Số hợp đồng</span><input name="contractCode" required value="HĐ-2026-' + esc(item.code.slice(-3)) + '"></label><label class="field onboarding-field"><span>Số chu kỳ</span><input name="contractCycles" type="number" min="1" required value="6"></label><label class="field onboarding-field"><span>Ngày bắt đầu hợp đồng</span><input name="contractStart" type="date" required value="2026-10-01"></label><label class="field onboarding-field"><span>Hạn thanh toán</span><input name="contractPaymentDue" type="date" required value="2026-10-05"></label><label class="field onboarding-field onboarding-contract-value"><span>Giá trị hợp đồng</span><input name="contractValue" type="number" min="0" required value="' + Number(item.servicePrice || 0) + '"></label><label class="field onboarding-field onboarding-upload"><span>File hợp đồng</span><input name="contractFile" type="file" accept=".pdf,.doc,.docx" required></label></div></section>', modal = document.createElement("div");
     modal.className = "modal-backdrop show customer-modal";
     modal.innerHTML =
       '<form class="modal onboarding-modal"><div class="modal-top"><h2>Cập nhật Onboarding</h2><button class="close" type="button">×</button></div><div class="form"><div class="onboarding-modal-intro"><div><b>Điều kiện khởi động</b><p>Sale, Kế toán xác nhận phần việc của mình. Account kiểm tra và điều phối.</p></div><strong>' + completed + ' / 5</strong></div>' + contractSection + '<section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Kế toán</span><b>Xác nhận tài chính</b><p>Cọc hoặc thanh toán theo điều khoản hợp đồng.</p></div><span class="onboarding-form-status ' + (data.financeVerified ? "complete" : "") + '">' + (data.financeVerified ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="financeVerified" type="checkbox" ' + (data.financeVerified ? "checked" : "") + '><span>Kế toán đã xác nhận</span></label><label class="field onboarding-field"><span>Mã chứng từ / ghi chú tài chính</span><input name="financeRef" value="' + esc(data.financeRef || "") + '" placeholder="Ví dụ: UNC-0926-018"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Sale</span><b>Bàn giao Sales Brief</b><p>Brief bán hàng và phạm vi khách hàng đã chốt.</p></div><span class="onboarding-form-status ' + (data.handoverReady ? "complete" : "") + '">' + (data.handoverReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="handoverReady" type="checkbox" ' + (data.handoverReady ? "checked" : "") + '><span>Sale đã bàn giao</span></label><label class="field onboarding-field"><span>Link Sales Brief</span><input name="handoverLink" value="' + esc(data.handoverLink || "") + '" placeholder="Dán link tài liệu bàn giao"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Account</span><b>Brief và tài liệu</b><p>Đủ brief, hình ảnh, thông tin nguồn để triển khai.</p></div><span class="onboarding-form-status ' + (data.briefReady ? "complete" : "") + '">' + (data.briefReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="briefReady" type="checkbox" ' + (data.briefReady ? "checked" : "") + '><span>Account đã kiểm tra đủ tài liệu</span></label><label class="field onboarding-field"><span>Link brief / thư mục tài liệu</span><input name="briefLink" value="' + esc(data.briefLink || "") + '" placeholder="Dán link brief hoặc thư mục"></label></section><section class="onboarding-form-section"><div class="onboarding-section-head"><div><span class="onboarding-owner">Account</span><b>Thiết lập vận hành</b><p>Workspace và quyền truy cập theo gói dịch vụ.</p></div><span class="onboarding-form-status ' + (data.setupReady ? "complete" : "") + '">' + (data.setupReady ? "Đã hoàn tất" : "Chưa hoàn tất") + '</span></div><label class="onboarding-check"><input name="setupReady" type="checkbox" ' + (data.setupReady ? "checked" : "") + '><span>Account đã hoàn tất thiết lập</span></label><label class="field onboarding-field"><span>Thông tin thiết lập</span><input name="setupNote" value="' + esc(data.setupNote || "") + '" placeholder="Ví dụ: Đã cấp quyền Meta Business Suite"></label></section><p class="onboarding-remain">' + (completed === 5 ? "Đủ điều kiện khởi động dự án." : "Còn " + (5 - completed) + " điều kiện cần hoàn tất.") + '</p><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu điều kiện</button></div></div></form>';
     document.body.appendChild(modal);
+    setupOnboardingCollapses(modal);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () { modal.remove(); });
     });
