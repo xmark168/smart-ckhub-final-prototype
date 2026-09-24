@@ -19,7 +19,7 @@
     owner: "",
     area: "",
     risk: false,
-    kpi: "active",
+    kpi: "all",
     page: 1,
     pageSize: 20,
     selected: null,
