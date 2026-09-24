@@ -96,6 +96,36 @@
   }
   seed();
   window.CKHubContractRecords = records;
+  window.CKHubContracts = {
+    createPrimary: function (project, input) {
+      records.forEach(function (row) {
+        if (row.projectId === project.id && row.isPrimary && row.status === "Hiệu lực") row.status = "Kết thúc";
+      });
+      var row = {
+        id: "contract-" + Date.now(),
+        code: input.code,
+        projectId: project.id,
+        customer: project.customer,
+        project: project.customer,
+        type: "Hợp đồng chính",
+        isPrimary: true,
+        service: project.service,
+        scope: project.serviceScope,
+        cycles: Number(input.cycles),
+        start: input.start,
+        end: formatDate(endDate(input.start, input.cycles)),
+        value: Number(input.value),
+        paid: 0,
+        paymentDue: input.paymentDue,
+        status: "Hiệu lực",
+        evidence: input.evidence,
+        activity: ["Đã tạo từ Cổng khởi động"],
+      };
+      records.unshift(row);
+      syncProject(project);
+      return row;
+    },
+  };
 
   function filtered() {
     var query = state.query;
