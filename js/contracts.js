@@ -119,6 +119,7 @@
         paymentDue: input.paymentDue,
         status: "Hiệu lực",
         evidence: input.evidence,
+        attachmentName: input.attachmentName || "",
         activity: ["Đã tạo từ Cổng khởi động"],
       };
       records.unshift(row);

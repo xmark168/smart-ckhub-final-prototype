@@ -1016,6 +1016,10 @@
   gap: 9px 12px;
   margin-top: 3px;
 }
+.onboarding-drive,
+.onboarding-upload {
+  grid-column: 1 / -1;
+}
 .onboarding-upload input[type="file"] {
   padding: 7px 9px;
   font-size: 11px;
