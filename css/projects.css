@@ -915,11 +915,23 @@
   padding: 12px 0;
   border-top: 1px solid #eee5dd;
 }
+.onboarding-form-section:first-of-type {
+  border-top: 0;
+}
 .onboarding-section-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+.onboarding-collapse-head {
+  cursor: pointer;
+  user-select: none;
+}
+.onboarding-collapse-head:focus-visible {
+  border-radius: 7px;
+  outline: 2px solid rgba(185, 72, 23, 0.28);
+  outline-offset: 3px;
 }
 .onboarding-section-head b {
   display: block;
@@ -939,8 +951,14 @@
   font-size: 10px;
   font-weight: 800;
 }
+.onboarding-owner b {
+  color: #6d4a38;
+}
 .onboarding-form-status {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
   padding: 4px 7px;
   border-radius: 999px;
   background: #f0ebe5;
@@ -951,6 +969,46 @@
 .onboarding-form-status.complete {
   background: #cef3e5;
   color: #08795d;
+}
+.onboarding-status-dot {
+  position: relative;
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.onboarding-form-status.complete .onboarding-status-dot:after {
+  color: currentColor;
+  content: "✓";
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+.onboarding-chevron {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin: 3px 0 0 2px;
+  color: #8c715f;
+  transition: transform .16s ease;
+}
+.onboarding-form-section.collapsed .onboarding-chevron {
+  transform: rotate(-90deg);
+}
+.onboarding-section-body {
+  display: block;
+  overflow: hidden;
+  max-height: 800px;
+  opacity: 1;
+  transition: max-height .2s ease, opacity .16s ease, margin .18s ease;
+}
+.onboarding-form-section.collapsed .onboarding-section-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: -6px;
 }
 .onboarding-contract-grid {
   display: grid;

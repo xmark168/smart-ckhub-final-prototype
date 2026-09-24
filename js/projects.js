@@ -1002,6 +1002,28 @@
   }
   function bindCycleModal(modal) {
     document.body.appendChild(modal);
+    modal.querySelectorAll(".onboarding-form-section").forEach(function (section, index) {
+      var head = section.querySelector(".onboarding-section-head"), status = head.querySelector(".onboarding-form-status"), owner = head.querySelector(".onboarding-owner"), body = document.createElement("div"), statusText = status.textContent.trim(), children = Array.from(section.children);
+      owner.innerHTML = "<b>" + (index + 1) + ".</b> " + owner.textContent;
+      status.innerHTML = '<i class="onboarding-status-dot" aria-hidden="true"></i><span>' + statusText + "</span>";
+      children.forEach(function (child) { if (child !== head) body.appendChild(child); });
+      body.className = "onboarding-section-body";
+      section.appendChild(body);
+      head.classList.add("onboarding-collapse-head");
+      head.setAttribute("role", "button");
+      head.setAttribute("tabindex", "0");
+      head.setAttribute("aria-expanded", index === 0 ? "true" : "false");
+      head.insertAdjacentHTML("beforeend", '<i class="onboarding-chevron" data-lucide="chevron-down"></i>');
+      if (index !== 0) section.classList.add("collapsed");
+      function toggle() {
+        var collapsed = section.classList.toggle("collapsed");
+        head.setAttribute("aria-expanded", String(!collapsed));
+      }
+      head.addEventListener("click", toggle);
+      head.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggle(); }
+      });
+    });
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
         modal.remove();
