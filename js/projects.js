@@ -101,7 +101,7 @@
     };
   });
   var onboardingPackage = servicePackages[0] || {};
-  records.push({
+  records.unshift({
     id: "project-onboarding-01",
     code: "DA-2026-056",
     customer: "Cơm Tấm Tài",
