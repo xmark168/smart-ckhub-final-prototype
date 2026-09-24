@@ -796,6 +796,113 @@
 .project-service-panel {
   margin-top: 14px;
 }
+.onboarding-panel {
+  border-color: #d8c7b8;
+  background: #fffdfa;
+}
+.onboarding-count {
+  display: inline-grid;
+  min-width: 38px;
+  min-height: 27px;
+  place-items: center;
+  border-radius: 999px;
+  background: #f1e8df;
+  color: #735542;
+  font-size: 12px;
+  font-weight: 800;
+}
+.onboarding-count.ready {
+  background: #cef3e5;
+  color: #08795d;
+}
+.onboarding-list {
+  margin-top: 2px;
+  border-top: 1px solid #eee5dd;
+}
+.onboarding-row {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) 22px;
+  gap: 9px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid #eee5dd;
+}
+.onboarding-row > svg:first-child {
+  width: 16px;
+  height: 16px;
+  color: #9b715b;
+}
+.onboarding-row.complete > svg:first-child,
+.onboarding-row.complete > em svg {
+  color: #078062;
+}
+.onboarding-row b,
+.onboarding-row small {
+  display: block;
+}
+.onboarding-row b {
+  color: #34251c;
+  font-size: 12px;
+}
+.onboarding-row small {
+  margin-top: 3px;
+  color: #806c5d;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.onboarding-row em {
+  display: grid;
+  place-items: center;
+  font-style: normal;
+}
+.onboarding-row em svg {
+  width: 15px;
+  height: 15px;
+  color: #ad8e78;
+}
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+.onboarding-actions small {
+  color: #766151;
+  font-size: 11px;
+}
+.onboarding-actions .secondary,
+.onboarding-form-section .secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.onboarding-actions svg,
+.onboarding-form-section .secondary svg {
+  width: 14px;
+  height: 14px;
+}
+.onboarding-modal .customer-data-rules {
+  margin-bottom: 2px;
+}
+.onboarding-form-section {
+  padding: 12px 0;
+  border-top: 1px solid #eee5dd;
+}
+.onboarding-form-section > b {
+  display: block;
+  color: #37281f;
+  font-size: 12px;
+}
+.onboarding-form-section > p {
+  margin: 4px 0 9px;
+  color: #806c5d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.onboarding-form-section .field {
+  margin-top: 9px;
+}
 .project-service-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(130px, 0.65fr));
@@ -872,6 +979,10 @@
   }
   .project-service-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .onboarding-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .project-service-grid > div:last-child {
     grid-column: 1 / -1;

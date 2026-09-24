@@ -209,6 +209,74 @@
       })
       .join("");
   }
+  function onboardingItems(item) {
+    var data = item.onboarding || {};
+    return [
+      {
+        key: "contract",
+        icon: "file-text",
+        title: "Hợp đồng chính",
+        ready: Boolean(item.contractCode),
+        detail: item.contractCode
+          ? "Đã liên kết " + item.contractCode
+          : "Cần hợp đồng chính hiệu lực.",
+      },
+      {
+        key: "finance",
+        icon: "badge-check",
+        title: "Xác nhận tài chính",
+        ready: Boolean(data.financeVerified),
+        detail: data.financeVerified
+          ? "Kế toán đã xác nhận: " + (data.financeRef || "Đã xác nhận")
+          : "Chờ Kế toán xác nhận cọc hoặc thanh toán.",
+      },
+      {
+        key: "handover",
+        icon: "handshake",
+        title: "Bàn giao từ Sale",
+        ready: Boolean(data.handoverReady),
+        detail: data.handoverReady
+          ? "Đã có Sales Brief."
+          : "Cần Sales Brief và phạm vi đã chốt.",
+      },
+      {
+        key: "brief",
+        icon: "clipboard-check",
+        title: "Brief và tài liệu",
+        ready: Boolean(data.briefReady),
+        detail: data.briefReady
+          ? "Brief, tài liệu nguồn đã đủ."
+          : "Cần brief và tài liệu vận hành.",
+      },
+      {
+        key: "setup",
+        icon: "settings-2",
+        title: "Thiết lập triển khai",
+        ready: Boolean(data.setupReady),
+        detail: data.setupReady
+          ? "Đã chuẩn bị workspace và quyền truy cập cần thiết."
+          : "Thiết lập theo gói dịch vụ chưa hoàn tất.",
+      },
+    ];
+  }
+  function onboardingReady(item) {
+    return onboardingItems(item).every(function (entry) {
+      return entry.ready;
+    });
+  }
+  function onboardingPanel(item) {
+    if (item.state !== "draft") return "";
+    var items = onboardingItems(item), completed = items.filter(function (entry) { return entry.ready; }).length;
+    return '<section class="panel onboarding-panel"><div class="panel-head"><div><h2>Cổng khởi động</h2><p class="subline">Hoàn tất điều kiện trước khi tạo chu kỳ 1.</p></div><span class="onboarding-count ' + (completed === items.length ? "ready" : "") + '">' + completed + ' / ' + items.length + '</span></div><div class="onboarding-list">' + items.map(function (entry) { return '<div class="onboarding-row ' + (entry.ready ? "complete" : "") + '"><i data-lucide="' + entry.icon + '"></i><span><b>' + entry.title + '</b><small>' + entry.detail + '</small></span><em data-lucide="' + (entry.ready ? "check" : "clock-3") + '"></em></div>'; }).join("") + '</div><div class="onboarding-actions"><small>' + (completed === items.length ? "Đủ điều kiện. Account có thể khởi động dự án." : "Còn " + (items.length - completed) + " điều kiện cần xử lý.") + '</small><button class="secondary" id="editOnboarding"><i data-lucide="list-checks"></i> Cập nhật Onboarding</button></div></section>';
+  }
+  function addBusinessDays(startValue, days) {
+    var date = new Date(startValue + "T00:00:00"), added = 0;
+    while (added < days) {
+      date.setDate(date.getDate() + 1);
+      if (date.getDay() !== 0 && date.getDay() !== 6) added++;
+    }
+    return formatDate(date);
+  }
   function filtered() {
     return records.filter(function (item) {
       var text = [item.code, item.customer, item.owner, item.area, item.service]
@@ -433,6 +501,7 @@
   function renderDetail() {
     var item = state.selected;
     if (!item) return;
+    var onboarding = onboardingPanel(item);
     var old = document.getElementById("projectWorkspaceDetail");
     if (old) old.remove();
     var detail = document.createElement("section");
@@ -487,7 +556,7 @@
         : item.state === "draft"
           ? "ghi nhận sau khi triển khai"
           : "ghi nhận khi chốt chu kỳ") +
-      '</small></div></section><div class="project-detail-grid"><main><section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
+      '</small></div></section><div class="project-detail-grid"><main>' + onboarding + '<section class="panel"><div class="panel-head"><div><h2>Đầu ra chu kỳ</h2><p class="subline">Theo dõi phạm vi đã cam kết trong tháng.</p></div><span class="pill ' +
       kind(item) +
       '">' +
       label(item) +
@@ -566,6 +635,11 @@
         if (item.state === "draft") openProjectStart(item);
         else renderCycleWorkspace(item);
       });
+    var onboardingControl = detail.querySelector("#editOnboarding");
+    if (onboardingControl)
+      onboardingControl.addEventListener("click", function () {
+        openOnboarding(item);
+      });
     var riskControl = detail.querySelector("#toggleRisk");
     if (riskControl)
       riskControl.addEventListener("click", function () {
@@ -588,8 +662,11 @@
     detail
       .querySelector("#toggleProjectState")
       .addEventListener("click", function () {
-        item.state = item.state === "active" ? "pending" : "active";
-        renderDetail();
+        if (item.state === "draft") openProjectStart(item);
+        else {
+          item.state = item.state === "active" ? "pending" : "active";
+          renderDetail();
+        }
       });
     icons();
     navigate("projectWorkspaceDetail");
@@ -1184,16 +1261,76 @@
       if (window.showToast) window.showToast("Đã lưu thay đổi dự án.");
     });
   }
+  function openOnboarding(item) {
+    var data = item.onboarding || {}, modal = document.createElement("div");
+    modal.className = "modal-backdrop show customer-modal";
+    modal.innerHTML =
+      '<form class="modal onboarding-modal"><div class="modal-top"><h2>Cập nhật Onboarding</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Điều kiện khởi động</b><p>Account kiểm tra tài liệu và điều phối. Sale, Kế toán xác nhận phần việc thuộc trách nhiệm của họ.</p></div><div class="onboarding-form-section"><b>1. Hợp đồng chính</b><p>' +
+      (item.contractCode ? "Đã liên kết " + esc(item.contractCode) : "Chưa liên kết. Tạo hợp đồng chính hiệu lực trước khi khởi động.") +
+      '</p><button class="secondary" type="button" id="goContracts"><i data-lucide="file-plus-2"></i> Mở hợp đồng</button></div><div class="onboarding-form-section"><label class="filter-check"><input name="financeVerified" type="checkbox" ' +
+      (data.financeVerified ? "checked" : "") +
+      '> Kế toán đã xác nhận cọc hoặc thanh toán theo điều khoản</label><label class="field">Mã chứng từ / ghi chú tài chính<input name="financeRef" value="' +
+      esc(data.financeRef || "") +
+      '" placeholder="Ví dụ: UNC-0926-018"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="handoverReady" type="checkbox" ' +
+      (data.handoverReady ? "checked" : "") +
+      '> Sale đã bàn giao Sales Brief và phạm vi đã chốt</label><label class="field">Link Sales Brief<input name="handoverLink" value="' +
+      esc(data.handoverLink || "") +
+      '" placeholder="Link tài liệu bàn giao"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="briefReady" type="checkbox" ' +
+      (data.briefReady ? "checked" : "") +
+      '> Brief và tài liệu nguồn đã đủ để triển khai</label><label class="field">Link brief / thư mục tài liệu<input name="briefLink" value="' +
+      esc(data.briefLink || "") +
+      '" placeholder="Link brief hoặc thư mục"></label></div><div class="onboarding-form-section"><label class="filter-check"><input name="setupReady" type="checkbox" ' +
+      (data.setupReady ? "checked" : "") +
+      '> Đã thiết lập workspace và quyền truy cập phù hợp gói dịch vụ</label><label class="field">Ghi chú thiết lập<input name="setupNote" value="' +
+      esc(data.setupNote || "") +
+      '" placeholder="Ví dụ: Đã cấp quyền Meta Business Suite"></label></div><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Lưu điều kiện</button></div></div></form>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll(".close,.secondary").forEach(function (button) {
+      button.addEventListener("click", function () { modal.remove(); });
+    });
+    modal.querySelector("#goContracts").addEventListener("click", function () {
+      modal.remove();
+      navigate("contracts");
+    });
+    modal.addEventListener("click", function (event) { if (event.target === modal) modal.remove(); });
+    modal.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      function requiredIfChecked(check, value, label) {
+        if (form[check].checked && !form[value].value.trim()) {
+          if (window.showToast) window.showToast("Cần bổ sung " + label + ".");
+          return false;
+        }
+        return true;
+      }
+      if (!requiredIfChecked("financeVerified", "financeRef", "mã chứng từ hoặc ghi chú tài chính") || !requiredIfChecked("handoverReady", "handoverLink", "link Sales Brief") || !requiredIfChecked("briefReady", "briefLink", "link brief hoặc tài liệu") || !requiredIfChecked("setupReady", "setupNote", "ghi chú thiết lập")) return;
+      item.onboarding = {
+        financeVerified: form.financeVerified.checked,
+        financeRef: form.financeRef.value.trim(),
+        handoverReady: form.handoverReady.checked,
+        handoverLink: form.handoverLink.value.trim(),
+        briefReady: form.briefReady.checked,
+        briefLink: form.briefLink.value.trim(),
+        setupReady: form.setupReady.checked,
+        setupNote: form.setupNote.value.trim(),
+      };
+      addActivity(item, "list-checks", "Đã cập nhật điều kiện Onboarding", onboardingReady(item) ? "Đủ điều kiện khởi động dự án." : "Còn điều kiện cần hoàn tất trước khi khởi động.");
+      modal.remove();
+      renderDetail();
+      if (window.showToast) window.showToast(onboardingReady(item) ? "Đã đủ điều kiện khởi động." : "Đã lưu điều kiện Onboarding.");
+    });
+    icons();
+  }
   function openProjectStart(item) {
-    if (!item.contractCode) {
-      if (window.showToast)
-        window.showToast("Cần liên kết hợp đồng chính trước khi bắt đầu triển khai.");
+    if (!onboardingReady(item)) {
+      if (window.showToast) window.showToast("Hoàn tất Cổng khởi động trước khi bắt đầu triển khai.");
+      openOnboarding(item);
       return;
     }
     var modal = document.createElement("div");
     modal.className = "modal-backdrop show customer-modal";
     modal.innerHTML =
-      '<form class="modal"><div class="modal-top"><h2>Bắt đầu triển khai</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Tạo chu kỳ 1</b><p>Chọn ngày dự án chính thức bắt đầu. Hệ thống tự tạo hạn dự kiến sau một tháng; không cần nhập ngày kết thúc.</p></div><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><label class="filter-check"><input name="confirmed" type="checkbox" required> Tôi xác nhận dự án đã đủ điều kiện triển khai.</label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Bắt đầu triển khai</button></div></div></form>';
+      '<form class="modal"><div class="modal-top"><h2>Bắt đầu triển khai</h2><button class="close" type="button">×</button></div><div class="form"><div class="customer-data-rules"><b>Tạo chu kỳ 1</b><p>Cổng khởi động đã hoàn tất. Chọn ngày dự án chính thức bắt đầu; hệ thống tự tạo hạn dự kiến sau một tháng.</p></div><label class="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required value="2026-10-01"></label><label class="filter-check"><input name="confirmed" type="checkbox" required> Tôi xác nhận bắt đầu triển khai theo điều kiện đã kiểm tra.</label><div class="form-actions"><button class="secondary" type="button">Hủy</button><button class="primary">Bắt đầu triển khai</button></div></div></form>';
     document.body.appendChild(modal);
     modal.querySelectorAll(".close,.secondary").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -1213,6 +1350,7 @@
       item.risk = false;
       item.actualEnd = "";
       item.cycleData = null;
+      item.onboardingCompletedAt = formatDate(new Date());
       addActivity(
         item,
         "play",
@@ -1221,6 +1359,12 @@
           formatDate(new Date(item.cycleStart + "T00:00:00")) +
           " – " +
           item.due,
+      );
+      addActivity(
+        item,
+        "file-text",
+        "Đã tạo mốc Content Plan",
+        "Hạn gửi bản đầu: " + addBusinessDays(item.cycleStart, 3) + " (T0 + 3 ngày làm việc).",
       );
       modal.remove();
       renderDetail();
@@ -1296,7 +1440,7 @@
       event.stopImmediatePropagation();
       showInfo(
         "Quy tắc dự án",
-        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Chu kỳ luôn tính theo tháng. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
+        "Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu sau khi Cổng khởi động đủ điều kiện: hợp đồng chính, tài chính, Sales Brief, brief và thiết lập. Chu kỳ luôn tính theo tháng. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.",
       );
     },
     true,
