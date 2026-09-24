@@ -100,6 +100,37 @@
       tasks: stateName === "draft" ? 0 : risk ? 3 : (index % 4) + 1,
     };
   });
+  var onboardingPackage = servicePackages[0] || {};
+  records.push({
+    id: "project-onboarding-01",
+    code: "DA-2026-056",
+    customer: "Cơm Tấm Tài",
+    owner: "Hiền",
+    createdBy: "Hiền",
+    area: "HCM",
+    service: onboardingPackage.id
+      ? onboardingPackage.group + " · " + onboardingPackage.name
+      : "Chưa có dịch vụ áp dụng",
+    servicePackageId: onboardingPackage.id || "",
+    serviceScope: onboardingPackage.scope || "",
+    servicePrice: onboardingPackage.price || 0,
+    contractCode: "",
+    state: "draft",
+    risk: false,
+    cycle: 0,
+    total: 0,
+    progress: 0,
+    cycleStart: "",
+    due: "",
+    posts: 0,
+    shooting: 0,
+    tasks: 0,
+    activities: [{
+      icon: "file-plus-2",
+      title: "Dự án nháp đã tạo",
+      detail: "Chờ hoàn tất Cổng khởi động trước khi tạo chu kỳ 1.",
+    }],
+  });
   window.CKHubProjectRecords = records;
   function esc(value) {
     return String(value).replace(/[&<>"']/g, function (char) {
@@ -294,6 +325,8 @@
             ? item.risk
             : state.kpi === "paused"
               ? item.state === "pending" || item.state === "stopped"
+              : state.kpi === "draft"
+                ? item.state === "draft"
               : true)
       );
     });
@@ -307,6 +340,9 @@
       }),
       paused = records.filter(function (item) {
         return item.state === "pending" || item.state === "stopped";
+      }),
+      drafts = records.filter(function (item) {
+        return item.state === "draft";
       }),
       list = filtered(),
       pages = Math.max(1, Math.ceil(list.length / state.pageSize));
@@ -326,7 +362,11 @@
       (state.kpi === "paused" ? "selected" : "") +
       '" data-kpi="paused"><label>Tạm dừng / đã dừng</label><strong>' +
       paused.length +
-      '</strong><small>Không tự đổi tiến độ hợp đồng</small></button></section><section class="project-list-shell"><div class="project-toolbar-new"><label class="project-search-new"><i data-lucide="search"></i><input id="projectSearchNew" type="search" value="' +
+      '</strong><small>Không tự đổi tiến độ hợp đồng</small></button><button class="project-kpi ' +
+      (state.kpi === "draft" ? "selected" : "") +
+      '" data-kpi="draft"><label>Dự án nháp</label><strong>' +
+      drafts.length +
+      '</strong><small>Cần hoàn tất Cổng khởi động</small></button></section><section class="project-list-shell"><div class="project-toolbar-new"><label class="project-search-new"><i data-lucide="search"></i><input id="projectSearchNew" type="search" value="' +
       esc(state.query) +
       '" placeholder="Tìm mã dự án, khách hàng, Account…"></label><div class="project-filter-control"><button class="project-filter-trigger" id="projectFilterToggle" title="Lọc dự án"><i data-lucide="list-filter"></i>' +
       ([state.status, state.owner, state.area, state.risk].filter(Boolean)
