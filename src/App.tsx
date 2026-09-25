@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { AppContext, ROLES, type AppContextValue, type ScreenId } from './app/context'
+import { ACCOUNTS } from './lib/format'
 import { LoginOverlay } from './app/LoginOverlay'
 import { currentLocation, navigate, pathFor, useLocation } from './app/router'
 import { canOpen } from './app/routes'
@@ -10,6 +11,7 @@ import { SettingsScreen } from './screens/account/SettingsScreen'
 import { AccessScreen } from './screens/admin/AccessScreen'
 import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen'
 import { DocsScreen } from './screens/admin/DocsScreen'
+import { ParametersScreen } from './screens/admin/ParametersScreen'
 import { ServicesScreen } from './screens/admin/ServicesScreen'
 import { ContractsScreen } from './screens/contracts/ContractsScreen'
 import { CustomerDetailScreen } from './screens/customers/CustomerDetailScreen'
@@ -22,7 +24,6 @@ import { PartnerProjectsScreen } from './screens/partner/PartnerProjectsScreen'
 import { PartnerScheduleScreen } from './screens/partner/PartnerScheduleScreen'
 import { PartnerWorkScreen } from './screens/partner/PartnerWorkScreen'
 import { PartnersScreen } from './screens/partners/PartnersScreen'
-import { CycleWorkspaceScreen } from './screens/projects/CycleWorkspaceScreen'
 import { ProjectDetailScreen } from './screens/projects/ProjectDetailScreen'
 import { ProjectsScreen } from './screens/projects/ProjectsScreen'
 import { ReviewsScreen } from './screens/reviews/ReviewsScreen'
@@ -36,7 +37,7 @@ const SCREENS: Record<ScreenId, ComponentType> = {
   customerDetail: CustomerDetailScreen,
   projects: ProjectsScreen,
   projectDetail: ProjectDetailScreen,
-  cycleWorkspace: CycleWorkspaceScreen,
+  cycleWorkspace: ProjectDetailScreen,
   contracts: ContractsScreen,
   posts: PostsScreen,
   shootings: ShootingsScreen,
@@ -48,6 +49,7 @@ const SCREENS: Record<ScreenId, ComponentType> = {
   reviews: ReviewsScreen,
   poc: AdminDashboardScreen,
   services: ServicesScreen,
+  parameters: ParametersScreen,
   docs: DocsScreen,
   access: AccessScreen,
   profile: ProfileScreen,
@@ -56,14 +58,21 @@ const SCREENS: Record<ScreenId, ComponentType> = {
 
 const ROLE_KEY = 'smart-ckhub-ui'
 
-function loadRole(): Role {
+interface SavedUi {
+  role: Role
+  account: string
+}
+
+function loadUi(): SavedUi {
+  const ui: SavedUi = { role: 'account', account: 'Hiền' }
   try {
-    const saved = JSON.parse(localStorage.getItem(ROLE_KEY) || 'null') as { role?: Role } | null
-    if (saved?.role && saved.role in ROLES) return saved.role
+    const saved = JSON.parse(localStorage.getItem(ROLE_KEY) || 'null') as Partial<SavedUi> | null
+    if (saved?.role && saved.role in ROLES) ui.role = saved.role
+    if (saved?.account && ACCOUNTS.includes(saved.account)) ui.account = saved.account
   } catch {
     // Ignore unreadable UI state.
   }
-  return 'account'
+  return ui
 }
 
 /** Last URL (path + page query) seen for each page, so returning to a list keeps its page. */
@@ -78,7 +87,8 @@ interface OpenModal {
 export default function App() {
   const location = useLocation()
   const route = location.route
-  const [role, setRoleState] = useState<Role>(loadRole)
+  const [role, setRoleState] = useState<Role>(() => loadUi().role)
+  const [account, setAccountState] = useState<string>(() => loadUi().account)
   const [modal, setModal] = useState<OpenModal | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
   const [toastText, setToastText] = useState('')
@@ -88,11 +98,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(ROLE_KEY, JSON.stringify({ role }))
+      localStorage.setItem(ROLE_KEY, JSON.stringify({ role, account }))
     } catch {
       // Role still works for this session without storage.
     }
-  }, [role])
+  }, [role, account])
 
   // Empty hash → the current role's home page.
   useEffect(() => {
@@ -127,6 +137,11 @@ export default function App() {
     }
     return {
       role,
+      account,
+      setAccount: (next) => {
+        setModal(null)
+        setAccountState(next)
+      },
       screen,
       customerId,
       projectId,
@@ -137,8 +152,7 @@ export default function App() {
       },
       go,
       openCustomer: (id) => { setModal(null); navigate(pathFor('customerDetail', id)) },
-      openProject: (id) => { setModal(null); navigate(pathFor('projectDetail', id)) },
-      openCycle: (id) => { setModal(null); navigate(pathFor('cycleWorkspace', id)) },
+      openProject: (id, tab) => { setModal(null); navigate(pathFor('projectDetail', id, { tab: tab === 'tong-quan' ? undefined : tab })) },
       toast,
       showModal: (node) => {
         const now = currentLocation()
@@ -150,7 +164,7 @@ export default function App() {
         if (afterLogout) toast('Phiên mô phỏng đã đăng xuất. Đăng nhập để tiếp tục.')
       },
     }
-  }, [role, screen, customerId, projectId, toast])
+  }, [role, account, screen, customerId, projectId, toast])
 
   let page: ReactNode = null
   if (pathOnly !== '/') {

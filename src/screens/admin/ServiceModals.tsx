@@ -45,6 +45,17 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
           price: Number(field(form, 'price') || 0),
           scope: field(form, 'scope'),
           status: field(form, 'status') as ServicePackage['status'],
+          quota: {
+            posts: Number(field(form, 'qPosts') || 0),
+            shoots: Number(field(form, 'qShoots') || 0),
+            plans: Number(field(form, 'qPlans') || 0),
+            brandPosts: Number(field(form, 'qBrand') || 0),
+            salesPosts: Number(field(form, 'qSales') || 0),
+          },
+        }
+        if (values.quota.brandPosts + values.quota.salesPosts !== values.quota.posts) {
+          toast('Tổng bài thương hiệu và bán hàng phải bằng số bài mỗi chu kỳ.')
+          return
         }
         update((draft) => {
           const existing = item && draft.packages.find((entry) => entry.id === item.id)
@@ -76,6 +87,15 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
           </div>
           <div className="field"><label>Đơn giá chưa VAT</label><input name="price" type="number" min="0" defaultValue={item?.price || ''} /></div>
         </div>
+        <div className="form-grid">
+          <div className="field"><label>Bài / chu kỳ</label><input name="qPosts" type="number" min="0" defaultValue={item?.quota.posts ?? 0} /></div>
+          <div className="field"><label>Buổi shoot / chu kỳ</label><input name="qShoots" type="number" min="0" defaultValue={item?.quota.shoots ?? 0} /></div>
+        </div>
+        <div className="form-grid">
+          <div className="field"><label>Bài thương hiệu</label><input name="qBrand" type="number" min="0" defaultValue={item?.quota.brandPosts ?? 0} /></div>
+          <div className="field"><label>Bài bán hàng</label><input name="qSales" type="number" min="0" defaultValue={item?.quota.salesPosts ?? 0} /></div>
+        </div>
+        <div className="field"><label>Content Plan / chu kỳ</label><input name="qPlans" type="number" min="0" max="1" defaultValue={item?.quota.plans ?? 0} /></div>
         <div className="field"><label>Phạm vi gói dịch vụ</label><textarea name="scope" required defaultValue={item?.scope} /></div>
         <div className="field"><label>Trạng thái</label>
           <select name="status" defaultValue={item?.status}><option>Đang áp dụng</option><option>Ngừng áp dụng</option></select>

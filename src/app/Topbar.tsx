@@ -14,10 +14,8 @@ function Breadcrumb() {
     parts.push(['Không tìm thấy trang', null])
   } else if (screen === 'customerDetail') {
     parts.push(['Khách hàng', 'customers'], [customers.find((item) => item.id === customerId)?.name ?? 'Không tìm thấy', null])
-  } else if (screen === 'projectDetail') {
+  } else if (screen === 'projectDetail' || screen === 'cycleWorkspace') {
     parts.push(['Dự án', 'projects'], [project?.customer ?? 'Không tìm thấy', null])
-  } else if (screen === 'cycleWorkspace') {
-    parts.push(['Dự án', 'projects'], [project?.customer ?? 'Không tìm thấy', 'projectDetail'], ['Chu kỳ ' + (project?.cycle ?? '') + ' / ' + (project?.total ?? ''), null])
   } else if (screen !== home) {
     parts.push([PAGES[screen].title, screen])
   }

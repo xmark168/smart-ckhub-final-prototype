@@ -1,6 +1,10 @@
-import { CURRENT_ACCOUNT, cycleEnd, formatDate, parseInput } from '../../lib/format'
+import { cycleProgress, currentCycle, runningCycle } from '../../lib/sop'
+import { formatDate, parseInput } from '../../lib/format'
 import { update } from '../../store/store'
-import type { CycleData, PlanStatus, Project } from '../../store/types'
+import type { Cycle, PlanStatus, Project, SopParams } from '../../store/types'
+
+export const MEDIA_PEOPLE = ['Hải', 'Như', 'Hân', 'Bình', 'Phước', 'Anh Thư', 'Ngọc']
+export const PLANNERS = ['Thương', 'Minh', 'Linh']
 
 export function projectLabel(item: Project): string {
   return item.state === 'active' ? 'Đang triển khai' : item.state === 'pending' ? 'Tạm dừng' : item.state === 'stopped' ? 'Đã dừng' : 'Dự án nháp'
@@ -10,17 +14,33 @@ export function projectTone(item: Project): string {
   return item.risk ? 'danger' : item.state === 'active' ? 'ok' : item.state === 'draft' ? 'muted' : 'waiting'
 }
 
-/** "dd.mm.yyyy – dd.mm.yyyy" for the current cycle, derived from its start or its planned end. */
+/** "dd.mm.yyyy – dd.mm.yyyy" of a cycle. */
+export function rangeOf(cycle: Cycle): string {
+  return formatDate(parseInput(cycle.start)) + ' – ' + formatDate(parseInput(cycle.plannedEnd))
+}
+
+/** Range of the running (or last) cycle, or "Chưa bắt đầu". */
 export function cycleRange(item: Project): string {
-  if (item.cycleStart) return formatDate(parseInput(item.cycleStart)) + ' – ' + cycleEnd(item.cycleStart)
-  if (!item.due) return 'Chưa bắt đầu'
-  const [day, month, year] = item.due.split('.').map(Number)
-  const start = new Date(year, month - 2, day + 1)
-  return formatDate(start) + ' – ' + item.due
+  const cycle = currentCycle(item)
+  return cycle ? rangeOf(cycle) : 'Chưa bắt đầu'
+}
+
+/** Current cycle number shown as "4 / 6". */
+export function cycleCounter(item: Project): string {
+  const cycle = currentCycle(item)
+  return (cycle ? cycle.no : '–') + ' / ' + (item.total || '–')
+}
+
+/** Published / planned posts of the current cycle; `null` for packages without content. */
+export function postProgress(item: Project) {
+  const cycle = currentCycle(item)
+  if (!cycle || !item.quota.posts) return null
+  const progress = cycleProgress(cycle, item.quota)
+  return { ...progress, percent: Math.round((progress.published / Math.max(1, progress.planned)) * 100) }
 }
 
 export function addProjectActivity(item: Project, icon: string, title: string, detail: string): void {
-  item.activities = [{ icon, title, detail }, ...item.activities].slice(0, 8)
+  item.activities = [{ icon, title, detail }, ...item.activities].slice(0, 12)
 }
 
 export interface OnboardingItem {
@@ -32,55 +52,29 @@ export interface OnboardingItem {
   detail: string
 }
 
-export function onboardingItems(item: Project): OnboardingItem[] {
+/** Conditions for T0. The SOP starts a project only after deposit and a complete brief. */
+export function onboardingItems(item: Project, params: SopParams): OnboardingItem[] {
   const data = item.onboarding
   return [
     { key: 'contract', icon: 'file-text', title: 'Hợp đồng chính', required: true, ready: Boolean(item.contractCode), detail: item.contractCode ? 'Đã liên kết ' + item.contractCode : 'Cần hợp đồng chính hiệu lực.' },
-    { key: 'finance', icon: 'badge-check', title: 'Xác nhận tài chính', required: true, ready: Boolean(data?.financeVerified), detail: data?.financeVerified ? 'Kế toán đã xác nhận: ' + (data.financeRef || 'Đã xác nhận') : 'Chờ Kế toán xác nhận cọc hoặc thanh toán.' },
+    { key: 'finance', icon: 'badge-check', title: 'Xác nhận cọc', required: true, ready: Boolean(data?.financeVerified), detail: data?.financeVerified ? 'Kế toán đã xác nhận: ' + (data.financeRef || 'Đã xác nhận') : 'Chờ Kế toán xác nhận cọc hoặc thanh toán đợt 1.' },
     { key: 'handover', icon: 'handshake', title: 'Bàn giao từ Sale', required: true, ready: Boolean(data?.handoverReady), detail: data?.handoverReady ? 'Đã có Sales Brief.' : 'Cần Sales Brief và phạm vi đã chốt.' },
-    { key: 'brief', icon: 'clipboard-check', title: 'Brief và tài liệu', required: false, ready: Boolean(data?.briefReady), detail: data?.briefReady ? 'Brief, tài liệu nguồn đã đủ.' : 'Cần brief và tài liệu vận hành.' },
+    { key: 'brief', icon: 'clipboard-check', title: 'Brief khách hàng', required: params.requireBriefBeforeT0, ready: Boolean(data?.briefReady), detail: data?.briefReady ? 'Brief form và tài liệu nguồn đã đủ.' : 'Cần brief form (Thông tin dự án) và tài liệu nguồn.' },
     { key: 'setup', icon: 'settings-2', title: 'Thiết lập triển khai', required: false, ready: Boolean(data?.setupReady), detail: data?.setupReady ? 'Đã chuẩn bị workspace và quyền truy cập cần thiết.' : 'Thiết lập theo gói dịch vụ chưa hoàn tất.' },
   ]
 }
 
-export function onboardingReady(item: Project): boolean {
-  return onboardingItems(item).filter((entry) => entry.required).every((entry) => entry.ready)
+export function onboardingReady(item: Project, params: SopParams): boolean {
+  return onboardingItems(item, params).filter((entry) => entry.required).every((entry) => entry.ready)
 }
 
-/** Default cycle workspace for a project that has not been opened yet. */
-export function defaultCycleData(item: Project): CycleData {
-  const seed = Number(item.id.replace(/\D/g, '')) || 1
-  const status: PlanStatus = item.state === 'draft' ? 'draft' : seed % 5 === 0 ? 'sent' : seed % 7 === 0 ? 'changes' : 'approved'
-  const approved = status === 'approved'
-  return {
-    plan: {
-      status,
-      version: 1,
-      link: '',
-      sentAt: status === 'draft' ? '' : '22.09.2026',
-      approvedAt: approved ? '23.09.2026' : '',
-      feedback: status === 'changes' ? 'Cần điều chỉnh ưu tiên nội dung tuần đầu.' : '',
-    },
-    tasks: [
-      { id: 'plan', name: 'Hoàn thiện Content Plan', owner: item.owner, deadline: '23.09.2026', status: approved ? 'Đã hoàn thành' : 'Việc cần làm', type: 'Plan' },
-      { id: 'scripts', name: 'Chuẩn bị 6 script đợt 1', owner: 'Planner/Content', deadline: '27.09.2026', status: approved ? 'Đang thực hiện' : 'Nháp', type: 'Nội dung' },
-      { id: 'media', name: 'Bàn giao script và tư liệu cho Media', owner: 'Planner/Content', deadline: '29.09.2026', status: 'Nháp', type: 'Sản xuất' },
-    ],
-    shootings: [],
-    demo: { status: 'Chưa gửi', link: '', sentAt: '', approvedAt: '' },
-    posts: { planned: item.posts || 12, actual: 0 },
-    exceptions: [],
-    activity: [{ title: 'Chu kỳ được tạo', detail: 'Mốc dự kiến ' + item.due, time: 'Hôm nay' }],
-  }
-}
-
-export function cycleDataFor(item: Project): CycleData {
-  return item.cycleData ?? defaultCycleData(item)
-}
-
-/** Mutates a draft project: materialises its cycle data and logs to both cycle and project history. */
-export function withCycle(item: Project, change: (cycle: CycleData) => [string, string]): void {
-  const cycle = (item.cycleData = item.cycleData ?? defaultCycleData(item))
+/**
+ * Mutates a draft project's running cycle and logs the change on both the cycle and the project.
+ * Does nothing when the project has no running cycle.
+ */
+export function withCycle(item: Project, change: (cycle: Cycle) => [string, string]): void {
+  const cycle = runningCycle(item)
+  if (!cycle) return
   const [title, detail] = change(cycle)
   cycle.activity.unshift({ title, detail, time: 'Vừa xong' })
   addProjectActivity(item, 'list-checks', title, detail)
@@ -91,9 +85,10 @@ export function planLabel(status: PlanStatus): string {
 }
 
 export function statusTone(status: string): string {
-  if (status === 'Đã duyệt' || status === 'Đã hoàn thành' || status === 'Đã xác nhận') return 'ok'
+  if (status === 'Đã duyệt' || status === 'Đã hoàn thành' || status === 'Đã xác nhận' || status === 'Đã đăng') return 'ok'
   if (status === 'Cần chỉnh sửa' || status === 'Có nguy cơ trễ' || status === 'Trễ chu kỳ') return 'danger'
-  if (status === 'Đang thực hiện' || status === 'Đã gửi khách' || status === 'Đã gửi') return 'info'
+  if (status === 'Đang thực hiện' || status === 'Đã gửi khách' || status === 'Đã gửi' || status === 'Đã lên lịch' || status === 'Lên lịch') return 'info'
+  if (status === 'Dựng' || status === 'Chờ khách duyệt' || status === 'Chờ xác nhận') return 'waiting'
   return 'muted'
 }
 
@@ -104,6 +99,25 @@ export function updateProject(id: string, change: (project: Project) => void): v
   })
 }
 
-export function canStopProject(role: string, project: Project): boolean {
-  return role === 'account' && (project.owner === CURRENT_ACCOUNT || project.createdBy === CURRENT_ACCOUNT)
+export function canStopProject(role: string, account: string, project: Project): boolean {
+  return role === 'account' && (project.owner === account || project.createdBy === account)
+}
+
+/** "Còn N ngày" / "Quá N ngày" relative to today, for a yyyy-mm-dd date. */
+export function relativeDay(iso: string, today: string): string {
+  if (!iso) return ''
+  const days = Math.round((parseInput(iso).getTime() - parseInput(today).getTime()) / 86400000)
+  if (days === 0) return 'hôm nay'
+  return days > 0 ? 'còn ' + days + ' ngày' : 'quá ' + -days + ' ngày'
+}
+
+
+export function resolveException(projectId: string, id: string): void {
+  updateProject(projectId, (item) =>
+    withCycle(item, (cycle) => {
+      const entry = cycle.exceptions.find((row) => row.id === id)
+      if (entry) entry.resolved = true
+      return ['Ngoại lệ đã xử lý', entry?.type ?? '']
+    }),
+  )
 }

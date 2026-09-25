@@ -1,43 +1,62 @@
 import { useApp } from '../../app/context'
 import { includesText } from '../../lib/format'
+import { inScope } from '../../lib/scope'
+import { currentCycle } from '../../lib/sop'
 import { usePagedList } from '../../lib/usePagedList'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
-import type { Customer } from '../../store/types'
+import type { Customer, Project } from '../../store/types'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
+import { attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
 
-type Kpi = 'active' | 'stopped' | 'attention'
+type Kpi = 'working' | 'ended' | 'attention'
 
 interface Filters {
   kpi: Kpi
   query: string
-  status: '' | 'active' | 'stopped'
+  status: '' | CustomerStatus
   owner: string
   area: string
   attention: boolean
 }
 
-const INITIAL: Filters = { kpi: 'active', query: '', status: '', owner: '', area: '', attention: false }
+interface Row {
+  item: Customer
+  status: CustomerStatus
+  projects: Project[]
+  reasons: string[]
+}
+
+const INITIAL: Filters = { kpi: 'working', query: '', status: '', owner: '', area: '', attention: false }
 const PAGE_SIZE = 20
 
-function matches(item: Customer, filters: Filters): boolean {
-  const kpi = filters.kpi === 'attention' ? item.attention : item.state === filters.kpi
+function matches(row: Row, filters: Filters): boolean {
+  const kpi = filters.kpi === 'attention' ? row.reasons.length > 0 : filters.kpi === 'ended' ? row.status === 'ended' : row.status !== 'ended'
   return (
     kpi &&
-    includesText([item.name, item.owner, item.area], filters.query) &&
-    (!filters.status || item.state === filters.status) &&
-    (!filters.owner || item.owner === filters.owner) &&
-    (!filters.area || item.area === filters.area) &&
-    (!filters.attention || item.attention)
+    includesText([row.item.name, row.item.owner, row.item.area, ...row.projects.map((project) => project.code)], filters.query) &&
+    (!filters.status || row.status === filters.status) &&
+    (!filters.owner || row.item.owner === filters.owner) &&
+    (!filters.area || row.item.area === filters.area) &&
+    (!filters.attention || row.reasons.length > 0)
   )
+}
+
+/** "4 / 6" for the running project, or the number of projects. */
+function projectSummary(projects: Project[]): [string, string] {
+  if (!projects.length) return ['—', 'Chưa có dự án']
+  const main = projects.find((item) => item.state === 'active') ?? projects[0]
+  const cycle = currentCycle(main)
+  const services = Array.from(new Set(projects.map((item) => item.service))).join(' · ')
+  return [(cycle ? 'Chu kỳ ' + cycle.no + ' / ' + (main.total || '–') : 'Chưa bắt đầu') + (projects.length > 1 ? ' · ' + projects.length + ' dự án' : ''), services]
 }
 
 const GEAR_PATH = 'M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 19a1.7 1.7 0 0 0-1 1.55V21h-3v-.09A1.7 1.7 0 0 0 10.25 19a1.7 1.7 0 0 0-1.87.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 6.6 15.3 1.7 1.7 0 0 0 5 14.25H4.9v-3H5A1.7 1.7 0 0 0 6.6 10.2a1.7 1.7 0 0 0-.34-1.88L6.2 8.26l2.12-2.12.06.06a1.7 1.7 0 0 0 1.87.34A1.7 1.7 0 0 0 11.25 5V4.9h3V5a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.6 1.05h.1v3h-.1a1.7 1.7 0 0 0-1.1.75Z'
 
 export function CustomersScreen() {
-  const { openCustomer, showModal } = useApp()
-  const { customers } = useData()
+  const { openCustomer, showModal, role, account } = useApp()
+  const { customers, projects, contracts, params, period } = useData()
   const [filters, setFilters] = useScreenState<Filters>('customers.filters', INITIAL)
   const [filterOpen, setFilterOpen] = useScreenState('customers.filterOpen', false)
   const filterRef = useOutsideClose<HTMLDivElement>(filterOpen, () => setFilterOpen(false))
@@ -46,15 +65,19 @@ export function CustomersScreen() {
     setFilters((current) => ({ ...current, ...patch }))
     resetPage()
   }
-  const operating = customers.filter((item) => item.state === 'active')
-  const stopped = customers.filter((item) => item.state === 'stopped')
-  const attention = operating.filter((item) => item.attention)
-  const matched = customers.filter((item) => matches(item, filters))
+  const all: Row[] = customers
+    .filter((item) => inScope(role, account, item))
+    .map((item) => ({ item, status: customerStatus(item, projects), projects: customerProjects(item, projects), reasons: attentionReasons(item, projects, contracts, params) }))
+  const working = all.filter((row) => row.status !== 'ended')
+  const ended = all.filter((row) => row.status === 'ended')
+  const attention = working.filter((row) => row.reasons.length)
+  const fresh = all.filter((row) => isNewInPeriod(row.item, period)).length
+  const matched = all.filter((row) => matches(row, filters))
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(matched, PAGE_SIZE)
-  const owners = Array.from(new Set(customers.map((item) => item.owner))).sort()
-  const areas = Array.from(new Set(customers.map((item) => item.area))).sort()
+  const owners = Array.from(new Set(all.map((row) => row.item.owner))).sort()
+  const areas = Array.from(new Set(all.map((row) => row.item.area))).sort()
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
-  const kpiLabel = filters.kpi === 'active' ? 'khách đang vận hành' : filters.kpi === 'stopped' ? 'khách đã dừng' : 'khách cần chú ý'
+  const kpiLabel = filters.kpi === 'working' ? 'khách đang hợp tác' : filters.kpi === 'ended' ? 'khách đã kết thúc' : 'khách cần chú ý'
   const narrowed = filters.query || activeFilterCount
 
   return (
@@ -63,27 +86,35 @@ export function CustomersScreen() {
         <div>
           <h1>Khách hàng <button className="customer-help" aria-label="Xem quy trình khách hàng" title="Xem quy trình và quy tắc dữ liệu" onClick={() => showModal(<CustomerFlowModal />)}>?</button></h1>
         </div>
-        <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={() => change({ kpi: 'active' })} />)}>+ Tạo khách hàng</button>
+        <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={() => change({ kpi: 'working' })} />)}>+ Tạo khách hàng</button>
       </div>
 
       <section className="customer-dashboard">
-        <button className={'customer-kpi hero' + (filters.kpi === 'active' ? ' selected' : '')} onClick={() => change({ kpi: 'active' })}>
-          <label>Khách đang vận hành</label>
-          <strong>{operating.length}</strong>
-          <small><span className="positive">↑ {customers.filter((item) => item.newCustomer).length} khách mới</span> kỳ này</small>
-          <span
+        <div
+          role="button"
+          tabIndex={0}
+          className={'customer-kpi hero' + (filters.kpi === 'working' ? ' selected' : '')}
+          onClick={() => change({ kpi: 'working' })}
+          onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && change({ kpi: 'working' })}
+        >
+          <label>Khách đang hợp tác</label>
+          <strong>{working.length}</strong>
+          <small><span className="positive">↑ {fresh} khách mới</span> {periodLabel(period)}</small>
+          <button
+            type="button"
             className="customer-dashboard-settings"
             title="Cài đặt kỳ xem"
+            aria-label="Cài đặt kỳ xem"
             onClick={(event) => { event.stopPropagation(); showModal(<PeriodModal />) }}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d={GEAR_PATH} /></svg>
-          </span>
-        </button>
-        <button className={'customer-kpi' + (filters.kpi === 'stopped' ? ' selected' : '')} onClick={() => change({ kpi: 'stopped' })}>
-          <label>Khách dừng</label><strong>{stopped.length}</strong><small>Không còn phát sinh vận hành</small>
+          </button>
+        </div>
+        <button className={'customer-kpi' + (filters.kpi === 'ended' ? ' selected' : '')} onClick={() => change({ kpi: 'ended' })}>
+          <label>Đã kết thúc hợp tác</label><strong>{ended.length}</strong><small>Chỉ lưu lịch sử để tra cứu</small>
         </button>
         <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} onClick={() => change({ kpi: 'attention' })}>
-          <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>Chu kỳ sắp hết hoặc có rủi ro</small>
+          <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>Dự án trễ mốc, công nợ quá hạn hoặc gắn cờ</small>
         </button>
       </section>
 
@@ -91,7 +122,7 @@ export function CustomersScreen() {
         <div className="customer-toolbar">
           <label className="customer-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-            <input type="search" value={filters.query} placeholder="Tìm khách hàng, Account, khu vực" onChange={(event) => change({ query: event.target.value })} />
+            <input type="search" value={filters.query} placeholder="Tìm khách hàng, Account, khu vực, mã dự án" onChange={(event) => change({ query: event.target.value })} />
           </label>
           <div className={'customer-filter-control' + (filterOpen ? ' open' : '')} ref={filterRef}>
             <button className="customer-filter-trigger" type="button" aria-label="Lọc khách hàng" title="Lọc khách hàng" onClick={() => setFilterOpen(!filterOpen)}>
@@ -105,7 +136,8 @@ export function CustomersScreen() {
               </div>
               <label>Trạng thái
                 <select value={filters.status} onChange={(event) => change({ status: event.target.value as Filters['status'] })}>
-                  <option value="">Tất cả</option><option value="active">Đang triển khai</option><option value="stopped">Đã dừng</option>
+                  <option value="">Tất cả</option>
+                  {(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((key) => <option key={key} value={key}>{CUSTOMER_STATUS[key].label}</option>)}
                 </select>
               </label>
               <label>Account
@@ -127,27 +159,33 @@ export function CustomersScreen() {
 
         <div className="customer-table-wrap">
           <table className="customer-table">
-            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th>Chu kỳ</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th>Dự án</th><th>Trạng thái</th><th /></tr></thead>
             <tbody>
-              {rows.map((item) => (
-                <tr
-                  key={item.id}
-                  tabIndex={0}
-                  onClick={() => openCustomer(item.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCustomer(item.id) }
-                  }}
-                >
-                  <td><span className="customer-name">{item.name}</span><span className="customer-meta">{item.service}</span></td>
-                  <td>
-                    <button className="customer-account" type="button" onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
-                  </td>
-                  <td>{item.area}</td>
-                  <td>{item.cycle}</td>
-                  <td>{item.state === 'active' ? <span className="pill ok">Đang triển khai</span> : <span className="pill muted">Đã dừng</span>}</td>
-                  <td><button className="customer-open" aria-label={'Mở ' + item.name}>›</button></td>
-                </tr>
-              ))}
+              {rows.map(({ item, status, projects: own, reasons }) => {
+                const [cycle, services] = projectSummary(own)
+                return (
+                  <tr
+                    key={item.id}
+                    tabIndex={0}
+                    onClick={() => openCustomer(item.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCustomer(item.id) }
+                    }}
+                  >
+                    <td><span className="customer-name">{item.name}</span><span className="customer-meta">{services}</span></td>
+                    <td>
+                      <button className="customer-account" type="button" onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
+                    </td>
+                    <td>{item.area}</td>
+                    <td>{cycle}</td>
+                    <td>
+                      <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
+                      {reasons.length > 0 && <span className="pill danger" title={reasons.join('\n')}>Cần chú ý</span>}
+                    </td>
+                    <td><button className="customer-open" aria-label={'Mở ' + item.name}>›</button></td>
+                  </tr>
+                )
+              })}
               {!matched.length && <tr><td colSpan={6}>Không có khách hàng phù hợp.</td></tr>}
             </tbody>
           </table>

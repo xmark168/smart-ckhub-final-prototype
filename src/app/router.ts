@@ -24,6 +24,7 @@ export const PATHS: Record<ScreenId, string> = {
   reviews: '/reviews',
   poc: '/admin',
   services: '/services',
+  parameters: '/parameters',
   docs: '/docs',
   access: '/access',
   profile: '/profile',
@@ -78,6 +79,17 @@ export function pathFor(screen: ScreenId, id = '', query?: Record<string, string
   const search = params.toString()
   if (search) path += '?' + search
   return path
+}
+
+/** Same path as `route` with some query parameters changed; empty values are removed. */
+export function withQuery(route: Route, patch: Record<string, string | number | undefined>): string {
+  const query = new URLSearchParams(route.query)
+  Object.entries(patch).forEach(([key, value]) => {
+    if (value === undefined || value === '') query.delete(key)
+    else query.set(key, String(value))
+  })
+  const search = query.toString()
+  return route.key.split('?')[0] + (search ? '?' + search : '')
 }
 
 const listeners = new Set<() => void>()

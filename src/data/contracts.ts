@@ -1,6 +1,6 @@
 import { contractEnd, TODAY } from '../lib/format'
 import type { Contract, Payment, Project } from '../store/types'
-import { COM_TAM_TAI_ID, DRIVE_FOLDER } from './projects'
+import { COM_TAM_TAI_CONTRACT, COM_TAM_TAI_CONTRACT_FOLDER, COM_TAM_TAI_ID } from './comTamTai'
 
 export type PaymentState = 'Đã thu đủ' | 'Thu một phần' | 'Quá hạn' | 'Đến hạn' | 'Chưa đến hạn'
 
@@ -58,14 +58,10 @@ export function seedContracts(projects: Project[]): Contract[] {
     if (project.state === 'draft') return
     const cycles = project.total || (index % 4 === 0 ? 3 : 6)
     const comTamTai = project.id === COM_TAM_TAI_ID
-    const value = project.servicePrice || (index % 3 === 0 ? 9000000 : 2000000)
+    const value = comTamTai ? COM_TAM_TAI_CONTRACT.value : project.servicePrice || (index % 3 === 0 ? 9000000 : 2000000)
     const paid = index % 5 === 0 ? 0 : index % 4 === 0 ? 1000000 : project.servicePrice || 2000000
     const payments: Payment[] = comTamTai
-      ? [
-          { installment: 1, percent: 40, amount: 3200000, paid: 3200000, paidAt: '2026-05-13', due: '2026-05-13', evidence: 'UNC-0526-013' },
-          { installment: 2, percent: 30, amount: 2400000, paid: 0, due: '2026-09-15', evidence: '' },
-          { installment: 3, percent: 30, amount: 2400000, paid: 0, due: '2026-11-20', evidence: '' },
-        ]
+      ? COM_TAM_TAI_CONTRACT.payments.map((payment) => ({ ...payment }))
       : [{ installment: 1, percent: 100, amount: value, paid, paidAt: paid ? '2026-09-10' : '', due: '2026-09-25', evidence: paid ? 'UNC-2026-' + String(index + 1).padStart(3, '0') : '' }]
     records.push({
       id: 'contract-' + (index + 1),
@@ -78,14 +74,14 @@ export function seedContracts(projects: Project[]): Contract[] {
       service: project.service,
       scope: project.serviceScope,
       cycles,
-      start: comTamTai ? '2026-05-13' : '2026-09-01',
-      end: comTamTai ? '20.11.2026' : contractEnd('2026-09-01', cycles),
+      start: comTamTai ? COM_TAM_TAI_CONTRACT.start : '2026-09-01',
+      end: contractEnd(comTamTai ? COM_TAM_TAI_CONTRACT.start : '2026-09-01', cycles),
       value,
       paid: totalPaid(payments),
       payments,
       status: comTamTai ? 'Hiệu lực' : index % 13 === 0 ? 'Kết thúc' : 'Hiệu lực',
-      evidence: comTamTai ? DRIVE_FOLDER : '',
-      folderUrl: comTamTai ? DRIVE_FOLDER : '',
+      evidence: comTamTai ? COM_TAM_TAI_CONTRACT_FOLDER : '',
+      folderUrl: comTamTai ? COM_TAM_TAI_CONTRACT_FOLDER : '',
       activity: [comTamTai ? 'Đã tạo hợp đồng, lịch 3 đợt thanh toán 40/30/30' : 'Đã tạo từ dữ liệu mẫu'],
     })
     if (index % 11 === 3) {

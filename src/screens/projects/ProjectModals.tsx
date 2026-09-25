@@ -1,29 +1,67 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { projectCustomers } from '../../data/projects'
-import { ACCOUNTS, addBusinessDays, CURRENT_ACCOUNT, cycleEnd, displayToInput, formatDate, inputToDisplay, parseInput } from '../../lib/format'
+import { newCycle } from '../../data/cycles'
+import { ACCOUNTS, addBusinessDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
+import { checked, field } from '../../lib/form'
 import { Icon } from '../../lib/icons'
 import { getData, update, useData } from '../../store/store'
-import type { Onboarding, Project } from '../../store/types'
-import { checked, field } from '../../lib/form'
+import type { Onboarding, Project, ProjectTeam } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
 import { ContractDetailModal, ContractFormModal } from '../contracts/ContractModals'
-import { addProjectActivity, onboardingItems, onboardingReady, updateProject } from './projectLogic'
+import { addProjectActivity, MEDIA_PEOPLE, onboardingItems, onboardingReady, PLANNERS, updateProject } from './projectLogic'
+
+function splitNames(value: string): string[] {
+  return value.split(',').map((name) => name.trim()).filter(Boolean)
+}
+
+/** Team fields shared by create and edit (SOP roles: Account, Planner/Content, Media, Ads). */
+function TeamFields({ team }: { team?: ProjectTeam }) {
+  return (
+    <>
+      <label className="field">Planner / Content
+        <input name="planner" list="plannerOptions" defaultValue={team?.planner} placeholder="Người lên Content Plan và viết script" />
+        <datalist id="plannerOptions">{PLANNERS.map((name) => <option key={name} value={name} />)}</datalist>
+      </label>
+      <label className="field">Media (cách nhau bằng dấu phẩy)
+        <input name="media" list="mediaOptions" defaultValue={team?.media.join(', ')} placeholder="Ví dụ: Hải, Như" />
+        <datalist id="mediaOptions">{MEDIA_PEOPLE.map((name) => <option key={name} value={name} />)}</datalist>
+      </label>
+      <label className="field">Ads<input name="ads" defaultValue={team?.ads} placeholder="Người hoặc team chạy quảng cáo" /></label>
+    </>
+  )
+}
+
+function readTeam(form: HTMLFormElement, account: string): ProjectTeam {
+  return { account, planner: field(form, 'planner'), media: splitNames(field(form, 'media')), ads: field(form, 'ads') }
+}
+
+function QuotaNote({ quota }: { quota: Project['quota'] }) {
+  if (!quota.posts && !quota.shoots && !quota.plans) {
+    return <div className="customer-data-rules"><p>Gói không có đầu ra nội dung hằng tháng: không áp dụng mốc Content Plan, shoot và nhịp đăng.</p></div>
+  }
+  return (
+    <div className="customer-data-rules">
+      <b>Định mức mỗi chu kỳ</b>
+      <p>{quota.plans} Content Plan · {quota.shoots} buổi shoot · {quota.posts} bài ({quota.brandPosts} thương hiệu, {quota.salesPosts} bán hàng)</p>
+    </div>
+  )
+}
 
 export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
-  const { closeModal } = useApp()
-  const { categories, packages, projects } = useData()
+  const { closeModal, account } = useApp()
+  const { categories, packages, projects, customers } = useData()
   const activePackages = packages.filter((item) => item.status === 'Đang áp dụng')
   const usableCategories = categories.filter((category) => activePackages.some((item) => item.category === category.id))
-  const choices = [...projectCustomers].sort((a, b) => a[0].localeCompare(b[0], 'vi'))
+  const choices = customers.filter((item) => !item.ended).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
   const customerRef = useRef<HTMLInputElement>(null)
   const [customerText, setCustomerText] = useState('')
-  const [owner, setOwner] = useState(ACCOUNTS[0])
+  const [owner, setOwner] = useState(account)
   const [category, setCategory] = useState(usableCategories[0]?.id ?? '')
   const categoryPackages = activePackages.filter((item) => item.category === category)
   const [packageId, setPackageId] = useState(categoryPackages[0]?.id ?? '')
-  const findCustomer = (text: string) => choices.find((item) => item[0].toLocaleLowerCase('vi') === text.trim().toLocaleLowerCase('vi'))
+  const selectedPackage = activePackages.find((item) => item.id === packageId)
+  const findCustomer = (text: string) => choices.find((item) => item.name.toLocaleLowerCase('vi') === text.trim().toLocaleLowerCase('vi'))
 
   if (!activePackages.length) {
     return (
@@ -37,39 +75,38 @@ export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
   return (
     <Modal
       title="Tạo dự án"
-      onSubmit={() => {
+      onSubmit={(form) => {
         const customer = findCustomer(customerText)
-        const service = activePackages.find((item) => item.id === packageId)
         if (!customer) {
           customerRef.current?.setCustomValidity('Chọn khách hàng từ danh sách gợi ý.')
           customerRef.current?.reportValidity()
           return
         }
-        if (!service) return
+        if (!selectedPackage) return
         update((draft) => {
           draft.projects.unshift({
             id: 'project-' + Date.now(),
             code: 'DA-2026-' + String(projects.length + 1).padStart(3, '0'),
-            customer: customer[0],
+            customerId: customer.id,
+            customer: customer.name,
             owner,
-            createdBy: CURRENT_ACCOUNT,
-            area: customer[2],
-            service: packageLabel(service),
-            servicePackageId: service.id,
-            serviceScope: service.scope,
-            servicePrice: service.price,
+            createdBy: account,
+            area: customer.area,
+            service: packageLabel(selectedPackage),
+            servicePackageId: selectedPackage.id,
+            serviceScope: selectedPackage.scope,
+            servicePrice: selectedPackage.price,
+            quota: { ...selectedPackage.quota },
             contractCode: '',
+            total: 0,
             state: 'draft',
             risk: false,
-            cycle: 0,
-            total: 0,
-            progress: 0,
-            cycleStart: '',
-            due: '',
-            posts: 0,
-            shooting: 0,
-            tasks: 0,
-            activities: [{ icon: 'file-plus-2', title: 'Dự án nháp đã tạo', detail: 'Chờ Account bắt đầu triển khai và tạo chu kỳ 1.' }],
+            cycles: [],
+            team: readTeam(form, owner),
+            links: { folder: field(form, 'folder'), contentPlan: '', contentPost: '', keyNotes: '' },
+            notes: '',
+            keyNotes: [],
+            activities: [{ icon: 'file-plus-2', title: 'Dự án nháp đã tạo', detail: 'Chờ Cổng khởi động đủ điều kiện để tạo chu kỳ 1.' }],
           })
         })
         closeModal()
@@ -91,13 +128,11 @@ export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
               const text = event.target.value
               const match = findCustomer(text)
               setCustomerText(text)
-              if (match && !findCustomer(customerText)) setOwner(match[1])
+              if (match && !findCustomer(customerText)) setOwner(match.owner)
               event.target.setCustomValidity(match ? '' : 'Chọn khách hàng từ danh sách gợi ý.')
             }}
           />
-          <datalist id="projectCustomerOptions">
-            {choices.map((item) => <option key={item[0]} value={item[0]} />)}
-          </datalist>
+          <datalist id="projectCustomerOptions">{choices.map((item) => <option key={item.id} value={item.name} />)}</datalist>
         </label>
         <label className="field">Account phụ trách
           <select name="owner" value={owner} onChange={(event) => setOwner(event.target.value)}>
@@ -121,7 +156,10 @@ export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
             {categoryPackages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
           </select>
         </label>
-        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Ngày bắt đầu và hạn chu kỳ chỉ được tạo khi Account bấm Bắt đầu triển khai. Gói dịch vụ lấy từ danh mục đang áp dụng và lưu snapshot tại thời điểm tạo.</p></div>
+        {selectedPackage && <QuotaNote quota={selectedPackage.quota} />}
+        <TeamFields />
+        <label className="field">Folder dự án trên Drive<input name="folder" type="url" placeholder="https://drive.google.com/drive/folders/..." /></label>
+        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện và Account bấm Bắt đầu triển khai. Định mức lấy từ gói và lưu snapshot tại thời điểm tạo.</p></div>
         <FormActions submit="Tạo dự án nháp" />
       </div>
     </Modal>
@@ -138,12 +176,16 @@ export function EditProjectModal({ project }: { project: Project }) {
         const service = packages.find((item) => item.id === field(form, 'servicePackage'))
         if (!service) return
         updateProject(project.id, (item) => {
+          const changedPackage = item.servicePackageId !== service.id
           item.owner = field(form, 'owner')
           item.servicePackageId = service.id
           item.service = packageLabel(service)
           item.serviceScope = service.scope
           item.servicePrice = service.price
-          addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', 'Account, gói dịch vụ hoặc hợp đồng được điều chỉnh.')
+          if (changedPackage) item.quota = { ...service.quota }
+          item.team = readTeam(form, item.owner)
+          item.notes = field(form, 'notes')
+          addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', changedPackage ? 'Đổi gói: ' + item.service + '. Định mức mới áp dụng từ bây giờ.' : 'Account, đội dự án hoặc ghi chú vận hành được điều chỉnh.')
         })
         closeModal()
         toast('Đã lưu thay đổi dự án.')
@@ -158,7 +200,9 @@ export function EditProjectModal({ project }: { project: Project }) {
             {packages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
           </select>
         </label>
-        <div className="customer-data-rules"><p>Đổi gói chỉ áp dụng từ thời điểm lưu và tạo snapshot mới cho dự án. Hợp đồng chính và số chu kỳ chỉ quản lý tại Hợp đồng &amp; công nợ. Ngày bắt đầu chu kỳ không sửa ở đây.</p></div>
+        <TeamFields team={project.team} />
+        <label className="field">Ghi chú vận hành<textarea name="notes" defaultValue={project.notes} placeholder="Ví dụ: thuê diễn viên, còn shoot 2, khách muốn viral TikTok" /></label>
+        <div className="customer-data-rules"><p>Đổi gói tạo snapshot định mức mới từ thời điểm lưu. Hợp đồng và số chu kỳ quản lý tại Hợp đồng &amp; công nợ.</p></div>
         <FormActions submit="Lưu thay đổi" />
       </div>
     </Modal>
@@ -171,18 +215,29 @@ export function StopProjectModal({ project }: { project: Project }) {
     <Modal
       title="Dừng dự án"
       onSubmit={(form) => {
+        const date = field(form, 'effectiveDate')
+        const reason = field(form, 'reason')
         updateProject(project.id, (item) => {
           item.state = 'stopped'
           item.risk = false
-          addProjectActivity(item, 'circle-stop', 'Dự án đã dừng', 'Lý do: ' + field(form, 'reason'))
+          item.pause = undefined
+          item.stop = { reason, date }
+          const cycle = item.cycles.find((entry) => entry.status === 'running')
+          if (cycle) {
+            cycle.status = 'closed'
+            cycle.actualEnd = date
+            const published = cycle.contents.filter((entry) => !entry.bonus && entry.stage === 'Đã đăng').length
+            cycle.result = { published, planned: item.quota.posts, note: 'Dừng dự án: ' + reason }
+          }
+          addProjectActivity(item, 'circle-stop', 'Dự án đã dừng', formatDate(parseInput(date)) + ' · ' + reason)
         })
         closeModal()
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Tiến độ hợp đồng {project.cycle} / {project.total} được giữ nguyên.</p></div>
+        <div className="customer-data-rules"><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Chu kỳ đang chạy được chốt tại ngày hiệu lực; số chu kỳ đã triển khai giữ nguyên.</p></div>
         <label className="field">Lý do dừng<textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
-        <label className="field">Ngày hiệu lực<input name="effectiveDate" type="date" required defaultValue="2026-09-22" /></label>
+        <label className="field">Ngày hiệu lực<input name="effectiveDate" type="date" required defaultValue={TODAY} /></label>
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận đã kiểm tra ảnh hưởng tới hợp đồng, kế hoạch và công việc.</label>
         <FormActions submit="Xác nhận dừng" />
       </div>
@@ -190,58 +245,58 @@ export function StopProjectModal({ project }: { project: Project }) {
   )
 }
 
+export function PauseProjectModal({ project }: { project: Project }) {
+  const { closeModal } = useApp()
+  return (
+    <Modal
+      title="Tạm dừng dự án"
+      onSubmit={(form) => {
+        const reason = field(form, 'reason')
+        const returnDate = field(form, 'returnDate')
+        updateProject(project.id, (item) => {
+          item.state = 'pending'
+          item.pause = { reason, returnDate }
+          addProjectActivity(item, 'circle-pause', 'Dự án tạm dừng', reason + (returnDate ? ' · dự kiến quay lại ' + formatDate(parseInput(returnDate)) : ''))
+        })
+        closeModal()
+      }}
+    >
+      <div className="form">
+        <div className="customer-data-rules"><p>Tạm dừng giữ nguyên chu kỳ đang chạy và hợp đồng. Mốc SOP không bị tính trễ trong thời gian tạm dừng.</p></div>
+        <label className="field">Lý do tạm dừng<textarea name="reason" required placeholder="Ví dụ: khách sửa quán, chờ ngân sách" /></label>
+        <label className="field">Ngày dự kiến quay lại<input name="returnDate" type="date" /></label>
+        <FormActions submit="Tạm dừng" />
+      </div>
+    </Modal>
+  )
+}
+
 export function StartProjectModal({ project }: { project: Project }) {
   const { closeModal, toast } = useApp()
+  const { params } = useData()
   return (
     <Modal
       title="Bắt đầu triển khai"
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
         updateProject(project.id, (item) => {
-          item.cycleStart = start
-          item.due = cycleEnd(start)
-          item.cycle = 1
           item.state = 'active'
           item.risk = false
-          item.actualEnd = ''
-          item.cycleData = null
-          addProjectActivity(item, 'play', 'Đã bắt đầu triển khai', 'Chu kỳ 1: ' + formatDate(parseInput(start)) + ' – ' + item.due)
-          addProjectActivity(item, 'file-text', 'Đã tạo mốc Content Plan', 'Hạn gửi bản đầu: ' + addBusinessDays(start, 3) + ' (T0 + 3 ngày làm việc).')
+          item.cycles = [newCycle(1, start, params)]
+          addProjectActivity(item, 'play', 'Đã bắt đầu triển khai', 'Chu kỳ 1: ' + formatDate(parseInput(start)) + ' – ' + formatDate(parseInput(item.cycles[0].plannedEnd)))
+          if (item.quota.plans) {
+            addProjectActivity(item, 'file-text', 'Đã tạo mốc Content Plan', 'Hạn gửi khách: ' + formatDate(parseInput(addBusinessDaysIso(start, params.planLeadBusinessDays))) + ' (T0 + ' + params.planLeadBusinessDays + ' ngày làm việc).')
+          }
         })
         closeModal()
         toast('Đã bắt đầu triển khai và tạo chu kỳ 1.')
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><b>Tạo chu kỳ 1</b><p>Cổng khởi động đã hoàn tất. Chọn ngày dự án chính thức bắt đầu; hệ thống tự tạo hạn dự kiến sau một tháng.</p></div>
-        <label className="field">Ngày bắt đầu chu kỳ<input name="cycleStart" type="date" required defaultValue="2026-10-01" /></label>
+        <div className="customer-data-rules"><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></div>
+        <label className="field">Ngày bắt đầu chu kỳ (T0)<input name="cycleStart" type="date" required defaultValue={TODAY} /></label>
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận bắt đầu triển khai theo điều kiện đã kiểm tra.</label>
         <FormActions submit="Bắt đầu triển khai" />
-      </div>
-    </Modal>
-  )
-}
-
-export function ActualEndModal({ project }: { project: Project }) {
-  const { closeModal, toast } = useApp()
-  return (
-    <Modal
-      title="Kết thúc thực tế"
-      onSubmit={(form) => {
-        updateProject(project.id, (item) => {
-          item.actualEnd = inputToDisplay(field(form, 'actualEnd'))
-          item.actualEndNote = field(form, 'actualEndNote')
-          addProjectActivity(item, 'calendar-check-2', 'Đã ghi nhận kết thúc thực tế', item.actualEnd + ' · ' + item.actualEndNote)
-        })
-        closeModal()
-        toast('Đã ghi nhận ngày kết thúc thực tế.')
-      }}
-    >
-      <div className="form">
-        <div className="customer-data-rules"><b>Ngày dự kiến: {project.due}</b><p>Ngày thực tế được ghi nhận khi chu kỳ hoàn tất. Không làm thay đổi mốc dự kiến hoặc tiến độ hợp đồng.</p></div>
-        <label className="field">Ngày kết thúc thực tế<input name="actualEnd" type="date" required defaultValue={displayToInput(project.actualEnd || project.due)} /></label>
-        <label className="field">Ghi chú<textarea name="actualEndNote" required placeholder="Nêu lý do nếu khác ngày dự kiến" /></label>
-        <FormActions submit="Lưu ngày thực tế" />
       </div>
     </Modal>
   )
@@ -256,21 +311,31 @@ function GateStatus({ ready }: { ready: boolean }) {
   )
 }
 
-/** Cổng khởi động: three required gates, the rest can be filled in after the project starts. */
+/** Cổng khởi động: required gates before T0; the brief is required when the SOP parameter says so. */
 export function OnboardingModal({ project }: { project: Project }) {
   const { closeModal, toast, go, showModal } = useApp()
+  const { params } = useData()
   const data = project.onboarding
   const [financeChecked, setFinanceChecked] = useState(Boolean(data?.financeVerified))
   const [handoverChecked, setHandoverChecked] = useState(Boolean(data?.handoverReady))
-  const required = onboardingItems(project).filter((entry) => entry.required)
+  const [briefChecked, setBriefChecked] = useState(Boolean(data?.briefReady))
+  const required = onboardingItems(project, params).filter((entry) => entry.required)
   const completed = required.filter((entry) => entry.ready).length
   const hasContract = Boolean(project.contractCode)
+  const briefRequired = params.requireBriefBeforeT0
 
   const openContract = () => {
     go('contracts')
     const primary = getData().contracts.find((row) => row.projectId === project.id && row.isPrimary && row.status !== 'Đã hủy')
     showModal(hasContract && primary ? <ContractDetailModal contractId={primary.id} /> : <ContractFormModal preferredProjectId={project.id} />)
   }
+
+  const briefFields = (
+    <>
+      <label className="onboarding-check"><input name="briefReady" type="checkbox" checked={briefChecked} onChange={(event) => setBriefChecked(event.target.checked)} /><span>Đã kiểm tra đủ brief form và tài liệu nguồn</span></label>
+      <label className="field onboarding-field"><span>Link brief form / Thông tin dự án</span><input name="briefLink" type="url" defaultValue={data?.briefLink} placeholder="https://docs.google.com/..." disabled={briefRequired && !briefChecked} /></label>
+    </>
+  )
 
   return (
     <Modal
@@ -279,6 +344,7 @@ export function OnboardingModal({ project }: { project: Project }) {
       onSubmit={(form) => {
         if (checked(form, 'financeVerified') && !field(form, 'financeRef')) { toast('Cần mã chứng từ trước khi xác nhận thanh toán.'); return }
         if (checked(form, 'handoverReady') && !field(form, 'handoverLink')) { toast('Cần link Sales Brief trước khi xác nhận bàn giao.'); return }
+        if (briefRequired && checked(form, 'briefReady') && !field(form, 'briefLink')) { toast('Cần link brief form trước khi xác nhận brief.'); return }
         const onboarding: Onboarding = {
           financeVerified: checked(form, 'financeVerified'),
           financeRef: field(form, 'financeRef'),
@@ -290,9 +356,10 @@ export function OnboardingModal({ project }: { project: Project }) {
           workspaceLink: field(form, 'workspaceLink'),
           setupNote: field(form, 'setupNote'),
         }
-        const ready = onboardingReady({ ...project, onboarding })
+        const ready = onboardingReady({ ...project, onboarding }, params)
         updateProject(project.id, (item) => {
           item.onboarding = onboarding
+          if (onboarding.workspaceLink && !item.links.folder) item.links.folder = onboarding.workspaceLink
           addProjectActivity(item, 'list-checks', 'Đã cập nhật cổng khởi động', ready ? 'Đủ điều kiện bắt đầu triển khai.' : 'Đã lưu phần đã có; còn điều kiện bắt buộc.')
         })
         closeModal()
@@ -301,7 +368,10 @@ export function OnboardingModal({ project }: { project: Project }) {
     >
       <div className="form">
         <div className="onboarding-modal-intro">
-          <div><b>Ba việc trước khi triển khai</b><p>Hợp đồng, đợt thanh toán đầu và Sales Brief. Brief, folder, quyền truy cập bổ sung sau.</p></div>
+          <div>
+            <b>{required.length} việc trước T0</b>
+            <p>SOP: T0 là khi khách đã cọc{briefRequired ? ' và cung cấp đủ brief' : ''}. Folder và quyền truy cập bổ sung sau.</p>
+          </div>
           <strong>{completed} / {required.length}</strong>
         </div>
 
@@ -323,7 +393,7 @@ export function OnboardingModal({ project }: { project: Project }) {
 
         <section className="onboarding-form-section onboarding-gate">
           <div className="onboarding-section-head">
-            <div><span className="onboarding-owner">2. Kế toán</span><b>Xác nhận đợt thanh toán đầu</b><p>Chỉ xác nhận khi đã có thanh toán hoặc chứng từ hợp lệ.</p></div>
+            <div><span className="onboarding-owner">2. Kế toán</span><b>Xác nhận cọc / đợt thanh toán đầu</b><p>Chỉ xác nhận khi đã có thanh toán hoặc chứng từ hợp lệ.</p></div>
             <GateStatus ready={Boolean(data?.financeVerified)} />
           </div>
           <label className="onboarding-check"><input name="financeVerified" type="checkbox" checked={financeChecked} onChange={(event) => setFinanceChecked(event.target.checked)} /><span>Kế toán đã xác nhận đợt đầu</span></label>
@@ -339,15 +409,21 @@ export function OnboardingModal({ project }: { project: Project }) {
           <label className="field onboarding-field"><span>Link Sales Brief</span><input name="handoverLink" type="url" defaultValue={data?.handoverLink} placeholder="https://drive.google.com/..." disabled={!handoverChecked} /></label>
         </section>
 
+        {briefRequired && (
+          <section className="onboarding-form-section onboarding-gate">
+            <div className="onboarding-section-head">
+              <div><span className="onboarding-owner">4. Khách hàng</span><b>Brief đầy đủ</b><p>Brief form: loại hình, cách bán, quy mô, đối tượng, điểm mạnh/hạn chế, món chủ lực, khuyến mãi, menu, logo.</p></div>
+              <GateStatus ready={Boolean(data?.briefReady)} />
+            </div>
+            {briefFields}
+          </section>
+        )}
+
         <details className="onboarding-later onboarding-later-form">
           <summary>Việc làm sau khi bắt đầu</summary>
-          <p>Không chặn khởi động. Account điều phối; Content nghiên cứu cập nhật khi có đầu vào. HR chỉ tham gia khi cần quyền hoặc nhân sự.</p>
+          <p>Không chặn khởi động. Account điều phối; Content cập nhật khi có đầu vào.</p>
           <div className="onboarding-later-grid">
-            <section>
-              <b>Brief và tài liệu</b>
-              <label className="onboarding-check"><input name="briefReady" type="checkbox" defaultChecked={data?.briefReady} /><span>Đã kiểm tra brief</span></label>
-              <label className="field onboarding-field"><span>Link brief / Key Notes</span><input name="briefLink" type="url" defaultValue={data?.briefLink} placeholder="https://drive.google.com/..." /></label>
-            </section>
+            {!briefRequired && <section><b>Brief và tài liệu</b>{briefFields}</section>}
             <section>
               <b>Workspace và quyền</b>
               <label className="onboarding-check"><input name="setupReady" type="checkbox" defaultChecked={data?.setupReady} /><span>Đã thiết lập workspace</span></label>

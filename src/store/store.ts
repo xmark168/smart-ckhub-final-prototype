@@ -3,12 +3,13 @@ import { seedCategories, seedPackages } from '../data/catalog'
 import { seedContracts } from '../data/contracts'
 import { seedCustomers } from '../data/customers'
 import { seedOperations } from '../data/operations'
+import { DEFAULT_PARAMS } from '../data/params'
 import { seedProjects } from '../data/projects'
 import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 1
+const DATA_VERSION = 2
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)
@@ -24,6 +25,7 @@ export function createSeed(): AppData {
     operations: seedOperations(),
     profile: { name: 'Tài khoản mô phỏng', email: 'account@smartckhub.local', phone: '' },
     period: { mode: 'month', month: '09', year: '2026' },
+    params: { ...DEFAULT_PARAMS },
   }
 }
 

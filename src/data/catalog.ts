@@ -1,4 +1,7 @@
-import type { ServiceCategory, ServicePackage } from '../store/types'
+import type { PackageQuota, ServiceCategory, ServicePackage } from '../store/types'
+
+/** Setup, website, chatbot and ads packages have no monthly content deliverables. */
+export const NO_QUOTA: PackageQuota = { posts: 0, shoots: 0, plans: 0, brandPosts: 0, salesPosts: 0 }
 
 export const seedCategories: ServiceCategory[] = [
   { id: 'system', name: 'Hệ thống', code: 'HT', status: 'Đang áp dụng' },
@@ -7,19 +10,19 @@ export const seedCategories: ServiceCategory[] = [
 ]
 
 export const seedPackages: ServicePackage[] = [
-  { id: 'social-setup', category: 'system', group: 'Mạng xã hội', name: 'Khởi tạo & Tối ưu', unit: 'Gói', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Thiết lập và tối ưu nền tảng mạng xã hội.' },
-  { id: 'chatbot-setup', category: 'system', group: 'Chatbot', name: 'Khởi tạo & Setup', unit: 'Gói', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Khởi tạo chatbot và cấu hình luồng cơ bản.' },
-  { id: 'chatbot-ops', category: 'system', group: 'Chatbot', name: 'Quản trị vận hành', unit: 'Tháng', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Theo dõi, tối ưu và vận hành chatbot.' },
-  { id: 'maps-setup', category: 'system', group: 'Google Maps', name: 'Khởi tạo & Đồng bộ', unit: 'Gói', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Khởi tạo và đồng bộ hồ sơ Google Maps.' },
-  { id: 'maps-ops', category: 'system', group: 'Google Maps', name: 'Quản trị tối ưu (MEO)', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Tối ưu và quản trị hồ sơ Google Maps.' },
-  { id: 'website-landing', category: 'system', group: 'Website', name: 'Landing Page', unit: 'Gói', priceType: 'fixed', price: 5000000, status: 'Đang áp dụng', scope: 'Thiết kế và triển khai landing page.' },
-  { id: 'website-build', category: 'system', group: 'Website', name: 'Website', unit: 'Gói', priceType: 'fixed', price: 15000000, status: 'Đang áp dụng', scope: 'Thiết kế và triển khai website.' },
-  { id: 'website-ops', category: 'system', group: 'Website', name: 'Quản trị', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Quản trị và cập nhật website.' },
-  { id: 'design-basic', category: 'brand', group: 'Graphic Design', name: 'Basic', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Gói thiết kế đồ họa cơ bản.' },
-  { id: 'design-premium', category: 'brand', group: 'Graphic Design', name: 'Premium', unit: 'Tháng', priceType: 'fixed', price: 5000000, status: 'Đang áp dụng', scope: 'Gói thiết kế đồ họa nâng cao.' },
-  { id: 'full-funnel', category: 'growth', group: 'Trọn gói tăng trưởng', name: 'Full phễu – Full khách', unit: 'Tháng', priceType: 'fixed', price: 19000000, status: 'Đang áp dụng', scope: 'Gói tăng trưởng theo phễu toàn diện.' },
-  { id: 'growth-basic', category: 'growth', group: 'Xây kênh tăng trưởng doanh thu', name: 'Basic', unit: 'Tháng', priceType: 'fixed', price: 9000000, status: 'Đang áp dụng', scope: 'Xây kênh tăng trưởng cấp cơ bản.' },
-  { id: 'ads-management', category: 'growth', group: 'Ads Management', name: 'Quản trị quảng cáo', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Quản trị quảng cáo theo chu kỳ.' },
+  { id: 'social-setup', category: 'system', group: 'Mạng xã hội', name: 'Khởi tạo & Tối ưu', unit: 'Gói', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Thiết lập và tối ưu nền tảng mạng xã hội.', quota: NO_QUOTA },
+  { id: 'chatbot-setup', category: 'system', group: 'Chatbot', name: 'Khởi tạo & Setup', unit: 'Gói', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Khởi tạo chatbot và cấu hình luồng cơ bản.', quota: NO_QUOTA },
+  { id: 'chatbot-ops', category: 'system', group: 'Chatbot', name: 'Quản trị vận hành', unit: 'Tháng', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Theo dõi, tối ưu và vận hành chatbot.', quota: NO_QUOTA },
+  { id: 'maps-setup', category: 'system', group: 'Google Maps', name: 'Khởi tạo & Đồng bộ', unit: 'Gói', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Khởi tạo và đồng bộ hồ sơ Google Maps.', quota: NO_QUOTA },
+  { id: 'maps-ops', category: 'system', group: 'Google Maps', name: 'Quản trị tối ưu (MEO)', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Tối ưu và quản trị hồ sơ Google Maps.', quota: NO_QUOTA },
+  { id: 'website-landing', category: 'system', group: 'Website', name: 'Landing Page', unit: 'Gói', priceType: 'fixed', price: 5000000, status: 'Đang áp dụng', scope: 'Thiết kế và triển khai landing page.', quota: NO_QUOTA },
+  { id: 'website-build', category: 'system', group: 'Website', name: 'Website', unit: 'Gói', priceType: 'fixed', price: 15000000, status: 'Đang áp dụng', scope: 'Thiết kế và triển khai website.', quota: NO_QUOTA },
+  { id: 'website-ops', category: 'system', group: 'Website', name: 'Quản trị', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Quản trị và cập nhật website.', quota: NO_QUOTA },
+  { id: 'design-basic', category: 'brand', group: 'Graphic Design', name: 'Basic', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Gói thiết kế đồ họa cơ bản.', quota: { posts: 8, shoots: 0, plans: 1, brandPosts: 8, salesPosts: 0 } },
+  { id: 'design-premium', category: 'brand', group: 'Graphic Design', name: 'Premium', unit: 'Tháng', priceType: 'fixed', price: 5000000, status: 'Đang áp dụng', scope: 'Gói thiết kế đồ họa nâng cao.', quota: { posts: 12, shoots: 0, plans: 1, brandPosts: 10, salesPosts: 2 } },
+  { id: 'full-funnel', category: 'growth', group: 'Trọn gói tăng trưởng', name: 'Full phễu – Full khách', unit: 'Tháng', priceType: 'fixed', price: 19000000, status: 'Đang áp dụng', scope: 'Gói tăng trưởng theo phễu toàn diện.', quota: { posts: 20, shoots: 2, plans: 1, brandPosts: 14, salesPosts: 6 } },
+  { id: 'growth-basic', category: 'growth', group: 'Xây kênh tăng trưởng doanh thu', name: 'Basic', unit: 'Tháng', priceType: 'fixed', price: 9000000, status: 'Đang áp dụng', scope: '1 Content Plan · 1 buổi shoot · 12 post/tháng (9 thương hiệu, 3 bán hàng).', quota: { posts: 12, shoots: 1, plans: 1, brandPosts: 9, salesPosts: 3 } },
+  { id: 'ads-management', category: 'growth', group: 'Ads Management', name: 'Quản trị quảng cáo', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Quản trị quảng cáo theo chu kỳ.', quota: NO_QUOTA },
 ]
 
 export function packageLabel(item: ServicePackage): string {

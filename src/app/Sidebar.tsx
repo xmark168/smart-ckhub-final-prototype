@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ACCOUNTS } from '../lib/format'
 import { Icon } from '../lib/icons'
 import { useData } from '../store/store'
 import type { Role } from '../store/types'
@@ -10,7 +11,7 @@ const ALL_ROLES: Role[] = ['account', 'partner', 'admin', 'bods']
 const NAV = (Object.entries(PAGES) as Array<[ScreenId, PageMeta]>).filter(([, page]) => page.nav)
 
 export function Sidebar() {
-  const { role, setRole, screen, go } = useApp()
+  const { role, setRole, account, setAccount, screen, go } = useApp()
   const { profile } = useData()
   const [menuOpen, setMenuOpen] = useState(false)
   const personRef = useRef<HTMLDivElement>(null)
@@ -46,6 +47,14 @@ export function Sidebar() {
             <select id="roleSelect" value={role} onChange={(event) => setRole(event.target.value as Role)}>
               {ALL_ROLES.map((key) => <option key={key} value={key}>{ROLES[key].label}</option>)}
             </select>
+            {role === 'account' && (
+              <>
+                <label htmlFor="accountSelect">Đăng nhập là Account</label>
+                <select id="accountSelect" value={account} onChange={(event) => setAccount(event.target.value)}>
+                  {ACCOUNTS.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </>
+            )}
           </div>
           <button type="button" onClick={() => { setMenuOpen(false); go('profile') }}>Hồ sơ cá nhân</button>
           <button type="button" onClick={() => { setMenuOpen(false); go('settings') }}>Cài đặt</button>
@@ -58,7 +67,7 @@ export function Sidebar() {
           onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open) }}
         >
           <i className="avatar">{ROLES[role].initial}</i>
-          <div className="user-copy"><b>{profile.name}</b><span>{ROLES[role].label}</span></div>
+          <div className="user-copy"><b>{role === 'account' ? account : profile.name}</b><span>{ROLES[role].label}</span></div>
           <span className="sidebar-user-caret">⌃</span>
         </button>
       </div>

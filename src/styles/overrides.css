@@ -10,3 +10,66 @@
     display: flex;
   }
 }
+
+/* ---- SOP milestones (project overview) ---- */
+.sop-milestones { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid rgb(238, 229, 221); }
+.sop-milestone { display: grid; grid-template-columns: 12px minmax(0, 1fr) 78px 104px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgb(238, 229, 221); }
+.sop-milestone:last-child { border-bottom: 0; }
+.sop-milestone > i { width: 9px; height: 9px; border-radius: 50%; background: rgb(214, 204, 194); }
+.sop-milestone.is-done > i { background: var(--teal); }
+.sop-milestone.is-doneLate > i, .sop-milestone.is-due > i { background: var(--amber); }
+.sop-milestone.is-late > i { background: var(--red); }
+.sop-milestone b, .sop-milestone small { display: block; }
+.sop-milestone b { color: rgb(46, 33, 25); font-size: 12px; }
+.sop-milestone small { margin-top: 2px; color: rgb(128, 108, 93); font-size: 11px; }
+.sop-milestone-due { color: rgb(68, 52, 43); font: 700 12px var(--font-mono); text-align: right; }
+.sop-milestone-due small { font-family: var(--font-body); font-weight: 600; }
+.sop-milestone.is-late .sop-milestone-due small { color: var(--red); }
+.sop-milestone .pill { justify-self: end; }
+
+/* ---- Cycle history: 5 columns ---- */
+.cycle-history .project-cycle-table-head, .cycle-history .project-cycle-row { grid-template-columns: 70px 1fr 0.8fr 0.8fr 1.4fr; }
+.cycle-history .project-cycle-row .pill { white-space: normal; }
+.cycle-work-heading { margin-top: 20px; }
+.cycle-compact-list .row-actions { display: flex; gap: 8px; margin-top: 4px; }
+.cycle-compact-list b .pill { margin-left: 6px; vertical-align: 1px; }
+.text-btn[aria-disabled="true"] { color: rgb(160, 145, 132); cursor: not-allowed; }
+.team-list { margin-top: 10px; }
+
+/* ---- Content tab and lists ---- */
+.content-summary { flex-wrap: wrap; justify-content: flex-start; }
+.content-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.content-toolbar select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font: 600 12px var(--font-body); }
+.content-toolbar .project-drive-link { margin-left: auto; }
+.content-table-panel { padding: 0; }
+.content-table tr.readonly { cursor: default; }
+td.is-late { color: var(--red) !important; font-weight: 800; }
+.project-next b { display: block; font-size: 12px; }
+.project-next.is-late b { color: var(--red); }
+.project-next.is-due b { color: rgb(166, 102, 0); }
+#projects td .pill + .pill { margin-left: 4px; }
+#customers td .pill + .pill { margin-left: 4px; }
+button.customer-dashboard-settings { border: 0; background: transparent; color: inherit; cursor: pointer; }
+.customer-control:disabled { opacity: 0.55; cursor: not-allowed; }
+.project-contract-summary > button.project-drive-link { border: 0; border-left: 1px solid rgb(238, 229, 221); background: transparent; cursor: pointer; }
+
+/* ---- Tham số vận hành ---- */
+.param-list { display: grid; }
+.param-row { display: grid; grid-template-columns: minmax(0, 1fr) 190px 120px; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid rgb(238, 229, 221); }
+.param-row:last-child { border-bottom: 0; }
+.param-row b, .param-row small { display: block; }
+.param-row b { font-size: 13px; }
+.param-row small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.param-input { display: flex; align-items: center; gap: 8px; }
+.param-input input { width: 70px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; font: 700 13px var(--font-mono); }
+.param-input span { color: var(--muted); font-size: 11px; }
+.param-default { color: var(--muted); font-size: 11px; text-align: right; }
+
+@media (max-width: 650px) {
+  .sop-milestone { grid-template-columns: 12px minmax(0, 1fr) auto; }
+  .sop-milestone .pill { grid-column: 2 / 4; justify-self: start; }
+  .cycle-history .project-cycle-row { grid-template-columns: 60px 1fr; }
+  .param-row { grid-template-columns: 1fr; }
+  .param-default { text-align: left; }
+  .content-toolbar .project-drive-link { margin-left: 0; }
+}

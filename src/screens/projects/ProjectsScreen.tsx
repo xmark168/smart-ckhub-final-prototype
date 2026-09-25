@@ -1,15 +1,17 @@
 import type { CSSProperties } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, includesText } from '../../lib/format'
+import { ACCOUNTS, includesText, shortDate } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
+import { inScope } from '../../lib/scope'
+import { MILESTONE_TONE, nextActions, projectHealth } from '../../lib/sop'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
-import type { Project, ProjectState } from '../../store/types'
+import type { Project, ProjectState, SopParams } from '../../store/types'
 import { InfoModal } from '../../ui/Modal'
 import { CreateProjectModal } from './ProjectModals'
-import { cycleRange, projectLabel, projectTone } from './projectLogic'
+import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone } from './projectLogic'
 
 type Kpi = 'all' | 'active' | 'risk' | 'paused' | 'draft'
 
@@ -26,19 +28,60 @@ const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '
 const PAGE_SIZE = 20
 
 const PROJECT_RULES =
-  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu sau khi Cổng khởi động đủ điều kiện: hợp đồng chính, tài chính, Sales Brief, brief và thiết lập. Chu kỳ luôn tính theo tháng. Dự án tạm dừng hoặc dừng không tự thay đổi số chu kỳ đã triển khai. Task thiếu Owner hoặc deadline không được bắt đầu.'
+  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo.'
 
-function matchesKpi(item: Project, kpi: Kpi): boolean {
+function atRisk(item: Project, params: SopParams): boolean {
+  return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late')
+}
+
+function matchesKpi(item: Project, kpi: Kpi, params: SopParams): boolean {
   if (kpi === 'active') return item.state === 'active'
-  if (kpi === 'risk') return item.risk
+  if (kpi === 'risk') return atRisk(item, params)
   if (kpi === 'paused') return item.state === 'pending' || item.state === 'stopped'
   if (kpi === 'draft') return item.state === 'draft'
   return true
 }
 
+function ProjectRow({ item, params, onOpen }: { item: Project; params: SopParams; onOpen: () => void }) {
+  const posts = postProgress(item)
+  const next = nextActions(item, params)[0]
+  const health = projectHealth(item, params)
+  return (
+    <tr onClick={onOpen}>
+      <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
+      <td>{item.owner}</td>
+      <td><b>{cycleCounter(item)}</b><span className="project-record-meta">{cycleRange(item)}</span></td>
+      <td>
+        {posts ? (
+          <div className="project-progress">
+            <i style={{ '--progress': Math.min(100, posts.percent) + '%' } as CSSProperties} />
+            <span>{posts.published}/{posts.planned}</span>
+          </div>
+        ) : '—'}
+      </td>
+      <td>
+        {next ? (
+          <span className={'project-next is-' + next.state}>
+            <b>{next.label}</b>
+            <span className="project-record-meta">{next.due ? 'hạn ' + shortDate(next.due) : 'chờ bước trước'}</span>
+          </span>
+        ) : <span className="project-record-meta">{health.reason}</span>}
+      </td>
+      <td>{item.team.media.join(', ') || '—'}</td>
+      <td>
+        <span className={'pill ' + projectTone(item)}>{projectLabel(item)}</span>
+        {item.state === 'active' && health.level !== 'ok' && <span className={'pill ' + (next ? MILESTONE_TONE[next.state] : health.tone)} title={health.reason}>{health.label}</span>}
+      </td>
+      <td><button className="project-open" aria-label={'Mở ' + item.customer}>›</button></td>
+    </tr>
+  )
+}
+
 export function ProjectsScreen() {
-  const { openProject, showModal } = useApp()
-  const { projects } = useData()
+  const { openProject, showModal, role, account } = useApp()
+  const data = useData()
+  const { params } = data
+  const projects = data.projects.filter((item) => inScope(role, account, item))
   const [filters, setFilters] = useScreenState<Filters>('projects.filters', INITIAL)
   const [filterOpen, setFilterOpen] = useScreenState('projects.filterOpen', false)
   const filterRef = useOutsideClose<HTMLDivElement>(filterOpen, () => setFilterOpen(false))
@@ -48,7 +91,7 @@ export function ProjectsScreen() {
     resetPage()
   }
   const active = projects.filter((item) => item.state === 'active')
-  const risk = active.filter((item) => item.risk)
+  const risk = active.filter((item) => atRisk(item, params))
   const paused = projects.filter((item) => item.state === 'pending' || item.state === 'stopped')
   const drafts = projects.filter((item) => item.state === 'draft')
   const list = projects.filter(
@@ -57,8 +100,8 @@ export function ProjectsScreen() {
       (!filters.status || item.state === filters.status) &&
       (!filters.owner || item.owner === filters.owner) &&
       (!filters.area || item.area === filters.area) &&
-      (!filters.risk || item.risk) &&
-      matchesKpi(item, filters.kpi),
+      (!filters.risk || atRisk(item, params)) &&
+      matchesKpi(item, filters.kpi, params),
   )
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
   const areas = Array.from(new Set(projects.map((item) => item.area)))
@@ -75,7 +118,7 @@ export function ProjectsScreen() {
 
         <section className="project-dashboard">
           <button className={kpiClass('active', 'hero')} onClick={() => change({ kpi: 'active' })}><label>Đang triển khai</label><strong>{active.length}</strong><small>{risk.length} dự án cần theo dõi</small></button>
-          <button className={kpiClass('risk', 'risk')} onClick={() => change({ kpi: 'risk' })}><label>Có rủi ro</label><strong>{risk.length}</strong><small>Trễ hoặc có nguy cơ trễ chu kỳ</small></button>
+          <button className={kpiClass('risk', 'risk')} onClick={() => change({ kpi: 'risk' })}><label>Có rủi ro</label><strong>{risk.length}</strong><small>Có mốc SOP trễ hoặc gắn cờ</small></button>
           <button className={kpiClass('paused')} onClick={() => change({ kpi: 'paused' })}><label>Tạm dừng / đã dừng</label><strong>{paused.length}</strong><small>Không tự đổi tiến độ hợp đồng</small></button>
           <button className={kpiClass('draft')} onClick={() => change({ kpi: 'draft' })}><label>Dự án nháp</label><strong>{drafts.length}</strong><small>Cần hoàn tất Cổng khởi động</small></button>
         </section>
@@ -120,25 +163,12 @@ export function ProjectsScreen() {
 
           <div className="project-table-wrap">
             <table className="project-table-new">
-              <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Chu kỳ hiện tại</th><th>Tiến độ</th><th>Trạng thái</th><th /></tr></thead>
+              <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Media</th><th>Trạng thái</th><th /></tr></thead>
               <tbody>
                 {rows.map((item) => (
-                  <tr key={item.id} onClick={() => openProject(item.id)}>
-                    <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
-                    <td>{item.owner}</td>
-                    <td>{item.cycle} / {item.total}</td>
-                    <td>{cycleRange(item)}</td>
-                    <td>
-                      <div className="project-progress">
-                        <i style={{ '--progress': item.progress + '%' } as CSSProperties} />
-                        <span>{item.progress}%</span>
-                      </div>
-                    </td>
-                    <td><span className={'pill ' + projectTone(item)}>{projectLabel(item)}</span></td>
-                    <td><button className="project-open" aria-label={'Mở ' + item.customer}>›</button></td>
-                  </tr>
+                  <ProjectRow key={item.id} item={item} params={params} onOpen={() => openProject(item.id)} />
                 ))}
-                {!list.length && <tr><td colSpan={7}>Không tìm thấy dự án phù hợp.</td></tr>}
+                {!list.length && <tr><td colSpan={8}>Không tìm thấy dự án phù hợp.</td></tr>}
               </tbody>
             </table>
           </div>

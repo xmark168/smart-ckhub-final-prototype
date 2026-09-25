@@ -1,9 +1,6 @@
 /** Prototype runs on a fixed "today" so seeded due dates stay meaningful. */
 export const TODAY = '2026-09-25'
 
-/** Account used for permission checks (owner/creator rules) in the mock session. */
-export const CURRENT_ACCOUNT = 'Tuyền'
-
 export const ACCOUNTS = ['Tuyền', 'Nguyên', 'Hiền', 'Minh Anh', 'Hải']
 
 export function money(value: number | string | undefined): string {
@@ -70,4 +67,47 @@ export function pageSlice<T>(list: T[], page: number, size: number): { rows: T[]
   const current = Math.min(Math.max(1, page), pages)
   const start = (current - 1) * size
   return { rows: list.slice(start, start + size), page: current, pages, from: list.length ? start + 1 : 0, to: Math.min(start + size, list.length) }
+}
+
+/** Date → yyyy-mm-dd (local). */
+export function toIso(date: Date): string {
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  const date = parseInput(iso)
+  date.setDate(date.getDate() + days)
+  return toIso(date)
+}
+
+/** Adds working days (Monday–Friday) to a yyyy-mm-dd date. */
+export function addBusinessDaysIso(iso: string, days: number): string {
+  const date = parseInput(iso)
+  let added = 0
+  while (added < days) {
+    date.setDate(date.getDate() + 1)
+    if (date.getDay() !== 0 && date.getDay() !== 6) added++
+  }
+  return toIso(date)
+}
+
+/** Same day `months` later, minus one day: the planned end of a cycle that starts on `iso`. */
+export function periodEndIso(iso: string, months: number): string {
+  const date = parseInput(iso)
+  return toIso(new Date(date.getFullYear(), date.getMonth() + months, date.getDate() - 1))
+}
+
+/** Whole days from `from` to `to` (both yyyy-mm-dd); negative when `to` is earlier. */
+export function diffDays(from: string, to: string): number {
+  return Math.round((parseInput(to).getTime() - parseInput(from).getTime()) / 86400000)
+}
+
+/** yyyy-mm-dd → dd.mm (short form for tables). */
+export function shortDate(iso: string): string {
+  return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : ''
+}
+
+/** Unique-enough id for records created in the prototype. */
+export function newId(prefix: string): string {
+  return prefix + '-' + Date.now()
 }

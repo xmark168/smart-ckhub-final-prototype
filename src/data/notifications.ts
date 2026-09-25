@@ -12,20 +12,20 @@ export const notificationsByScreen: Record<string, NotificationSet> = {
   customers: {
     title: 'Khách hàng',
     rule: 'Account chỉ nhận khách mình phụ trách hoặc tạo. BODs và Administrator nhận toàn bộ.',
-    types: [['Chu kỳ sắp hết', 'Nhắc 14, 7 và 3 ngày trước mốc chu kỳ'], ['Thiếu đầu mối chính', 'Khách active chưa có liên hệ hợp lệ'], ['Khách cần chú ý', 'Có rủi ro cần Account xử lý']],
-    items: [['Chu kỳ sắp hết: Ẩm Thực Phước Quắn', 'Còn 7 ngày. Rà soát kế hoạch kỳ tiếp theo.'], ['Thiếu đầu mối chính: Vua Chả Cá', 'Khách đang triển khai nhưng chưa có liên hệ hợp lệ.'], ['Khách mới cần thiết lập', 'Bổ sung dịch vụ trước khi mở dự án.']],
+    types: [['Chu kỳ sắp hết', 'Nhắc trước mốc chốt chu kỳ theo tham số vận hành'], ['Công nợ quá hạn', 'Có đợt thanh toán đã qua hạn chưa thu'], ['Khách cần chú ý', 'Dự án của khách có mốc SOP bị trễ']],
+    items: [['Công nợ quá hạn: Cơm Tấm Tài', 'Đợt 3 HĐ-2026-056 · 17.496.000đ quá hạn từ 13.09.'], ['Chốt chu kỳ trễ: Cơm Tấm Tài', 'Chu kỳ 4 kết thúc 22.09, còn 5 bài chưa đăng.'], ['Khách mới cần thiết lập', 'Ẩm Thực Phước Quắn chưa có dự án đang triển khai.']],
   },
   projects: {
     title: 'Dự án',
     rule: 'Account nhận dự án mình phụ trách hoặc tạo. BODs và Administrator nhận toàn bộ.',
     types: [['Chu kỳ có rủi ro', 'Trễ hoặc có nguy cơ trễ mốc'], ['Cổng khởi động', 'Dự án nháp thiếu điều kiện bắt đầu'], ['Thay đổi chu kỳ', 'Có bù tiến độ hoặc đổi mốc']],
-    items: [['Cơm Tấm Tài cần bù Content 09', 'Bù trong tuần 4 để giữ mốc 12.10.'], ['Ốc lắc cô mai chưa thể bắt đầu', 'Dự án nháp chưa có hợp đồng hiệu lực.'], ['Vua chả cá chờ chốt lịch shooting', 'Thiếu xác nhận đầu mối khách hàng.']],
+    items: [['Cơm Tấm Tài cần chốt chu kỳ 4', 'Còn 5 bài Content Plan T9 chưa đăng.'], ['Ốc lắc cô mai chưa thể bắt đầu', 'Dự án nháp chưa có hợp đồng hiệu lực.'], ['Vua chả cá chờ chốt lịch shooting', 'Thiếu xác nhận đầu mối khách hàng.']],
   },
   contracts: {
     title: 'Hợp đồng & thanh toán',
     rule: 'Account theo dõi hợp đồng mình phụ trách. Kế toán xác nhận chứng từ; BODs và Administrator xem toàn bộ.',
     types: [['Đợt thanh toán đến hạn', 'Theo điều khoản HĐ'], ['Chứng từ cần xác nhận', 'Có mã chứng từ hoặc link Drive'], ['Hợp đồng sắp hết hạn', 'Cần chuẩn bị tái ký']],
-    items: [['Đợt 2 HĐ-2026-056 chờ xác nhận', '30% · 2.400.000đ · cần mã chứng từ.'], ['HĐ-2026-056 đang hiệu lực', 'Cơm Tấm Tài · kết thúc 20.11.2026.'], ['Phụ lục cần đối chiếu', 'Kiểm tra phạm vi trước khi áp dụng.']],
+    items: [['Đợt 3 HĐ-2026-056 quá hạn', '30% · 17.496.000đ · hạn 13.09.2026.'], ['HĐ-2026-056 đang hiệu lực', 'Cơm Tấm Tài · kết thúc 22.11.2026.'], ['Phụ lục cần đối chiếu', 'Kiểm tra phạm vi trước khi áp dụng.']],
   },
   posts: {
     title: 'Nội dung',

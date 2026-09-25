@@ -1,10 +1,13 @@
 import { useApp } from '../../app/context'
-import { CURRENT_ACCOUNT } from '../../lib/format'
-import { getData, update } from '../../store/store'
+import { ACCOUNTS, formatDate, parseInput, TODAY } from '../../lib/format'
+import { checked, field } from '../../lib/form'
+import { projectHealth } from '../../lib/sop'
+import { getData, update, useData } from '../../store/store'
 import type { Customer } from '../../store/types'
-import { field } from '../../lib/form'
 import { FormActions, Modal } from '../../ui/Modal'
-import { addCustomerActivity } from './customerLogic'
+import { addCustomerActivity, customerStatus, endBlockers, sameName } from './customerLogic'
+
+const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
 function AreaSelect({ value = 'HCM' }: { value?: string }) {
   return (
@@ -14,27 +17,41 @@ function AreaSelect({ value = 'HCM' }: { value?: string }) {
   )
 }
 
+function OwnerSelect({ value }: { value: string }) {
+  return (
+    <label className="field">Account phụ trách
+      <select name="owner" defaultValue={value}>{ACCOUNTS.map((name) => <option key={name}>{name}</option>)}</select>
+    </label>
+  )
+}
+
+/** Blocks a second customer with the same brand name (case and spacing ignored). */
+function rejectDuplicate(form: HTMLFormElement, exceptId = ''): boolean {
+  const input = form.elements.namedItem('name') as HTMLInputElement
+  const match = getData().customers.find((item) => item.id !== exceptId && sameName(item.name, input.value))
+  input.setCustomValidity(match ? 'Đã có khách hàng "' + match.name + '" (Account ' + match.owner + ').' : '')
+  if (match) input.reportValidity()
+  return Boolean(match)
+}
+
 export function CreateCustomerModal({ onCreated }: { onCreated: () => void }) {
-  const { closeModal } = useApp()
+  const { closeModal, account } = useApp()
   return (
     <Modal
       title="Tạo khách hàng"
       onSubmit={(form) => {
+        if (rejectDuplicate(form)) return
+        const owner = field(form, 'owner')
         update((draft) => {
           draft.customers.unshift({
             id: 'customer-' + Date.now(),
             name: field(form, 'name'),
-            owner: field(form, 'owner'),
+            owner,
             area: field(form, 'area'),
-            projectCode: 'Chưa có dự án',
-            state: 'active',
+            createdAt: TODAY,
+            createdBy: account,
             attention: false,
-            newCustomer: true,
-            cycle: 'Chưa cập nhật',
-            service: 'Chưa chọn dịch vụ',
-            contact: 'Thiếu đầu mối chính',
-            createdBy: CURRENT_ACCOUNT,
-            activities: [],
+            activities: [{ title: 'Đã tạo hồ sơ khách hàng', detail: 'Account phụ trách: ' + owner, icon: 'users-round', time: 'Vừa xong' }],
           })
         })
         closeModal()
@@ -42,9 +59,10 @@ export function CreateCustomerModal({ onCreated }: { onCreated: () => void }) {
       }}
     >
       <div className="form">
-        <label className="field">Tên thương hiệu<input name="name" required autoFocus /></label>
-        <label className="field">Account phụ trách<input name="owner" required /></label>
+        <label className="field">Tên thương hiệu<input name="name" required autoFocus onInput={(event) => event.currentTarget.setCustomValidity('')} /></label>
+        <OwnerSelect value={account} />
         <AreaSelect />
+        <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, vào Dự án › Tạo dự án để lập dự án nháp cho khách.</p></div>
         <FormActions submit="Tạo khách hàng" />
       </div>
     </Modal>
@@ -57,19 +75,33 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
     <Modal
       title="Sửa khách hàng"
       onSubmit={(form) => {
+        if (rejectDuplicate(form, customer.id)) return
+        const owner = field(form, 'owner')
+        const moveProjects = checked(form, 'moveProjects')
         update((draft) => {
           const target = draft.customers.find((item) => item.id === customer.id)
           if (!target) return
+          const previous = target.owner
           target.name = field(form, 'name')
-          target.owner = field(form, 'owner')
+          target.owner = owner
           target.area = field(form, 'area')
+          draft.projects.forEach((project) => {
+            if (project.customerId !== target.id) return
+            project.customer = target.name
+            if (moveProjects && project.owner === previous && project.state !== 'stopped') {
+              project.owner = owner
+              project.team.account = owner
+            }
+          })
+          if (previous !== owner) addCustomerActivity(target, 'Đổi Account phụ trách', previous + ' → ' + owner + (moveProjects ? ' · chuyển cả dự án đang mở' : ''), 'user-round')
         })
         closeModal()
       }}
     >
       <div className="form">
-        <label className="field">Tên thương hiệu<input name="name" required defaultValue={customer.name} /></label>
-        <label className="field">Account phụ trách<input name="owner" required defaultValue={customer.owner} /></label>
+        <label className="field">Tên thương hiệu<input name="name" required defaultValue={customer.name} onInput={(event) => event.currentTarget.setCustomValidity('')} /></label>
+        <OwnerSelect value={customer.owner} />
+        <label className="filter-check"><input name="moveProjects" type="checkbox" defaultChecked /> Chuyển cả dự án đang mở của Account cũ sang Account mới</label>
         <AreaSelect value={customer.area} />
         <FormActions submit="Lưu thay đổi" />
       </div>
@@ -77,27 +109,44 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
   )
 }
 
-export function StopCustomerProjectModal({ customer }: { customer: Customer }) {
+/** Kết thúc hợp tác: only once every project is stopped and no contract is still open. */
+export function EndCooperationModal({ customer }: { customer: Customer }) {
   const { closeModal } = useApp()
+  const { projects, contracts } = useData()
+  const blockers = endBlockers(customer, projects, contracts)
+  if (blockers.length) {
+    return (
+      <Modal title="Chưa thể kết thúc hợp tác">
+        <div className="customer-data-rules">
+          <b>Cần xử lý trước</b>
+          <p>{blockers.join(' · ')}</p>
+          <p>Dừng từng dự án tại trang dự án; kết thúc hoặc hủy hợp đồng tại Hợp đồng &amp; công nợ.</p>
+        </div>
+        <div className="form-actions"><button className="primary" type="button" onClick={closeModal}>Đóng</button></div>
+      </Modal>
+    )
+  }
   return (
     <Modal
-      title="Dừng dự án"
+      title="Kết thúc hợp tác"
       onSubmit={(form) => {
+        const date = field(form, 'date')
+        const reason = field(form, 'reason')
         update((draft) => {
           const target = draft.customers.find((item) => item.id === customer.id)
           if (!target) return
-          target.state = 'stopped'
-          addCustomerActivity(target, 'Đã dừng dự án', 'Hiệu lực ' + field(form, 'effectiveDate') + ' · ' + field(form, 'reason'), 'circle-pause')
+          target.ended = { date, reason }
+          target.attention = false
+          addCustomerActivity(target, 'Đã kết thúc hợp tác', formatDate(parseInput(date)) + ' · ' + reason, 'circle-stop')
         })
         closeModal()
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Thao tác này không thay đổi tiến độ hợp đồng.</p></div>
-        <label className="field">Lý do dừng<textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
-        <label className="field">Ngày hiệu lực<input name="effectiveDate" type="date" required defaultValue="2026-09-22" /></label>
-        <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận dừng dự án và đã kiểm tra ảnh hưởng tới hợp đồng, kế hoạch, công việc.</label>
-        <FormActions submit="Xác nhận dừng" />
+        <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chuyển sang tự vận hành kênh" /></label>
+        <label className="field">Ngày kết thúc<input name="date" type="date" required defaultValue={TODAY} /></label>
+        <label className="filter-check"><input type="checkbox" required /> Tôi xác nhận mọi dự án đã dừng và hợp đồng đã đóng.</label>
+        <FormActions submit="Kết thúc hợp tác" />
       </div>
     </Modal>
   )
@@ -105,15 +154,19 @@ export function StopCustomerProjectModal({ customer }: { customer: Customer }) {
 
 export function AccountSummaryModal({ owner }: { owner: string }) {
   const { closeModal } = useApp()
-  const assigned = getData().customers.filter((item) => item.owner === owner)
-  const active = assigned.filter((item) => item.state === 'active')
+  const { customers, projects, params } = useData()
+  const assigned = customers.filter((item) => item.owner === owner)
+  const working = assigned.filter((item) => customerStatus(item, projects) === 'active')
+  const active = projects.filter((item) => item.owner === owner && item.state === 'active')
+  const late = active.filter((item) => projectHealth(item, params).level === 'late')
   return (
-    <Modal title="Tóm tắt Account">
+    <Modal title={'Account ' + owner}>
       <div className="account-summary">
-        <div><span>Account phụ trách</span><b>{owner}</b></div>
-        <div><span>Khách đang vận hành</span><b>{active.length}</b></div>
-        <div><span>Khách cần chú ý</span><b>{active.filter((item) => item.attention).length}</b></div>
+        <div><span>Khách đang hợp tác</span><b>{working.length} / {assigned.length}</b></div>
+        <div><span>Dự án đang triển khai</span><b>{active.length}</b></div>
+        <div><span>Dự án trễ mốc SOP</span><b>{late.length}</b></div>
       </div>
+      {late.length > 0 && <div className="customer-data-rules"><b>Dự án trễ</b><p>{late.map((item) => item.customer + ' — ' + projectHealth(item, params).reason).join(' · ')}</p></div>}
       <div className="customer-data-rules"><b>Phạm vi dữ liệu</b><p>Account xem các khách hàng và dự án mình phụ trách hoặc tạo.</p></div>
       <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div>
     </Modal>
@@ -124,14 +177,15 @@ export function CustomerFlowModal() {
   const steps: Array<[string, string, string]> = [
     ['01', 'Tạo hồ sơ', 'Gán Account phụ trách.'],
     ['02', 'Thiết lập đầu mối', 'Chọn đầu mối chính và kênh liên hệ.'],
-    ['03', 'Mở dự án', 'Lập chu kỳ và đầu ra vận hành.'],
-    ['04', 'Theo dõi vòng đời', 'Đánh dấu rủi ro, tạm dừng hoặc kết thúc.'],
+    ['03', 'Mở dự án', 'Tạo dự án nháp, hoàn tất Cổng khởi động rồi bắt đầu chu kỳ 1.'],
+    ['04', 'Theo dõi vòng đời', 'Tạm dừng / dừng trên từng dự án. Kết thúc hợp tác khi mọi dự án đã dừng và hợp đồng đã đóng.'],
   ]
   const statuses: Array<[string, string, string]> = [
-    ['ACTIVE', 'Đang triển khai', 'Dự án có công việc hoặc chu kỳ đang chạy.'],
-    ['PENDING', 'Tạm dừng', 'Tạm ngưng vận hành, có thể mở lại.'],
-    ['STOP', 'Đã dừng', 'Kết thúc vận hành; chỉ lưu lịch sử để tra cứu.'],
-    ['DRAFT', 'Dự án nháp', 'Chưa khởi động; không tạo công việc vận hành.'],
+    ['ACTIVE', 'Đang hợp tác', 'Có ít nhất một dự án đang triển khai.'],
+    ['DRAFT', 'Chờ khởi động', 'Chỉ có dự án nháp, chưa qua Cổng khởi động.'],
+    ['PENDING', 'Tạm ngưng', 'Không có dự án đang chạy; còn dự án tạm dừng hoặc đã dừng.'],
+    ['NONE', 'Chưa có dự án', 'Hồ sơ mới, chưa tạo dự án.'],
+    ['END', 'Đã kết thúc hợp tác', 'Account xác nhận kết thúc, có lý do; chỉ lưu lịch sử.'],
   ]
   return (
     <Modal title="Quy trình và quy tắc dữ liệu">
@@ -141,13 +195,13 @@ export function CustomerFlowModal() {
         ))}
       </div>
       <section className="customer-status-standard">
-        <b>Chuẩn hóa trạng thái dự án</b>
-        <p>Trạng thái mô tả vòng đời vận hành. Loại dịch vụ được quản lý riêng.</p>
+        <b>Trạng thái khách hàng</b>
+        <p>Tính tự động từ các dự án của khách. Chỉ Đã kết thúc hợp tác do Account ghi nhận.</p>
         {statuses.map(([code, label, text]) => (
           <div className="status-standard-row" key={code}><span>{code}</span><i>→</i><strong>{label}</strong><small>{text}</small></div>
         ))}
       </section>
-      <div className="customer-data-rules"><b>Quy tắc xem dữ liệu</b><p>Account chỉ xem khách hàng và dự án mình phụ trách hoặc tạo. BODs và Administrator xem toàn bộ dữ liệu.</p></div>
+      <div className="customer-data-rules"><b>Quy tắc xem dữ liệu</b><p>Account chỉ xem khách hàng và dự án mình phụ trách hoặc tạo. BODs và Administrator xem toàn bộ dữ liệu. Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay.</p></div>
     </Modal>
   )
 }
@@ -167,8 +221,8 @@ export function PeriodModal() {
     >
       <div className="form">
         <label className="field">Hiển thị theo<select name="mode" defaultValue={period.mode}><option value="month">Tháng</option><option value="year">Năm</option></select></label>
-        <label className="field">Tháng<select name="month" defaultValue={period.month}><option value="09">Tháng 09</option><option value="10">Tháng 10</option></select></label>
-        <label className="field">Năm<select name="year" defaultValue={period.year}><option value="2026">2026</option></select></label>
+        <label className="field">Tháng<select name="month" defaultValue={period.month}>{MONTHS.map((month) => <option key={month} value={month}>Tháng {month}</option>)}</select></label>
+        <label className="field">Năm<select name="year" defaultValue={period.year}>{['2025', '2026'].map((year) => <option key={year}>{year}</option>)}</select></label>
         <FormActions submit="Áp dụng" />
       </div>
     </Modal>

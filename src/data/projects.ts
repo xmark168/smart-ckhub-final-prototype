@@ -1,85 +1,167 @@
-import { ACCOUNTS } from '../lib/format'
-import type { Project, ProjectState, ServicePackage } from '../store/types'
-import { customerRows, extraCustomer } from './customers'
+import { addBusinessDaysIso, addDaysIso, parseInput, periodEndIso, TODAY, toIso } from '../lib/format'
+import type { ContentItem, ContentStage, Cycle, PackageQuota, Project, ProjectState, ServicePackage } from '../store/types'
+import { comTamTaiProject } from './comTamTai'
+import { channelsFor } from './cycles'
+import { customerIdAt, customerRows, extraCustomer } from './customers'
 
-export const DRIVE_FOLDER = 'https://drive.google.com/drive/folders/1OJRi7FLAZu3tRdaozjGYeiZGcz0xw41q'
-export const COM_TAM_TAI_ID = 'project-onboarding-01'
+export { COM_TAM_TAI_ID } from './comTamTai'
 
-/** Customers that can own a project: [name, default Account, area]. */
-export const projectCustomers: Array<[string, string, string]> = [...customerRows, extraCustomer]
+/** Media, Planner/Content names used across the 2026 progress sheet. */
+const MEDIA = ['Hải', 'Hân', 'Bình', 'Phước', 'Anh Thư']
+const PLANNERS = ['Thương', 'Minh', 'Linh']
+const CATEGORIES = ['Chia sẻ', 'Review', 'Thông báo', 'Mini-game']
+
+/** yyyy-mm-dd only if it is not in the future — seeds never record events after TODAY. */
+function past(iso: string): string {
+  return iso && iso <= TODAY ? iso : ''
+}
+
+function monthsBefore(iso: string, months: number): string {
+  const date = parseInput(iso)
+  return toIso(new Date(date.getFullYear(), date.getMonth() - months, date.getDate()))
+}
+
+/** Running cycle with realistic SOP progress relative to TODAY. */
+function workCycle(no: number, start: string, quota: PackageQuota, index: number, risk: boolean, owner: string, media: string): Cycle {
+  const plannedEnd = periodEndIso(start, 1)
+  const changes = index % 7 === 0
+  const sentAt = past(addBusinessDaysIso(start, 3 + (risk ? 2 : 0)))
+  const approvedAt = sentAt && !changes ? past(addDaysIso(sentAt, 1)) : ''
+  const shootingPlanSent = approvedAt && quota.shoots ? past(addDaysIso(approvedAt, 1 + (risk ? 2 : 0))) : ''
+  const shootDate = shootingPlanSent ? addDaysIso(approvedAt, 4) : ''
+  const shootDone = past(shootDate)
+  const demoSent = shootDone ? past(addBusinessDaysIso(shootDone, 1)) : ''
+  const demoApproved = demoSent ? past(addDaysIso(demoSent, 1)) : ''
+  const cadenceStart = quota.shoots ? demoApproved : approvedAt
+
+  const contents: ContentItem[] = []
+  if (quota.plans && sentAt) {
+    const firstPost = cadenceStart ? addDaysIso(cadenceStart, 1) : ''
+    for (let i = 0; i < quota.posts; i++) {
+      const postDate = firstPost ? addDaysIso(firstPost, Math.round(i * 2.4)) : ''
+      const isPast = Boolean(postDate) && postDate <= TODAY
+      // Risky projects leave the last two due posts unpublished.
+      const lagging = risk && isPast && postDate > addDaysIso(TODAY, -6)
+      const stage: ContentStage = isPast && !lagging ? 'Đã đăng' : lagging ? 'Chờ khách duyệt' : postDate && postDate <= addDaysIso(TODAY, 4) ? 'Dựng' : i < 6 ? 'Script' : 'Ý tưởng'
+      contents.push({
+        id: 'content-' + index + '-' + no + '-' + (i + 1),
+        stt: i + 1,
+        bonus: false,
+        postDate,
+        deadlineScript: postDate ? addDaysIso(postDate, -3) : '',
+        deadlineEdit: postDate ? addDaysIso(postDate, -1) : '',
+        mission: i < quota.brandPosts ? 'Thương hiệu' : 'Bán hàng',
+        category: CATEGORIES[i % CATEGORIES.length],
+        topic: i < quota.brandPosts ? 'Thương hiệu' : 'Bán hàng',
+        title: 'Nội dung ' + String(i + 1).padStart(2, '0'),
+        format: i % 4 === 3 ? 'Ảnh' : 'Video',
+        stage,
+        mediaLink: '',
+        channels: channelsFor(stage),
+      })
+    }
+  }
+
+  return {
+    no,
+    start,
+    plannedEnd,
+    actualEnd: '',
+    status: 'running',
+    plan: {
+      status: approvedAt ? 'approved' : changes && sentAt ? 'changes' : sentAt ? 'sent' : 'draft',
+      link: '',
+      sentAt,
+      approvedAt,
+      feedback: changes && sentAt ? 'Cần điều chỉnh ưu tiên nội dung tuần đầu.' : '',
+    },
+    shootingPlan: { sentAt: shootingPlanSent, link: '' },
+    shootings: shootDate
+      ? [{ id: 'shoot-' + index + '-' + no, date: shootDate, time: '09:00–13:00', location: 'Tại quán', media: [media], status: shootDone ? 'Đã hoàn thành' : 'Đã xác nhận', checklist: '' }]
+      : [],
+    demo: { status: demoApproved ? 'Đã duyệt' : demoSent ? 'Đã gửi' : 'Chưa gửi', link: '', sentAt: demoSent, approvedAt: demoApproved },
+    contents,
+    tasks: [
+      { id: 'plan', name: 'Hoàn thiện Content Plan', owner, deadline: addBusinessDaysIso(start, 3).split('-').reverse().join('.'), status: sentAt ? 'Đã hoàn thành' : 'Việc cần làm', type: 'Plan' },
+    ],
+    exceptions: [],
+    activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: start.split('-').reverse().join('.') }],
+  }
+}
+
+function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
+  const plannedEnd = periodEndIso(start, 1)
+  const late = no % 3 === 0
+  return {
+    no,
+    start,
+    plannedEnd,
+    actualEnd: late ? addDaysIso(plannedEnd, 2) : plannedEnd,
+    status: 'closed',
+    result: { published: Math.max(0, quota.posts - (late ? 1 : 0)), planned: quota.posts, note: late ? 'Chốt trễ 2 ngày, bù 1 bài.' : 'Đủ đầu ra.' },
+    plan: { status: 'approved', link: '', sentAt: '', approvedAt: '', feedback: '' },
+    shootingPlan: { sentAt: '', link: '' },
+    shootings: [],
+    demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
+    contents: [],
+    tasks: [],
+    exceptions: [],
+    activity: [],
+  }
+}
 
 export function seedProjects(packages: ServicePackage[]): Project[] {
   const active = packages.filter((item) => item.status === 'Đang áp dụng')
-  const records: Project[] = projectCustomers.map(([customer, , area], index) => {
+  const records: Project[] = [...customerRows, extraCustomer].map(([customer, owner, area], index) => {
     const state: ProjectState = index === 20 ? 'stopped' : index % 13 === 0 ? 'draft' : index % 11 === 0 ? 'pending' : 'active'
     const draft = state === 'draft'
     const risk = state === 'active' && index % 6 === 0
-    const cycle = (index % 6) + 1
-    const total = Math.max(cycle, index % 4 === 0 ? 3 : 6)
+    const current = (index % 6) + 1
+    const total = Math.max(current, index % 4 === 0 ? 3 : 6)
     const service = active[index % active.length]
+    const quota = { ...service.quota }
+    const media = MEDIA[index % MEDIA.length]
+    const plannedEnd = ['2026-09-23', '2026-09-29', '2026-09-30', '2026-10-01'][index % 4]
+    const endDate = parseInput(plannedEnd)
+    const currentStart = toIso(new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate() + 1))
+    const cycles: Cycle[] = []
+    if (!draft) {
+      for (let no = 1; no < current; no++) cycles.push(closedCycle(no, monthsBefore(currentStart, current - no), quota))
+      if (state === 'stopped') cycles.push(closedCycle(current, currentStart, quota))
+      else cycles.push(workCycle(current, currentStart, quota, index, risk, owner, media))
+    }
     return {
       id: 'project-' + (index + 1),
       code: 'DA-2026-' + String(index + 1).padStart(3, '0'),
+      customerId: customerIdAt(index),
       customer,
-      owner: ACCOUNTS[index % ACCOUNTS.length],
-      createdBy: ACCOUNTS[(index + 2) % ACCOUNTS.length],
+      owner,
+      createdBy: owner,
       area,
-      service: service ? service.group + ' · ' + service.name : 'Chưa có dịch vụ áp dụng',
-      servicePackageId: service ? service.id : '',
-      serviceScope: service ? service.scope : '',
-      servicePrice: service ? service.price : 0,
+      service: service.group + ' · ' + service.name,
+      servicePackageId: service.id,
+      serviceScope: service.scope,
+      servicePrice: service.price,
+      quota,
       contractCode: draft ? '' : 'HĐ-2026-' + String(index + 1).padStart(3, '0'),
+      total: draft ? 0 : total,
+      state,
+      risk,
+      pause: state === 'pending' ? { reason: 'Khách tạm ngưng vận hành để sửa quán.', returnDate: '2026-10-15' } : undefined,
+      stop: state === 'stopped' ? { reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.', date: '2026-08-31' } : undefined,
+      cycles,
+      team: { account: owner, planner: quota.plans ? PLANNERS[index % PLANNERS.length] : '', media: quota.shoots ? [media] : [], ads: quota.posts ? 'Team Ads' : '' },
+      links: { folder: '', contentPlan: '', contentPost: '', keyNotes: '' },
+      notes: '',
+      keyNotes: [],
       activities: draft
         ? [{ icon: 'file-plus-2', title: 'Dự án nháp đã tạo', detail: 'Chờ Account bắt đầu triển khai và tạo chu kỳ 1.' }]
         : [
-            { icon: 'calendar-check-2', title: 'Account đã rà soát tiến độ chu kỳ', detail: 'Hôm nay · Chu kỳ ' + cycle + ' / ' + total },
-            { icon: 'package-check', title: 'Gói dịch vụ đã áp dụng', detail: service ? service.group + ' · ' + service.name : 'Chưa có dịch vụ áp dụng' },
-            { icon: 'list-checks', title: 'Đầu ra chu kỳ đang được theo dõi', detail: 'Bài đăng, shooting và công việc theo kế hoạch.' },
+            { icon: 'calendar-check-2', title: 'Account đã rà soát tiến độ chu kỳ', detail: 'Chu kỳ ' + current + ' / ' + total },
+            { icon: 'package-check', title: 'Gói dịch vụ đã áp dụng', detail: service.group + ' · ' + service.name },
           ],
-      state,
-      risk,
-      cycle: draft ? 0 : cycle,
-      total: draft ? 0 : total,
-      progress: draft ? 0 : Math.min(92, 24 + ((index * 9) % 69)),
-      due: draft ? '' : ['23.09.2026', '29.09.2026', '30.09.2026', '01.10.2026'][index % 4],
-      posts: draft ? 0 : index % 3 === 0 ? 8 : 12,
-      shooting: draft ? 0 : index % 4 === 0 ? 2 : 1,
-      tasks: draft ? 0 : risk ? 3 : (index % 4) + 1,
     }
   })
-
-  // Dự án mẫu làm kỹ nhất: chu kỳ 5/6, HĐ 3 đợt thanh toán.
-  records.unshift({
-    id: COM_TAM_TAI_ID,
-    code: 'DA-2026-056',
-    customer: 'Cơm Tấm Tài',
-    owner: 'Hiền',
-    createdBy: 'Hiền',
-    area: 'HCM',
-    service: 'Social Content · Duy trì tháng',
-    servicePackageId: active[0]?.id ?? '',
-    serviceScope: '12 content/tháng · 1 buổi shooting 4 giờ · Kế hoạch nội dung · Báo cáo tháng · Ads là hạng mục tùy chọn.',
-    servicePrice: 8000000,
-    contractCode: 'HĐ-2026-056',
-    state: 'active',
-    risk: false,
-    cycle: 5,
-    total: 6,
-    progress: 68,
-    cycleStart: '2026-09-13',
-    due: '12.10.2026',
-    posts: 12,
-    shooting: 1,
-    tasks: 3,
-    activities: [
-      { icon: 'file-plus-2', title: 'Đã tạo hợp đồng HĐ-2026-056', detail: '13.05.2026 · 6 chu kỳ · 3 đợt thanh toán.' },
-      { icon: 'badge-check', title: 'Kế toán đã xác nhận đợt thanh toán 1', detail: 'UNC-0526-013 · 3.200.000đ · 13.05.2026.' },
-      { icon: 'list-checks', title: 'Đã chốt Content Plan tháng 9', detail: '12 nội dung · 9 thương hiệu · 3 bán hàng.' },
-      { icon: 'camera', title: 'Đã quay shooting tháng 9', detail: '1 buổi · 4 giờ · 06.09.2026.' },
-      { icon: 'calendar-check-2', title: 'Đã lên lịch xuất bản', detail: 'Facebook và TikTok theo Content Plan.' },
-      { icon: 'send', title: 'Đã đăng 8 nội dung', detail: 'Còn 4 nội dung theo lịch xuất bản.' },
-      { icon: 'calendar-clock', title: 'Đã điều chỉnh chu kỳ 5', detail: 'Bù 1 nội dung sang tuần 4 để giữ mốc 12.10.2026.' },
-    ],
-  })
+  records.unshift(comTamTaiProject())
   return records
 }

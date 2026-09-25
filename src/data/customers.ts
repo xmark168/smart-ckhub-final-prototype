@@ -21,52 +21,24 @@ export const customerRows: Array<[string, string, string]> = [
 /** Khách mới ghi nhận riêng, dùng chung cho danh sách dự án. */
 export const extraCustomer: [string, string, string] = ['Ẩm Thực Phước Quắn', 'Hải', 'HCM']
 
-function seedActivities(owner: string, index: number): Activity[] {
-  const code = 'DA-2026-' + String(index + 1).padStart(3, '0')
-  const shooting = index % 3 === 0
-  return [
-    { title: 'Account đã rà soát tiến độ chu kỳ', time: 'Hôm nay', detail: 'Chu kỳ 4 · ' + owner, icon: 'clock-3' },
-    {
-      title: shooting ? 'Lịch shooting đã xác nhận' : 'Content Plan đã cập nhật',
-      time: 'Hôm qua',
-      detail: shooting ? '25.09.2026 · Chu kỳ tháng 09' : code + ' · Chu kỳ tháng 09',
-      icon: shooting ? 'calendar-clock' : 'file-check-2',
-    },
-    { title: 'Đã cập nhật kế hoạch triển khai', time: '19.09.2026', detail: code + ' · Theo dõi tiến độ và công việc', icon: 'list-checks' },
-  ]
+function seedActivities(owner: string): Activity[] {
+  return [{ title: 'Đã tạo hồ sơ khách hàng', time: '01.01.2026', detail: 'Account phụ trách: ' + owner, icon: 'users-round' }]
+}
+
+export function customerIdAt(index: number): string {
+  return index < customerRows.length ? 'customer-' + index : 'customer-phuoc-quan'
 }
 
 export function seedCustomers(): Customer[] {
-  const records: Customer[] = customerRows.map(([name, owner, area], index) => {
-    const stopped = name === 'Dìn Ký'
-    return {
-      id: 'customer-' + index,
-      name,
-      owner,
-      area,
-      projectCode: 'DA-2026-' + String(index + 1).padStart(3, '0'),
-      state: stopped ? 'stopped' : 'active',
-      attention: !stopped && index < 12,
-      newCustomer: index === 3 || index === 54,
-      cycle: index < 12 ? '30.09.2026' : 'Chưa cập nhật',
-      service: index % 2 ? 'Social Content' : 'Content duy trì',
-      contact: index % 3 ? 'Đủ đầu mối' : 'Thiếu đầu mối chính',
-      activities: seedActivities(owner, index),
-    }
-  })
-  records.push({
-    id: 'customer-phuoc-quan',
-    name: extraCustomer[0],
-    owner: extraCustomer[1],
-    area: extraCustomer[2],
-    projectCode: 'DA-2026-056',
-    state: 'active',
+  return [...customerRows, extraCustomer].map(([name, owner, area], index) => ({
+    id: customerIdAt(index),
+    name,
+    owner,
+    area,
+    // Mê Thái, Gà Ta Thảo Vân and Phước Quắn joined this month; the rest are 2026 carry-overs.
+    createdAt: index === 3 || index === 54 || index === 55 ? '2026-09-10' : '2026-01-01',
     attention: false,
-    newCustomer: false,
-    cycle: '30.09.2026',
-    service: 'Content duy trì',
-    contact: 'Đủ đầu mối',
-    activities: seedActivities('Hải', 55),
-  })
-  return records
+    ended: name === 'Dìn Ký' ? { date: '2026-08-31', reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.' } : undefined,
+    activities: seedActivities(owner),
+  }))
 }

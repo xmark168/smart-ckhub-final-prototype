@@ -1,0 +1,38 @@
+import type { SopParams } from '../store/types'
+
+/** Values from "SOP Timeline Triển Khai & Phân Công Nhiệm Vụ". */
+export const DEFAULT_PARAMS: SopParams = {
+  cycleMonths: 1,
+  planLeadBusinessDays: 3,
+  shootingPlanAfterApprovalDays: 1,
+  postDemoAfterShootBusinessDays: 1,
+  postsPerWeekMin: 2,
+  postsPerWeekMax: 3,
+  scriptBatchSize: 6,
+  scriptLeadDays: 2,
+  editLeadDays: 1,
+  cycleEndWarningDays: 7,
+  requireBriefBeforeT0: true,
+}
+
+interface ParamMeta {
+  key: keyof SopParams
+  label: string
+  help: string
+  unit?: string
+  min?: number
+}
+
+/** Labels and SOP wording for the Tham số vận hành page. */
+export const PARAM_META: ParamMeta[] = [
+  { key: 'cycleMonths', label: 'Độ dài chu kỳ', unit: 'tháng', min: 1, help: 'Chu kỳ dịch vụ tính từ ngày bắt đầu, kết thúc trước ngày tương ứng của tháng sau.' },
+  { key: 'planLeadBusinessDays', label: 'Gửi Content Plan sau T0', unit: 'ngày làm việc', min: 0, help: 'T0 là ngày khởi động: khách đã cọc và đủ brief. SOP: T0 + 3 ngày làm việc.' },
+  { key: 'shootingPlanAfterApprovalDays', label: 'Gửi Shooting Plan sau khi khách duyệt Plan', unit: 'ngày', min: 0, help: 'SOP: khách duyệt Plan + 1 ngày. Thực tế hay bị dời sát ngày quay do Media quá tải.' },
+  { key: 'postDemoAfterShootBusinessDays', label: 'Gửi Post Demo sau buổi shoot', unit: 'ngày làm việc', min: 0, help: 'Bài đầu tiên để thống nhất mood & tone, hình ảnh và format dựng.' },
+  { key: 'postsPerWeekMin', label: 'Nhịp đăng tối thiểu', unit: 'bài/tuần', min: 0, help: 'Sau khi duyệt Post Demo, phân phối đều 2–3 bài/tuần cho gói 12 nội dung/tháng.' },
+  { key: 'postsPerWeekMax', label: 'Nhịp đăng tối đa', unit: 'bài/tuần', min: 0, help: 'Dùng để cảnh báo dồn bài vào cuối chu kỳ.' },
+  { key: 'scriptBatchSize', label: 'Script gối đầu mỗi lô', unit: 'bài', min: 1, help: 'SOP: sản xuất gối đầu 6/12 script trong một lần.' },
+  { key: 'scriptLeadDays', label: 'Gửi script trước deadline dựng', unit: 'ngày', min: 0, help: 'Để Media chủ động sản xuất. SOP: tối thiểu 2 ngày.' },
+  { key: 'editLeadDays', label: 'Dựng xong trước ngày đăng', unit: 'ngày', min: 0, help: 'Dùng để gợi ý deadline edit khi chỉ có ngày đăng.' },
+  { key: 'cycleEndWarningDays', label: 'Nhắc chốt chu kỳ trước', unit: 'ngày', min: 0, help: 'Hiện cảnh báo khi còn ít ngày đến hạn kết thúc chu kỳ.' },
+]

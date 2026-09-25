@@ -12,15 +12,13 @@ export interface Customer {
   name: string
   owner: string
   area: string
-  projectCode: string
-  state: 'active' | 'stopped'
-  attention: boolean
-  newCustomer: boolean
-  /** Planned end of the current cycle, or "Chưa cập nhật". */
-  cycle: string
-  service: string
-  contact: string
+  /** yyyy-mm-dd — used for "khách mới trong kỳ". */
+  createdAt: string
   createdBy?: string
+  /** Manual watch flag; project delays also make a customer "cần chú ý". */
+  attention: boolean
+  /** Set when the cooperation is ended; only allowed once no project is running. */
+  ended?: { date: string; reason: string }
   activities: Activity[]
 }
 
@@ -38,30 +36,132 @@ export interface Onboarding {
   setupNote: string
 }
 
+/** Operating parameters from the SOP; editable by Administrator. */
+export interface SopParams {
+  cycleMonths: number
+  planLeadBusinessDays: number
+  shootingPlanAfterApprovalDays: number
+  postDemoAfterShootBusinessDays: number
+  postsPerWeekMin: number
+  postsPerWeekMax: number
+  scriptBatchSize: number
+  scriptLeadDays: number
+  editLeadDays: number
+  cycleEndWarningDays: number
+  requireBriefBeforeT0: boolean
+}
+
+/** Deliverables per monthly cycle, snapshotted from the service package. */
+export interface PackageQuota {
+  posts: number
+  shoots: number
+  plans: number
+  brandPosts: number
+  salesPosts: number
+}
+
 export type PlanStatus = 'draft' | 'sent' | 'changes' | 'approved'
 
 export interface CycleTask {
   id: string
   name: string
   owner: string
+  /** dd.mm.yyyy */
   deadline: string
   status: string
   type: string
 }
 
-export interface CycleData {
-  plan: { status: PlanStatus; version: number; link: string; sentAt: string; approvedAt: string; feedback: string }
+export type ContentStage = 'Ý tưởng' | 'Script' | 'Dựng' | 'Chờ khách duyệt' | 'Lên lịch' | 'Đã đăng'
+export type Platform = 'Facebook' | 'TikTok'
+
+export interface ContentChannel {
+  platform: Platform
+  status: 'Chưa lên lịch' | 'Đã lên lịch' | 'Đã đăng'
+  /** HH:MM */
+  time: string
+  link: string
+}
+
+/** One row of the Content Plan sheet. Dates are yyyy-mm-dd or ''. */
+export interface ContentItem {
+  id: string
+  stt: number
+  /** Bài tặng thêm, không tính vào định mức. */
+  bonus: boolean
+  /** Carried over from the previous cycle when it was closed short. */
+  carried?: boolean
+  postDate: string
+  deadlineScript: string
+  deadlineEdit: string
+  mission: 'Thương hiệu' | 'Bán hàng'
+  category: string
+  topic: string
+  title: string
+  format: 'Video' | 'Ảnh' | 'Album'
+  stage: ContentStage
+  mediaLink: string
+  channels: ContentChannel[]
+}
+
+export interface Shooting {
+  id: string
+  /** yyyy-mm-dd */
+  date: string
+  time: string
+  location: string
+  media: string[]
+  status: 'Chờ xác nhận' | 'Đã xác nhận' | 'Đã hoàn thành'
+  checklist: string
+}
+
+/** One monthly service cycle. All dates are yyyy-mm-dd or ''. */
+export interface Cycle {
+  no: number
+  start: string
+  plannedEnd: string
+  actualEnd: string
+  status: 'running' | 'closed'
+  /** Filled when the cycle is closed; history rows read it instead of the content list. */
+  result?: { published: number; planned: number; note: string }
+  plan: { status: PlanStatus; link: string; sentAt: string; approvedAt: string; feedback: string }
+  shootingPlan: { sentAt: string; link: string }
+  shootings: Shooting[]
+  demo: { status: 'Chưa gửi' | 'Đã gửi' | 'Cần chỉnh sửa' | 'Đã duyệt'; link: string; sentAt: string; approvedAt: string }
+  contents: ContentItem[]
   tasks: CycleTask[]
-  shootings: Array<{ date: string; media: string; status: string; assets: string }>
-  demo: { status: string; link: string; sentAt: string; approvedAt: string }
-  posts: { planned: number; actual: number }
-  exceptions: Array<{ type: string; reason: string }>
+  exceptions: Array<{ id: string; type: string; reason: string; resolved: boolean }>
   activity: Array<{ title: string; detail: string; time: string }>
+}
+
+export interface ProjectTeam {
+  account: string
+  planner: string
+  media: string[]
+  ads: string
+}
+
+export interface ProjectLinks {
+  folder: string
+  contentPlan: string
+  contentPost: string
+  keyNotes: string
+}
+
+export interface KeyNote {
+  id: string
+  /** yyyy-mm-dd */
+  date: string
+  author: string
+  type: 'Từ khách' | 'Từ Account' | 'Shooting recap'
+  content: string
 }
 
 export interface Project {
   id: string
   code: string
+  customerId: string
+  /** Customer name, denormalised for lists and search. */
   customer: string
   owner: string
   createdBy: string
@@ -70,24 +170,21 @@ export interface Project {
   servicePackageId: string
   serviceScope: string
   servicePrice: number
+  quota: PackageQuota
   contractCode: string
+  /** Number of cycles in the primary contract. */
+  total: number
   state: ProjectState
   risk: boolean
-  cycle: number
-  total: number
-  progress: number
-  /** yyyy-mm-dd, set when the current cycle has an explicit start. */
-  cycleStart?: string
-  /** Planned end of the current cycle, dd.mm.yyyy. */
-  due: string
-  actualEnd?: string
-  actualEndNote?: string
-  posts: number
-  shooting: number
-  tasks: number
+  pause?: { reason: string; returnDate: string }
+  stop?: { reason: string; date: string }
+  cycles: Cycle[]
+  team: ProjectTeam
+  links: ProjectLinks
+  notes: string
+  keyNotes: KeyNote[]
   activities: Activity[]
   onboarding?: Onboarding
-  cycleData?: CycleData | null
 }
 
 export interface Payment {
@@ -148,17 +245,15 @@ export interface ServicePackage {
   maxPrice?: number
   status: 'Đang áp dụng' | 'Ngừng áp dụng'
   scope: string
+  quota: PackageQuota
 }
 
-/** [code, title, group, channels, date, status] */
-export type ContentRow = [string, string, string, string, string, string]
 /** [code, title, project, time, partner, input, status] */
 export type ShootingRow = [string, string, string, string, string, string, string]
 /** [code, title, project, owner, deadline, output, status] */
 export type TaskRow = [string, string, string, string, string, string, string]
 
 export interface Operations {
-  contents: ContentRow[]
   shootings: ShootingRow[]
   tasks: TaskRow[]
 }
@@ -185,4 +280,5 @@ export interface AppData {
   operations: Operations
   profile: Profile
   period: Period
+  params: SopParams
 }

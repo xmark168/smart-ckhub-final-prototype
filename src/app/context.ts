@@ -4,7 +4,7 @@ import type { Role } from '../store/types'
 export type ScreenId =
   | 'overview' | 'customers' | 'customerDetail' | 'projects' | 'projectDetail' | 'cycleWorkspace' | 'contracts'
   | 'posts' | 'shootings' | 'tasks' | 'partners' | 'partnerWork' | 'partnerProject' | 'partnerSchedule'
-  | 'reviews' | 'poc' | 'services' | 'docs' | 'access' | 'profile' | 'settings'
+  | 'reviews' | 'poc' | 'services' | 'parameters' | 'docs' | 'access' | 'profile' | 'settings'
 
 export const ROLES: Record<Role, { initial: string; label: string; note: string; home: ScreenId }> = {
   account: { initial: 'AC', label: 'Account', note: 'Điều phối dự án, timeline và Partner.', home: 'overview' },
@@ -13,9 +13,15 @@ export const ROLES: Record<Role, { initial: string; label: string; note: string;
   bods: { initial: 'BD', label: 'BODs', note: 'Theo dõi chỉ số, rủi ro và phê duyệt.', home: 'reviews' },
 }
 
+/** Tabs of the project detail page, as they appear in `?tab=`. */
+export type ProjectTab = 'tong-quan' | 'chu-ky' | 'noi-dung' | 'hop-dong' | 'tai-lieu' | 'nhat-ky'
+
 export interface AppContextValue {
   role: Role
   setRole: (role: Role) => void
+  /** Account the mock session is signed in as; limits customers and projects for the Account role. */
+  account: string
+  setAccount: (account: string) => void
   /** Current page, or null when the URL matches no page. */
   screen: ScreenId | null
   /** Open a page. List pages come back on the page/filters last used; detail pages keep the current record. */
@@ -23,8 +29,7 @@ export interface AppContextValue {
   customerId: string
   openCustomer: (id: string) => void
   projectId: string
-  openProject: (id: string) => void
-  openCycle: (id: string) => void
+  openProject: (id: string, tab?: ProjectTab) => void
   toast: (text: string) => void
   /** Show a modal; it replaces any modal already open. */
   showModal: (node: ReactNode) => void

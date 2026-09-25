@@ -1,27 +1,27 @@
 import { useApp } from '../../app/context'
-import { initials } from '../../lib/format'
+import { paymentMetrics } from '../../data/contracts'
+import { formatDate, initials, money, parseInput } from '../../lib/format'
 import { Icon } from '../../lib/icons'
+import { currentCycle, projectHealth } from '../../lib/sop'
 import { update, useData } from '../../store/store'
 import { Modal } from '../../ui/Modal'
-import { AccountSummaryModal, EditCustomerModal, StopCustomerProjectModal } from './CustomerModals'
-import { addCustomerActivity, canStopCustomerProject } from './customerLogic'
-
-/** Contract progress is not tracked per customer yet; the original showed this sample value. */
-const SAMPLE_CONTRACT_PROGRESS = '4 / 6'
+import { cycleCounter, postProgress, projectLabel, projectTone } from '../projects/projectLogic'
+import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './CustomerModals'
+import { addCustomerActivity, attentionReasons, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, periodLabel } from './customerLogic'
 
 function ActivityInfoModal() {
   const { closeModal } = useApp()
   return (
     <Modal title="Hoạt động khách hàng">
-      <div className="customer-data-rules"><b>Nhật ký hoạt động</b><p>Hệ thống lưu thay đổi Account, đầu mối, trạng thái, tiến độ chu kỳ và thao tác vận hành.</p></div>
+      <div className="customer-data-rules"><b>Nhật ký hoạt động</b><p>Lưu thay đổi Account, trạng thái hợp tác và cờ theo dõi. Thao tác trên dự án xem ở Nhật ký của từng dự án.</p></div>
       <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div>
     </Modal>
   )
 }
 
 export function CustomerDetailScreen() {
-  const { customerId, go, role, toast, showModal } = useApp()
-  const { customers, period } = useData()
+  const { customerId, go, role, account, toast, showModal, openProject } = useApp()
+  const { customers, projects, contracts, params, period } = useData()
   const item = customers.find((customer) => customer.id === customerId)
   if (!item) {
     return (
@@ -34,8 +34,14 @@ export function CustomerDetailScreen() {
     )
   }
 
-  const active = item.state === 'active'
-  const periodText = period.mode === 'year' ? 'Năm ' + period.year : 'Tháng ' + period.month + ' / ' + period.year
+  const status = customerStatus(item, projects)
+  const own = customerProjects(item, projects)
+  const reasons = attentionReasons(item, projects, contracts, params)
+  const canManage = canManageCustomer(role, account, item)
+  const ownContracts = contracts.filter((row) => own.some((project) => project.id === row.projectId) && row.status !== 'Đã hủy')
+  const debt = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).remaining, 0)
+  const overdue = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
+  const activeCount = own.filter((project) => project.state === 'active').length
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
 
   const toggleAttention = () =>
@@ -51,20 +57,14 @@ export function CustomerDetailScreen() {
       )
     })
 
-  const changeState = () => {
-    if (active) {
-      if (!canStopCustomerProject(role, item)) {
-        toast('Chỉ Account phụ trách hoặc Account tạo dự án được phép dừng.')
-        return
-      }
-      showModal(<StopCustomerProjectModal customer={item} />)
-      return
-    }
+  const changeCooperation = () => {
+    if (!canManage) return toast('Chỉ Account phụ trách hoặc Account tạo khách hàng được thao tác.')
+    if (status !== 'ended') return showModal(<EndCooperationModal customer={item} />)
     update((draft) => {
       const target = draft.customers.find((customer) => customer.id === item.id)
       if (!target) return
-      target.state = 'active'
-      addCustomerActivity(target, 'Đã mở lại dự án', 'Dự án tiếp tục triển khai', 'rotate-ccw')
+      target.ended = undefined
+      addCustomerActivity(target, 'Đã mở lại hợp tác', 'Tạo dự án mới để tiếp tục triển khai', 'rotate-ccw')
     })
   }
 
@@ -76,9 +76,9 @@ export function CustomerDetailScreen() {
           <div>
             <div className="customer-title-line">
               <h1>{item.name}</h1>
-              <span className={'pill ' + (active ? 'ok' : 'muted')}>{active ? 'Đang hợp tác' : 'Đã dừng'}</span>
+              <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
             </div>
-            <p><span>{item.area}</span></p>
+            <p><span>{item.area} · khách từ {formatDate(parseInput(item.createdAt))}</span></p>
           </div>
           <div className="customer-detail-actions">
             <button className="secondary" onClick={() => showModal(<EditCustomerModal customer={item} />)}><Icon name="pencil" /> Sửa khách hàng</button>
@@ -89,42 +89,45 @@ export function CustomerDetailScreen() {
       <section className="customer-overview">
         <div className="customer-overview-main">
           <span>Tình hình khách hàng</span>
-          <strong>{item.attention ? 'Cần theo dõi' : 'Ổn định'}</strong>
-          <p>{item.attention ? 'Có hạng mục cần Account rà soát trong kỳ này.' : 'Không có rủi ro đang mở trong kỳ này.'}</p>
+          <strong>{item.ended ? 'Đã kết thúc hợp tác' : reasons.length ? 'Cần theo dõi' : 'Ổn định'}</strong>
+          <p>{item.ended ? formatDate(parseInput(item.ended.date)) + ' · ' + item.ended.reason : reasons.length ? reasons.slice(0, 2).join(' · ') + (reasons.length > 2 ? ' · +' + (reasons.length - 2) : '') : 'Không có mốc trễ, công nợ quá hạn hay cờ đang mở.'}</p>
           <div>
-            <Icon name="calendar-days" /> Kỳ hiện tại: {periodText} <Icon name="user-round" /> Account: <button onClick={openAccount}>{item.owner}</button>
+            <Icon name="calendar-days" /> Kỳ xem: {periodLabel(period)} <Icon name="user-round" /> Account: <button onClick={openAccount}>{item.owner}</button>
           </div>
         </div>
-        <div className="customer-overview-stat"><span>Tiến độ hợp đồng</span><strong>{SAMPLE_CONTRACT_PROGRESS}</strong><small>chu kỳ đã triển khai</small></div>
-        <div className="customer-overview-stat"><span>Chu kỳ hiện tại</span><strong>{item.cycle}</strong><small>mốc theo dõi</small></div>
+        <div className="customer-overview-stat"><span>Dự án</span><strong>{activeCount} / {own.length}</strong><small>đang triển khai / tổng</small></div>
+        <div className="customer-overview-stat"><span>Công nợ còn lại</span><strong>{money(debt)}</strong><small>{overdue ? 'quá hạn ' + money(overdue) : 'không có khoản quá hạn'}</small></div>
       </section>
 
       <div className="customer-detail-layout">
         <main>
           <section className="panel customer-project-panel">
             <div className="panel-head">
-              <div><h2>Dự án đang triển khai</h2><p className="subline">Một dự án điều phối theo chu kỳ hợp đồng.</p></div>
-              <span className={'pill ' + (active ? 'ok' : 'muted')}>{active ? 'Đang triển khai' : 'Đã dừng'}</span>
+              <div><h2>Dự án</h2><p className="subline">Tiến độ tính từ chu kỳ và bài đã đăng của từng dự án.</p></div>
+              <button className="text-btn" onClick={() => go('projects')}>Tạo dự án</button>
             </div>
-            <div className="customer-project-row">
-              <Icon name="folder-kanban" className="project-symbol" />
-              <div>
-                <b>{item.projectCode} · Triển khai nội dung</b>
-                <p>{item.service} · Account {item.owner}</p>
-                <div className="customer-progress"><i style={{ width: (item.attention ? 58 : 72) + '%' }} /></div>
-                <small>{SAMPLE_CONTRACT_PROGRESS} chu kỳ · {item.attention ? 'Cần bù tiến độ kỳ này' : 'Đang theo kế hoạch'}</small>
-              </div>
-              <button className="text-btn" onClick={() => go('projects')}>Xem chi tiết</button>
-            </div>
-            <div className="customer-delivery-grid">
-              <div><span>Bài đăng</span><b>12</b><small>kế hoạch trong kỳ</small></div>
-              <div><span>Shooting</span><b>01</b><small>lịch trong kỳ</small></div>
-              <div><span>Công việc mở</span><b>{item.attention ? '03' : '01'}</b><small>{item.attention ? 'cần xử lý' : 'đúng hạn'}</small></div>
-            </div>
+            {own.map((project) => {
+              const posts = postProgress(project)
+              const health = projectHealth(project, params)
+              const cycle = currentCycle(project)
+              return (
+                <div className="customer-project-row" key={project.id}>
+                  <Icon name="folder-kanban" className="project-symbol" />
+                  <div>
+                    <b>{project.code} · {project.service} <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></b>
+                    <p>Account {project.owner} · Chu kỳ {cycleCounter(project)}{cycle ? ' · ' + formatDate(parseInput(cycle.start)) + ' – ' + formatDate(parseInput(cycle.plannedEnd)) : ''}</p>
+                    {posts && <div className="customer-progress"><i style={{ width: Math.min(100, posts.percent) + '%' }} /></div>}
+                    <small>{posts ? posts.published + ' / ' + posts.planned + ' bài · ' : ''}<span className={'pill ' + health.tone}>{health.label}</span> {health.reason}</small>
+                  </div>
+                  <button className="text-btn" onClick={() => openProject(project.id)}>Xem chi tiết</button>
+                </div>
+              )
+            })}
+            {!own.length && <p className="empty-copy">Chưa có dự án. Tạo dự án nháp tại trang Dự án.</p>}
           </section>
 
           <section className="panel">
-            <div className="panel-head"><h2>Hoạt động gần đây</h2><button className="text-btn" onClick={() => showModal(<ActivityInfoModal />)}>Xem toàn bộ</button></div>
+            <div className="panel-head"><h2>Hoạt động gần đây</h2><button className="text-btn" onClick={() => showModal(<ActivityInfoModal />)}>Quy tắc</button></div>
             <div className="customer-activity">
               {item.activities.length
                 ? item.activities.map((entry, index) => (
@@ -140,24 +143,26 @@ export function CustomerDetailScreen() {
             <div className="panel-head"><h2>Account phụ trách</h2></div>
             <button className="customer-account-card" onClick={openAccount}>
               <i>{initials(item.owner)}</i>
-              <span><b>{item.owner}</b><small>Điều phối timeline và nguồn lực</small></span>
+              <span><b>{item.owner}</b><small>{item.createdBy && item.createdBy !== item.owner ? 'Tạo bởi ' + item.createdBy : 'Điều phối timeline và nguồn lực'}</small></span>
               <Icon name="chevron-right" />
             </button>
           </section>
           <section className="panel customer-control-panel">
-            <div className="panel-head"><h2>Kiểm soát vận hành</h2></div>
-            <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention}>
-              <Icon name="flag" />
+            <div className="panel-head"><h2>Kiểm soát hợp tác</h2></div>
+            {status !== 'ended' && (
+              <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention}>
+                <Icon name="flag" />
+                <span>
+                  <b>{item.attention ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
+                  <small>{item.attention ? 'Gỡ khi đã xử lý xong' : 'Cờ tay; dự án trễ và công nợ quá hạn tự tính'}</small>
+                </span>
+              </button>
+            )}
+            <button className="customer-control" onClick={changeCooperation}>
+              <Icon name={status === 'ended' ? 'rotate-ccw' : 'circle-stop'} />
               <span>
-                <b>{item.attention ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
-                <small>{item.attention ? 'Account cần theo dõi trong kỳ này' : 'Tạo điểm theo dõi cho Account'}</small>
-              </span>
-            </button>
-            <button className="customer-control" onClick={changeState}>
-              <Icon name={active ? 'circle-pause' : 'rotate-ccw'} />
-              <span>
-                <b>{active ? 'Dừng dự án' : 'Mở lại dự án'}</b>
-                <small>{active ? 'Yêu cầu lý do và xác nhận' : 'Tiếp tục triển khai theo tiến độ đã có'}</small>
+                <b>{status === 'ended' ? 'Mở lại hợp tác' : 'Kết thúc hợp tác'}</b>
+                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : 'Khi mọi dự án đã dừng và hợp đồng đã đóng. Dừng dự án thực hiện tại trang dự án.'}</small>
               </span>
             </button>
           </section>

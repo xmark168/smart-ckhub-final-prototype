@@ -1,14 +1,10 @@
 import { useEffect } from 'react'
-import { navigate, useLocation, type Route } from '../app/router'
+import { navigate, useLocation, withQuery, type Route } from '../app/router'
 import { pageSlice } from './format'
 
 /** Same URL with `?page=` set to `page` (page 1 drops the parameter). */
 function withPage(route: Route, page: number): string {
-  const query = new URLSearchParams(route.query)
-  if (page > 1) query.set('page', String(page))
-  else query.delete('page')
-  const search = query.toString()
-  return route.key.split('?')[0] + (search ? '?' + search : '')
+  return withQuery(route, { page: page > 1 ? page : undefined })
 }
 
 /**

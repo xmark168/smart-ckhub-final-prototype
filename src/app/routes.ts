@@ -36,6 +36,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   poc: { title: 'Quản trị hệ thống', access: ['admin'], nav: { label: 'Quản trị hệ thống', icon: 'settings', roles: ['admin'] } },
   docs: { title: 'Tài liệu thiết kế', access: ['admin'], nav: { label: 'Tài liệu', icon: 'notebook-tabs', roles: ['admin'] } },
   services: { title: 'Quản lý gói dịch vụ', access: ['admin'], nav: { label: 'Quản lý gói dịch vụ', icon: 'package', roles: ['admin'] } },
+  parameters: { title: 'Tham số vận hành', access: ['admin', 'bods', 'account'], nav: { label: 'Tham số vận hành', icon: 'settings-2', roles: ['admin'] } },
   access: { title: 'Phân quyền', access: ['admin'], nav: { label: 'Phân quyền', icon: 'shield-check', roles: ['admin'] } },
   profile: { title: 'Hồ sơ cá nhân', access: ALL, nav: { label: 'Hồ sơ', icon: 'circle-user-round', roles: ALL } },
   settings: { title: 'Cài đặt', access: ALL, nav: { label: 'Cài đặt', icon: 'settings', roles: ALL } },
