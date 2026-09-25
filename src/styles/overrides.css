@@ -271,3 +271,5 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 #customers .customer-table td:nth-child(5) { min-width: 180px; }
 .reason-popover { min-width: 200px; }
 .reason-popover { box-sizing: border-box; max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+#customerDetail .customer-detail-layout .detail-main > section + section { margin-top: 14px; }
+#customerDetail .customer-detail-layout .detail-main { min-width: 0; }
