@@ -108,3 +108,7 @@ body:has(.modal-backdrop.show) { overflow: hidden; }
 .kpi-delta.negative { color: #fca5a5; }
 .kpi-delta:hover, .kpi-delta.on { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.5); }
 .kpi-link { color: rgb(159, 69, 32); font-weight: 800; text-decoration: underline; cursor: pointer; }
+.kpi-filter-bar { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid rgb(238, 229, 221); background: rgb(255, 248, 243); color: var(--muted); font-size: 12px; }
+.kpi-filter-bar b { color: var(--ink); }
+.kpi-filter-bar button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer; }
+.kpi-filter-bar button:hover { color: var(--orange2); border-color: var(--orange); }

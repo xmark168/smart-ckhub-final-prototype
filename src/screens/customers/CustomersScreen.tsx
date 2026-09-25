@@ -74,6 +74,8 @@ export function CustomersScreen() {
     setFilters((current) => ({ ...current, ...patch }))
     resetPage()
   }
+  /** KPI cards and chips are toggles: clicking the active one returns to all current customers. */
+  const toggleKpi = (kpi: Kpi) => change({ kpi: filters.kpi === kpi ? 'working' : kpi })
   const all: Row[] = customers
     .filter((item) => inScope(role, account, item))
     .map((item) => ({ item, status: customerStatus(item, projects), projects: customerProjects(item, projects), reasons: attentionReasons(item, projects, contracts, params) }))
@@ -116,20 +118,20 @@ export function CustomersScreen() {
           onClick={() => change({ kpi: 'working' })}
           onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && change({ kpi: 'working' })}
         >
-          <label>Khách hiện hữu</label>
+          <label>Khách hiện hữu · hôm nay</label>
           <strong>{working.length}</strong>
           <small className="kpi-deltas">
             {working.filter((row) => row.status === 'active').length} đang hợp tác ·{' '}
-            <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} title="Lọc khách mới trong kỳ" onClick={(event) => { event.stopPropagation(); change({ kpi: 'new' }) }}>+{fresh} mới</button>{' '}
-            <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} title="Lọc khách kết thúc trong kỳ" onClick={(event) => { event.stopPropagation(); change({ kpi: 'endedPeriod' }) }}>−{endedNow} kết thúc</button>{' '}
+            <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} title="Lọc khách mới trong kỳ" onClick={(event) => { event.stopPropagation(); toggleKpi('new') }}>+{fresh} mới</button>{' '}
+            <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} title="Lọc khách kết thúc trong kỳ" onClick={(event) => { event.stopPropagation(); toggleKpi('endedPeriod') }}>−{endedNow} kết thúc</button>{' '}
             {periodLabel(period)}
           </small>
         </div>
-        <button className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')} onClick={() => change({ kpi: 'endedPeriod' })}>
+        <button className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')} onClick={() => toggleKpi('endedPeriod')}>
           <label>Kết thúc hợp tác {periodLabel(period)}</label><strong>{endedNow}</strong>
-          <small>Tổng từ trước đến nay: <span className="kpi-link" role="link" onClick={(event) => { event.stopPropagation(); change({ kpi: 'ended' }) }}>{ended.length} khách</span></small>
+          <small>Tổng từ trước đến nay: <span className="kpi-link" role="link" onClick={(event) => { event.stopPropagation(); toggleKpi('ended') }}>{ended.length} khách</span></small>
         </button>
-        <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} onClick={() => change({ kpi: 'attention' })}>
+        <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} onClick={() => toggleKpi('attention')}>
           <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>{attentionText}</small>
         </button>
       </section>
@@ -173,6 +175,12 @@ export function CustomersScreen() {
           </div>
         </div>
 
+        {filters.kpi !== 'working' && (
+          <div className="kpi-filter-bar">
+            Đang lọc: <b>{kpiLabel}</b>
+            <button type="button" aria-label="Bỏ lọc" onClick={() => toggleKpi(filters.kpi)}>×</button>
+          </div>
+        )}
         <div className="customer-table-wrap">
           <table className="customer-table">
             <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th>Dự án</th><th>Trạng thái</th><th /></tr></thead>
