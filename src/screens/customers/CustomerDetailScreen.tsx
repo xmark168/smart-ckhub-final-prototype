@@ -5,12 +5,12 @@ import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { currentCycle, projectHealth } from '../../lib/sop'
 import { update, useData } from '../../store/store'
-import type { Activity } from '../../store/types'
 import { ContractDetailModal } from '../contracts/ContractModals'
 import { CreateProjectModal } from '../projects/ProjectModals'
 import { postProgress, projectLabel, projectTone } from '../projects/projectLogic'
 import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './CustomerModals'
 import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, daysToEnd, endBlockers, shortMoney } from './customerLogic'
+import { EventLog, type SourcedActivity } from './EventLog'
 import { ProjectCell } from './ProjectCell'
 
 const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text', renew: 'rotate-ccw' }
@@ -46,10 +46,10 @@ export function CustomerDetailScreen() {
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
   const openContract = (id: string) => showModal(<ContractDetailModal contractId={id} />)
   const scrollToContracts = () => document.getElementById('customerContracts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  const log: Array<Activity & { source: string }> = [
+  const log: SourcedActivity[] = [
     ...item.activities.map((entry) => ({ ...entry, source: 'Khách hàng' })),
     ...own.flatMap((project) => project.activities.slice(0, 3).map((entry) => ({ ...entry, source: project.code }))),
-  ].slice(0, 8)
+  ]
 
   const toggleAttention = () =>
     canManage
@@ -194,17 +194,8 @@ export function CustomerDetailScreen() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><div><h2>Sự kiện theo khách &amp; dự án</h2><p className="subline">Nhóm theo nguồn: thay đổi trên khách, rồi 3 sự kiện mới nhất của mỗi dự án.</p></div></div>
-            <div className="customer-activity">
-              {log.length
-                ? log.map((entry, index) => (
-                    <div key={index}>
-                      <Icon name={entry.icon} />
-                      <span><b>{entry.title}</b><small><em className="log-source">{entry.source}</em>{entry.time ? ' · ' + entry.time : ''} · {entry.detail}</small></span>
-                    </div>
-                  ))
-                : <div className="customer-activity-empty">Chưa có hoạt động được ghi nhận.</div>}
-            </div>
+            <div className="panel-head"><div><h2>Sự kiện theo khách &amp; dự án</h2><p className="subline">Thay đổi trên khách và 3 sự kiện mới nhất của mỗi dự án; lọc theo nguồn.</p></div></div>
+            <EventLog entries={log} />
           </section>
         </main>
 

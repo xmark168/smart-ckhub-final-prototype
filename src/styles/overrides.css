@@ -203,3 +203,9 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
 .cpl-reason { color: rgb(117, 97, 81); }
 .cpl-reason.tone-danger { color: var(--red); }
 .cpl-reason.tone-waiting { color: rgb(166, 102, 0); }
+.event-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.event-filter button { padding: 4px 10px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); font: 700 11px var(--font-body); cursor: pointer; }
+.event-filter button small { margin-left: 3px; color: rgb(160, 145, 132); font-weight: 700; }
+.event-filter button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.event-filter button.on small { color: rgba(255, 255, 255, 0.65); }
+.event-more { margin-top: 6px; }
