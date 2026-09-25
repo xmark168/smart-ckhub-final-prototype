@@ -49,8 +49,23 @@ export function attentionReasons(customer: Customer, projects: Project[], contra
   return reasons
 }
 
+/** yyyy-mm-dd falls in the dashboard period (a month or a year). */
+export function inPeriod(iso: string | undefined, period: Period): boolean {
+  if (!iso) return false
+  return iso.startsWith(period.mode === 'year' ? period.year : period.year + '-' + period.month)
+}
+
 export function isNewInPeriod(customer: Customer, period: Period): boolean {
-  return period.mode === 'year' ? customer.createdAt.startsWith(period.year) : customer.createdAt.startsWith(period.year + '-' + period.month)
+  return inPeriod(customer.createdAt, period)
+}
+
+export function endedInPeriod(customer: Customer, period: Period): boolean {
+  return inPeriod(customer.ended?.date, period)
+}
+
+/** Groups attention reasons for the KPI subtitle: late milestones, overdue debt, manual flags. */
+export function attentionKind(reason: string): 'late' | 'debt' | 'flag' {
+  return reason.includes('công nợ') ? 'debt' : reason.includes('cờ') ? 'flag' : 'late'
 }
 
 export function periodLabel(period: Period): string {

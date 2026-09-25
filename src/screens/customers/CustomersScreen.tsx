@@ -1,5 +1,6 @@
 import { useApp } from '../../app/context'
 import { includesText } from '../../lib/format'
+import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { currentCycle } from '../../lib/sop'
 import { usePagedList } from '../../lib/usePagedList'
@@ -8,9 +9,10 @@ import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Customer, Project } from '../../store/types'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
-import { attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
+import { attentionKind, attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, endedInPeriod, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
+import type { Period } from '../../store/types'
 
-type Kpi = 'working' | 'ended' | 'attention'
+type Kpi = 'working' | 'ended' | 'attention' | 'new' | 'endedPeriod'
 
 interface Filters {
   kpi: Kpi
@@ -31,8 +33,16 @@ interface Row {
 const INITIAL: Filters = { kpi: 'working', query: '', status: '', owner: '', area: '', attention: false }
 const PAGE_SIZE = 20
 
-function matches(row: Row, filters: Filters): boolean {
-  const kpi = filters.kpi === 'attention' ? row.reasons.length > 0 : filters.kpi === 'ended' ? row.status === 'ended' : row.status !== 'ended'
+function matchesKpi(row: Row, kpi: Kpi, period: Period): boolean {
+  if (kpi === 'attention') return row.reasons.length > 0
+  if (kpi === 'ended') return row.status === 'ended'
+  if (kpi === 'new') return isNewInPeriod(row.item, period)
+  if (kpi === 'endedPeriod') return endedInPeriod(row.item, period)
+  return row.status !== 'ended'
+}
+
+function matches(row: Row, filters: Filters, period: Period): boolean {
+  const kpi = matchesKpi(row, filters.kpi, period)
   return (
     kpi &&
     includesText([row.item.name, row.item.owner, row.item.area, ...row.projects.map((project) => project.code)], filters.query) &&
@@ -52,7 +62,6 @@ function projectSummary(projects: Project[]): [string, string] {
   return [(cycle ? 'Chu kỳ ' + cycle.no + ' / ' + (main.total || '–') : 'Chưa bắt đầu') + (projects.length > 1 ? ' · ' + projects.length + ' dự án' : ''), services]
 }
 
-const GEAR_PATH = 'M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 19a1.7 1.7 0 0 0-1 1.55V21h-3v-.09A1.7 1.7 0 0 0 10.25 19a1.7 1.7 0 0 0-1.87.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 6.6 15.3 1.7 1.7 0 0 0 5 14.25H4.9v-3H5A1.7 1.7 0 0 0 6.6 10.2a1.7 1.7 0 0 0-.34-1.88L6.2 8.26l2.12-2.12.06.06a1.7 1.7 0 0 0 1.87.34A1.7 1.7 0 0 0 11.25 5V4.9h3V5a1.7 1.7 0 0 0 1 1.54 1.7 1.7 0 0 0 1.87-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.6 1.05h.1v3h-.1a1.7 1.7 0 0 0-1.1.75Z'
 
 export function CustomersScreen() {
   const { openCustomer, showModal, role, account } = useApp()
@@ -72,12 +81,19 @@ export function CustomersScreen() {
   const ended = all.filter((row) => row.status === 'ended')
   const attention = working.filter((row) => row.reasons.length)
   const fresh = all.filter((row) => isNewInPeriod(row.item, period)).length
-  const matched = all.filter((row) => matches(row, filters))
+  const endedNow = all.filter((row) => endedInPeriod(row.item, period)).length
+  const reasonKinds = attention.flatMap((row) => Array.from(new Set(row.reasons.map(attentionKind))))
+  const kindCount = (kind: string) => reasonKinds.filter((item) => item === kind).length
+  const attentionText = [['late', 'trễ mốc'], ['debt', 'công nợ quá hạn'], ['flag', 'gắn cờ']]
+    .filter(([kind]) => kindCount(kind))
+    .map(([kind, label]) => kindCount(kind) + ' ' + label)
+    .join(' · ') || 'Không có khách cần chú ý'
+  const matched = all.filter((row) => matches(row, filters, period))
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(matched, PAGE_SIZE)
   const owners = Array.from(new Set(all.map((row) => row.item.owner))).sort()
   const areas = Array.from(new Set(all.map((row) => row.item.area))).sort()
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
-  const kpiLabel = filters.kpi === 'working' ? 'khách hiện hữu' : filters.kpi === 'ended' ? 'khách đã kết thúc' : 'khách cần chú ý'
+  const kpiLabel = { working: 'khách hiện hữu', ended: 'khách đã kết thúc', attention: 'khách cần chú ý', new: 'khách mới ' + periodLabel(period), endedPeriod: 'khách kết thúc ' + periodLabel(period) }[filters.kpi]
   const narrowed = filters.query || activeFilterCount
 
   return (
@@ -86,6 +102,9 @@ export function CustomersScreen() {
         <div>
           <h1>Khách hàng <button className="customer-help" aria-label="Xem quy trình khách hàng" title="Xem quy trình và quy tắc dữ liệu" onClick={() => showModal(<CustomerFlowModal />)}>?</button></h1>
         </div>
+        <button className="period-chip" type="button" title="Đổi kỳ xem" onClick={() => showModal(<PeriodModal />)}>
+          <Icon name="calendar-days" /> {period.mode === 'year' ? 'Năm ' + period.year : 'Tháng ' + period.month + '/' + period.year} <Icon name="chevron-down" />
+        </button>
         <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={(id) => openCustomer(id)} />)}>+ Tạo khách hàng</button>
       </div>
 
@@ -99,22 +118,19 @@ export function CustomersScreen() {
         >
           <label>Khách hiện hữu</label>
           <strong>{working.length}</strong>
-          <small>{working.filter((row) => row.status === 'active').length} đang hợp tác · <span className="positive">↑ {fresh} mới</span> {periodLabel(period)}</small>
-          <button
-            type="button"
-            className="customer-dashboard-settings"
-            title="Cài đặt kỳ xem"
-            aria-label="Cài đặt kỳ xem"
-            onClick={(event) => { event.stopPropagation(); showModal(<PeriodModal />) }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d={GEAR_PATH} /></svg>
-          </button>
+          <small className="kpi-deltas">
+            {working.filter((row) => row.status === 'active').length} đang hợp tác ·{' '}
+            <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} title="Lọc khách mới trong kỳ" onClick={(event) => { event.stopPropagation(); change({ kpi: 'new' }) }}>+{fresh} mới</button>{' '}
+            <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} title="Lọc khách kết thúc trong kỳ" onClick={(event) => { event.stopPropagation(); change({ kpi: 'endedPeriod' }) }}>−{endedNow} kết thúc</button>{' '}
+            {periodLabel(period)}
+          </small>
         </div>
-        <button className={'customer-kpi' + (filters.kpi === 'ended' ? ' selected' : '')} onClick={() => change({ kpi: 'ended' })}>
-          <label>Đã kết thúc hợp tác</label><strong>{ended.length}</strong><small>Chỉ lưu lịch sử để tra cứu</small>
+        <button className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')} onClick={() => change({ kpi: 'endedPeriod' })}>
+          <label>Kết thúc hợp tác {periodLabel(period)}</label><strong>{endedNow}</strong>
+          <small>Tổng từ trước đến nay: <span className="kpi-link" role="link" onClick={(event) => { event.stopPropagation(); change({ kpi: 'ended' }) }}>{ended.length} khách</span></small>
         </button>
         <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} onClick={() => change({ kpi: 'attention' })}>
-          <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>Dự án trễ mốc, công nợ quá hạn hoặc gắn cờ</small>
+          <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>{attentionText}</small>
         </button>
       </section>
 

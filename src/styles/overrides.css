@@ -95,3 +95,16 @@ h1 .customer-help:focus-visible { outline: 2px solid var(--orange); outline-offs
 .modal-backdrop .modal { max-height: calc(100vh - 36px); max-height: calc(100dvh - 36px); overflow-y: auto; overscroll-behavior: contain; }
 .modal-backdrop .modal > .modal-top { position: sticky; top: -20px; z-index: 2; margin: -20px -20px 0; padding: 20px 20px 10px; background: #fff; }
 body:has(.modal-backdrop.show) { overflow: hidden; }
+
+/* ---- Customer dashboard: period chip and clickable deltas ---- */
+#customers .page-head { align-items: center; gap: 10px; }
+#customers .page-head > div:first-child { margin-right: auto; }
+.period-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--ink); font: 750 12px var(--font-body); cursor: pointer; }
+.period-chip:hover { border-color: rgb(204, 128, 96); background: rgb(255, 248, 243); }
+.period-chip svg { width: 14px; height: 14px; color: rgb(158, 79, 44); }
+.kpi-deltas { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.kpi-delta { padding: 1px 7px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 99px; background: rgba(255, 255, 255, 0.06); font: 800 11px var(--font-body); cursor: pointer; }
+.kpi-delta.positive { color: #6ee7b7; }
+.kpi-delta.negative { color: #fca5a5; }
+.kpi-delta:hover, .kpi-delta.on { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.5); }
+.kpi-link { color: rgb(159, 69, 32); font-weight: 800; text-decoration: underline; cursor: pointer; }

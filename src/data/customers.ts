@@ -21,12 +21,20 @@ export const customerRows: Array<[string, string, string]> = [
 /** Khách mới ghi nhận riêng, dùng chung cho danh sách dự án. */
 export const extraCustomer: [string, string, string] = ['Ẩm Thực Phước Quắn', 'Hải', 'HCM']
 
-function seedActivities(owner: string): Activity[] {
-  return [{ title: 'Đã tạo hồ sơ khách hàng', time: '01.01.2026', detail: 'Account phụ trách: ' + owner, icon: 'users-round' }]
+function seedActivities(owner: string, date: string): Activity[] {
+  return [{ title: 'Đã tạo hồ sơ khách hàng', time: date.split('-').reverse().join('.'), detail: 'Account phụ trách: ' + owner, icon: 'users-round' }]
 }
 
 export function customerIdAt(index: number): string {
   return index < customerRows.length ? 'customer-' + index : 'customer-phuoc-quan'
+}
+
+/** Mê Thái, Gà Ta Thảo Vân and Phước Quắn joined this month; others spread over 06/2025–08/2026. */
+function joinedAt(index: number): string {
+  if (index === 3 || index === 54 || index === 55) return '2026-09-10'
+  const month = (index * 7) % 15 // 0..14 → 06/2025 .. 08/2026
+  const date = new Date(2025, 5 + month, 1 + ((index * 3) % 25))
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0')
 }
 
 export function seedCustomers(): Customer[] {
@@ -35,11 +43,10 @@ export function seedCustomers(): Customer[] {
     name,
     owner,
     area,
-    // Mê Thái, Gà Ta Thảo Vân and Phước Quắn joined this month; the rest are 2026 carry-overs.
-    createdAt: index === 3 || index === 54 || index === 55 ? '2026-09-10' : '2026-01-01',
+    createdAt: joinedAt(index),
     attention: false,
     ended: name === 'Dìn Ký' ? { date: '2026-08-31', reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.' } : undefined,
-    activities: seedActivities(owner),
+    activities: seedActivities(owner, joinedAt(index)),
   }))
   // Demo: a customer just signed up this month, no project yet (Account Hiền).
   seeded.unshift({
