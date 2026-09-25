@@ -10,10 +10,10 @@ import { ContractDetailModal } from '../contracts/ContractModals'
 import { CreateProjectModal } from '../projects/ProjectModals'
 import { postProgress, projectLabel, projectTone } from '../projects/projectLogic'
 import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './CustomerModals'
-import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, shortMoney } from './customerLogic'
+import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, daysToEnd, endBlockers, shortMoney } from './customerLogic'
 import { ProjectCell } from './ProjectCell'
 
-const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text' }
+const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text', renew: 'rotate-ccw' }
 
 export function CustomerDetailScreen() {
   const { customerId, go, role, account, toast, showModal, openProject } = useApp()
@@ -39,6 +39,9 @@ export function CustomerDetailScreen() {
   const ownContracts = contracts.filter((row) => own.some((project) => project.id === row.projectId) && row.status !== 'Đã hủy')
   const debt = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).remaining, 0)
   const overdue = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
+  const totalValue = ownContracts.reduce((sum, row) => sum + row.value, 0)
+  const totalPaid = ownContracts.reduce((sum, row) => sum + row.paid, 0)
+  const blockers = status === 'ended' ? [] : endBlockers(item, projects, contracts)
   const activeCount = own.filter((project) => project.state === 'active').length
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
   const openContract = (id: string) => showModal(<ContractDetailModal contractId={id} />)
@@ -122,7 +125,7 @@ export function CustomerDetailScreen() {
         </div>
         <div className="customer-overview-stat"><span>Dự án</span><strong>{activeCount} / {own.length}</strong><small>đang triển khai / tổng</small></div>
         <button type="button" className="customer-overview-stat as-button" onClick={scrollToContracts} disabled={!ownContracts.length}>
-          <span>Công nợ còn lại</span><strong>{money(debt)}</strong><small>{overdue ? 'quá hạn ' + money(overdue) : 'không có khoản quá hạn'}{ownContracts.length ? ' · xem hợp đồng ↓' : ''}</small>
+          <span>Công nợ còn lại</span><strong>{money(debt)}</strong><small>{overdue ? 'quá hạn ' + shortMoney(overdue) + ' · ' : ''}đã thu {shortMoney(totalPaid)} / {shortMoney(totalValue)}{ownContracts.length ? ' ↓' : ''}</small>
         </button>
       </section>
 
@@ -142,11 +145,13 @@ export function CustomerDetailScreen() {
               return (
                 <button type="button" className="customer-project-line" key={project.id} onClick={() => openProject(project.id)}>
                   <span className="cpl-main">
-                    <b>{project.code} · {project.service}</b>
+                    <b>{project.code}</b>
                     <small>
-                      {cycle ? shortDate(cycle.start) + ' – ' + shortDate(cycle.plannedEnd) : 'Chưa bắt đầu'}
+                      {project.service} · {cycle ? shortDate(cycle.start) + ' – ' + shortDate(cycle.plannedEnd) : 'chưa bắt đầu'}
                       {project.owner !== item.owner ? ' · Account ' + project.owner : ''}
                     </small>
+                    {project.state === 'active' && health.level !== 'ok' && <small className={'cpl-reason tone-' + health.tone}>{health.reason}</small>}
+                    {project.state === 'pending' && project.pause && <small className="cpl-reason">{project.pause.reason}</small>}
                   </span>
                   <ProjectCell projects={[project]} />
                   <span className="cpl-posts">{posts ? posts.published + '/' + posts.planned + ' bài' : '—'}</span>
@@ -170,7 +175,8 @@ export function CustomerDetailScreen() {
                 <button type="button" className="customer-contract-line" key={row.id} onClick={() => openContract(row.id)}>
                   <span className="cpl-main">
                     <b>{row.code} · {row.type}</b>
-                    <small>{row.service} · {row.cycles} chu kỳ</small>
+                    <small>{row.service} · {row.cycles} chu kỳ · hết {row.end}</small>
+                    {row.status === 'Hiệu lực' && daysToEnd(row) <= 30 && <small className="cpl-reason tone-waiting">{daysToEnd(row) < 0 ? 'Đã quá ngày hết hạn ' + -daysToEnd(row) + ' ngày' : 'Còn ' + daysToEnd(row) + ' ngày · cần trao đổi tái ký'}</small>}
                   </span>
                   <span className="cpl-money">
                     <b>{shortMoney(row.paid)} / {shortMoney(row.value)}</b>
@@ -188,7 +194,7 @@ export function CustomerDetailScreen() {
           </section>
 
           <section className="panel">
-            <div className="panel-head"><div><h2>Hoạt động gần đây</h2><p className="subline">Thay đổi trên khách và 3 sự kiện mới nhất của mỗi dự án.</p></div></div>
+            <div className="panel-head"><div><h2>Sự kiện theo khách &amp; dự án</h2><p className="subline">Nhóm theo nguồn: thay đổi trên khách, rồi 3 sự kiện mới nhất của mỗi dự án.</p></div></div>
             <div className="customer-activity">
               {log.length
                 ? log.map((entry, index) => (
@@ -223,7 +229,7 @@ export function CustomerDetailScreen() {
               <Icon name={status === 'ended' ? 'rotate-ccw' : 'circle-stop'} />
               <span>
                 <b>{status === 'ended' ? 'Mở lại hợp tác' : 'Kết thúc hợp tác'}</b>
-                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : 'Khi mọi dự án đã dừng và hợp đồng đã đóng'}</small>
+                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : blockers.length ? 'Chưa thể: ' + blockers.slice(0, 2).join(', ') + (blockers.length > 2 ? '…' : '') : 'Sẵn sàng: mọi dự án đã dừng, hợp đồng đã đóng'}</small>
               </span>
             </button>
           </section>

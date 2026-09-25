@@ -1,5 +1,6 @@
 import { paymentMetrics } from '../../data/contracts'
-import { projectHealth } from '../../lib/sop'
+import { diffDays, displayToInput, TODAY } from '../../lib/format'
+import { projectHealth, runningCycle } from '../../lib/sop'
 import type { Contract, Customer, Period, Project, Role, SopParams } from '../../store/types'
 
 export type CustomerStatus = 'active' | 'onboarding' | 'paused' | 'none' | 'ended'
@@ -31,7 +32,7 @@ export function customerStatus(customer: Customer, projects: Project[]): Custome
 }
 
 export interface AttentionItem {
-  kind: 'flag' | 'late' | 'risk' | 'debt'
+  kind: 'flag' | 'late' | 'risk' | 'debt' | 'renew'
   /** Short label, e.g. "DA-2026-056 · chậm tiến độ". */
   label: string
   /** Full explanation for tooltips. */
@@ -54,6 +55,9 @@ export function attentionItems(customer: Customer, projects: Project[], contract
       .forEach((row) => {
         const overdue = paymentMetrics(row).overdue
         if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', targetId: row.id })
+        if (row.isPrimary && project.state === 'active' && renewalDue(project, row)) {
+          items.push({ kind: 'renew', label: row.code + ' · sắp hết HĐ', detail: 'Hết hạn ' + row.end + ' · chu kỳ ' + project.cycles.length + '/' + row.cycles + '. Cần trao đổi tái ký.', targetId: row.id })
+        }
       })
   })
   return items
@@ -84,8 +88,19 @@ export function endedInPeriod(customer: Customer, period: Period): boolean {
 }
 
 /** Groups attention reasons for the KPI subtitle: late milestones, overdue debt, manual flags. */
-export function attentionKind(reason: string): 'late' | 'debt' | 'flag' {
-  return reason.includes('công nợ') ? 'debt' : reason.includes('cờ') ? 'flag' : 'late'
+export function attentionKind(reason: string): 'late' | 'debt' | 'flag' | 'renew' {
+  return reason.includes('sắp hết HĐ') ? 'renew' : reason.includes('công nợ') ? 'debt' : reason.includes('cờ') ? 'flag' : 'late'
+}
+
+/** Days until the contract ends (end is dd.mm.yyyy); negative when already past. */
+export function daysToEnd(contract: Contract): number {
+  return diffDays(TODAY, displayToInput(contract.end))
+}
+
+/** Renewal window: the last contracted cycle is running, or the contract ends within 30 days. */
+export function renewalDue(project: Project, contract: Contract): boolean {
+  const lastCycle = Boolean(runningCycle(project)) && project.cycles.length >= contract.cycles
+  return lastCycle || daysToEnd(contract) <= 30
 }
 
 export function periodLabel(period: Period): string {

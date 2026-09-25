@@ -93,7 +93,7 @@ export function CustomersScreen() {
   const endedNow = all.filter((row) => endedInPeriod(row.item, period)).length
   const reasonKinds = attention.flatMap((row) => Array.from(new Set(row.reasons.map(attentionKind))))
   const kindCount = (kind: string) => reasonKinds.filter((item) => item === kind).length
-  const attentionText = [['late', 'trễ mốc'], ['debt', 'công nợ quá hạn'], ['flag', 'gắn cờ']]
+  const attentionText = [['late', 'trễ mốc'], ['debt', 'công nợ quá hạn'], ['renew', 'sắp hết HĐ'], ['flag', 'gắn cờ']]
     .filter(([kind]) => kindCount(kind))
     .map(([kind, label]) => kindCount(kind) + ' ' + label)
     .join(' · ') || 'Không có khách cần chú ý'

@@ -192,3 +192,14 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
 #customerDetail .customer-account-card b { font-size: 12px; }
 #customerDetail .customer-back { font-size: 12px; font-weight: 750; }
 #customers .customer-kpi label, #customers .kpi-link, #customers .customer-result-summary b { font-weight: 700; }
+
+/* ---- Customer detail layout fixes ---- */
+#customerDetail .customer-detail-layout main > section + section,
+#customerDetail .customer-detail-layout aside > section + section { margin-top: 14px; }
+#customerDetail .customer-detail-title { align-items: flex-start; }
+#customerDetail .customer-detail-actions { align-self: flex-start; margin-top: 2px; }
+#customerDetail .customer-detail-layout aside { position: sticky; top: 16px; align-self: start; }
+.attention-list button:disabled { border-style: dashed; background: transparent; opacity: 0.85; }
+.cpl-reason { color: rgb(117, 97, 81); }
+.cpl-reason.tone-danger { color: var(--red); }
+.cpl-reason.tone-waiting { color: rgb(166, 102, 0); }
