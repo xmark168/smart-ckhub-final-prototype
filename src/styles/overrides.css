@@ -175,3 +175,20 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
   .customer-contract-line .cpl-money { display: none; }
 }
 .cpl-main b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; line-height: 1.35; }
+
+/* ---- Type scale for Khách hàng list + detail ----
+   Title 30/700 display · section 15/700 display · row title 12/700 · body 12/400
+   meta 11/400 · label 11/700 · pill & table head 10 · buttons 12/750 · numbers mono 12/700 */
+#customers .page-head h1 { font-size: 30px; }
+#customers .customer-name { font-weight: 700; }
+#customers .kpi-delta { font-weight: 700; }
+#customers .customer-kpi small, #customers .customer-kpi small * { font-size: 11px; }
+.project-cell-draft { font-weight: 600 !important; }
+.customer-help { font-weight: 800 !important; }
+#customerDetail .subline,
+#customerDetail .customer-overview-stat small,
+#customerDetail .customer-account-card small,
+#customerDetail .customer-control small { font-size: 11px; line-height: 1.4; }
+#customerDetail .customer-account-card b { font-size: 12px; }
+#customerDetail .customer-back { font-size: 12px; font-weight: 750; }
+#customers .customer-kpi label, #customers .kpi-link, #customers .customer-result-summary b { font-weight: 700; }
