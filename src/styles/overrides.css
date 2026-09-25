@@ -1,0 +1,12 @@
+/*
+ * Adjustments on top of legacy.css for behaviour the original page got from inline styles.
+ */
+
+/* The vanilla app set `style="display:flex"` on every nav button of the current role, which
+   overrode the mobile rule hiding inactive items. Keep that: on phones the top bar shows all
+   menu icons, otherwise there is no way to switch screens. */
+@media (max-width: 650px) {
+  .nav button:not(.active) {
+    display: flex;
+  }
+}
