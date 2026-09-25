@@ -17,7 +17,8 @@ interface PlanRow {
 let rowKey = 0
 
 /** Create or edit a contract. `preferredProjectId` comes from the project's Cổng khởi động. */
-export function ContractFormModal({ contractId, preferredProjectId }: { contractId?: string; preferredProjectId?: string }) {
+/** `appendix` opens a new Phụ lục (e.g. to change the package) for `preferredProjectId`. */
+export function ContractFormModal({ contractId, preferredProjectId, appendix = false }: { contractId?: string; preferredProjectId?: string; appendix?: boolean }) {
   const { closeModal, toast } = useApp()
   const { projects, contracts } = useData()
   const row = contracts.find((item) => item.id === contractId)
@@ -103,7 +104,7 @@ export function ContractFormModal({ contractId, preferredProjectId }: { contract
           </select>
         </label>
         <label className="field">Loại liên kết
-          <select name="type" defaultValue={row ? row.type : 'Hợp đồng chính'}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
+          <select name="type" defaultValue={row ? row.type : appendix ? 'Phụ lục' : 'Hợp đồng chính'}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
         </label>
         <label className="field">Mã hợp đồng<input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
         <label className="field">Số chu kỳ theo hợp đồng<input name="cycles" type="number" min="1" required defaultValue={row ? row.cycles : 1} /></label>

@@ -28,7 +28,7 @@ const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '
 const PAGE_SIZE = 20
 
 const PROJECT_RULES =
-  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo. Khách không chốt thì Hủy nháp (dự án chuyển sang Đã dừng, giữ lịch sử); sau đó mới kết thúc hợp tác với khách được.'
+  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo. Gói dịch vụ theo hợp đồng: một hợp đồng có thể gồm nhiều gói; đổi gói phải làm phụ lục hoặc hợp đồng mới (hóa đơn xuất theo hạng mục hợp đồng). Khách không chốt thì Hủy nháp (dự án chuyển sang Đã dừng, giữ lịch sử); sau đó mới kết thúc hợp tác với khách được.'
 
 function atRisk(item: Project, params: SopParams): boolean {
   return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late')

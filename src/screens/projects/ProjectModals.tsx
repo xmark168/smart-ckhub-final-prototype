@@ -171,25 +171,28 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
 }
 
 export function EditProjectModal({ project }: { project: Project }) {
-  const { closeModal, toast } = useApp()
+  const { closeModal, toast, showModal } = useApp()
   const packages = useData().packages.filter((item) => item.status === 'Đang áp dụng' || item.id === project.servicePackageId)
+  // Package is part of the signed contract: once a contract exists it changes only via Phụ lục / HĐ mới.
+  const locked = Boolean(project.contractCode)
   return (
     <Modal
       title="Sửa dự án"
       onSubmit={(form) => {
-        const service = packages.find((item) => item.id === field(form, 'servicePackage'))
-        if (!service) return
+        const service = locked ? undefined : packages.find((item) => item.id === field(form, 'servicePackage'))
         updateProject(project.id, (item) => {
-          const changedPackage = item.servicePackageId !== service.id
+          const changedPackage = Boolean(service && item.servicePackageId !== service.id)
           item.owner = field(form, 'owner')
-          item.servicePackageId = service.id
-          item.service = packageLabel(service)
-          item.serviceScope = service.scope
-          item.servicePrice = service.price
-          if (changedPackage) item.quota = { ...service.quota }
+          if (service && changedPackage) {
+            item.servicePackageId = service.id
+            item.service = packageLabel(service)
+            item.serviceScope = service.scope
+            item.servicePrice = service.price
+            item.quota = { ...service.quota }
+          }
           item.team = readTeam(form, item.owner)
           item.notes = field(form, 'notes')
-          addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', changedPackage ? 'Đổi gói: ' + item.service + '. Định mức mới áp dụng từ bây giờ.' : 'Account, đội dự án hoặc ghi chú vận hành được điều chỉnh.')
+          addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', changedPackage ? 'Đổi gói dự kiến: ' + item.service + '.' : 'Account, đội dự án hoặc ghi chú vận hành được điều chỉnh.')
         })
         closeModal()
         toast('Đã lưu thay đổi dự án.')
@@ -199,14 +202,22 @@ export function EditProjectModal({ project }: { project: Project }) {
         <label className="field">Account phụ trách
           <select name="owner" defaultValue={project.owner}>{ACCOUNTS.map((name) => <option key={name} value={name}>{name}</option>)}</select>
         </label>
-        <label className="field">Gói dịch vụ
-          <select name="servicePackage" required defaultValue={project.servicePackageId}>
-            {packages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
-          </select>
-        </label>
+        {locked ? (
+          <div className="field">
+            <span>Gói dịch vụ</span>
+            <p className="locked-value"><b>{project.service}</b> · theo {project.contractCode}</p>
+            <button type="button" className="text-btn" onClick={() => showModal(<ContractFormModal preferredProjectId={project.id} appendix />)}>Đổi gói bằng phụ lục / hợp đồng mới ›</button>
+          </div>
+        ) : (
+          <label className="field">Gói dịch vụ dự kiến
+            <select name="servicePackage" required defaultValue={project.servicePackageId}>
+              {packages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
+            </select>
+          </label>
+        )}
         <TeamFields team={project.team} />
         <label className="field">Ghi chú vận hành<textarea name="notes" defaultValue={project.notes} placeholder="Ví dụ: thuê diễn viên, còn shoot 2, khách muốn viral TikTok" /></label>
-        <div className="customer-data-rules"><p>Đổi gói tạo snapshot định mức mới từ thời điểm lưu. Hợp đồng và số chu kỳ quản lý tại Hợp đồng &amp; công nợ.</p></div>
+        <div className="customer-data-rules"><p>{locked ? 'Gói đã ghi trên hợp đồng; hóa đơn xuất theo hạng mục hợp đồng nên đổi gói phải làm phụ lục hoặc hợp đồng mới.' : 'Dự án chưa có hợp đồng: gói là dự kiến, sẽ ghi vào hợp đồng khi tạo từ Cổng khởi động.'}</p></div>
         <FormActions submit="Lưu thay đổi" />
       </div>
     </Modal>

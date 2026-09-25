@@ -311,3 +311,4 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 .services-tip b { margin-right: 4px; font-family: var(--font-mono); font-weight: 700; }
 .services-more:hover .services-tip, .services-more:focus-within .services-tip { display: block; }
 #customers .customer-table-wrap:has(.services-more:hover), #customers .customer-table-wrap:has(.services-more:focus-within) { overflow: visible; }
+.locked-value { margin: 4px 0 2px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 9px; background: rgb(251, 249, 246); font-size: 12px; }
