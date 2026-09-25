@@ -1,5 +1,6 @@
 import { useApp } from '../../app/context'
-import { includesText } from '../../lib/format'
+import { includesText, TODAY } from '../../lib/format'
+import { update } from '../../store/store'
 import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { currentCycle } from '../../lib/sop'
@@ -9,7 +10,7 @@ import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Customer, Project } from '../../store/types'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
-import { attentionKind, attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, endedInPeriod, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
+import { activeInPeriod, attentionKind, defaultPeriod, isDefaultPeriod, attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, endedInPeriod, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
 import type { Period } from '../../store/types'
 
 type Kpi = 'working' | 'ended' | 'attention' | 'new' | 'endedPeriod'
@@ -33,16 +34,16 @@ interface Row {
 const INITIAL: Filters = { kpi: 'working', query: '', status: '', owner: '', area: '', attention: false }
 const PAGE_SIZE = 20
 
-function matchesKpi(row: Row, kpi: Kpi, period: Period): boolean {
+function matchesKpi(row: Row, kpi: Kpi, period: Period, periodFilter: boolean): boolean {
   if (kpi === 'attention') return row.reasons.length > 0
   if (kpi === 'ended') return row.status === 'ended'
   if (kpi === 'new') return isNewInPeriod(row.item, period)
   if (kpi === 'endedPeriod') return endedInPeriod(row.item, period)
-  return row.status !== 'ended'
+  return periodFilter || row.status !== 'ended'
 }
 
-function matches(row: Row, filters: Filters, period: Period): boolean {
-  const kpi = matchesKpi(row, filters.kpi, period)
+function matches(row: Row, filters: Filters, period: Period, periodFilter: boolean): boolean {
+  const kpi = matchesKpi(row, filters.kpi, period, periodFilter)
   return (
     kpi &&
     includesText([row.item.name, row.item.owner, row.item.area, ...row.projects.map((project) => project.code)], filters.query) &&
@@ -76,10 +77,12 @@ export function CustomersScreen() {
   }
   /** KPI cards and chips are toggles: clicking the active one returns to all current customers. */
   const toggleKpi = (kpi: Kpi) => change({ kpi: filters.kpi === kpi ? 'working' : kpi })
+  const periodFilter = !isDefaultPeriod(period, TODAY)
+  const resetPeriod = () => update((draft) => { draft.period = defaultPeriod(TODAY) })
   const all: Row[] = customers
-    .filter((item) => inScope(role, account, item))
+    .filter((item) => inScope(role, account, item) && (!periodFilter || activeInPeriod(item, period)))
     .map((item) => ({ item, status: customerStatus(item, projects), projects: customerProjects(item, projects), reasons: attentionReasons(item, projects, contracts, params) }))
-  const working = all.filter((row) => row.status !== 'ended')
+  const working = periodFilter ? all : all.filter((row) => row.status !== 'ended')
   const ended = all.filter((row) => row.status === 'ended')
   const attention = working.filter((row) => row.reasons.length)
   const fresh = all.filter((row) => isNewInPeriod(row.item, period)).length
@@ -90,12 +93,12 @@ export function CustomersScreen() {
     .filter(([kind]) => kindCount(kind))
     .map(([kind, label]) => kindCount(kind) + ' ' + label)
     .join(' · ') || 'Không có khách cần chú ý'
-  const matched = all.filter((row) => matches(row, filters, period))
+  const matched = all.filter((row) => matches(row, filters, period, periodFilter))
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(matched, PAGE_SIZE)
   const owners = Array.from(new Set(all.map((row) => row.item.owner))).sort()
   const areas = Array.from(new Set(all.map((row) => row.item.area))).sort()
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
-  const kpiLabel = { working: 'khách hiện hữu', ended: 'khách đã kết thúc', attention: 'khách cần chú ý', new: 'khách mới ' + periodLabel(period), endedPeriod: 'khách kết thúc ' + periodLabel(period) }[filters.kpi]
+  const kpiLabel = { working: periodFilter ? 'khách hợp tác ' + periodLabel(period) : 'khách hiện hữu', ended: 'khách đã kết thúc', attention: 'khách cần chú ý', new: 'khách mới ' + periodLabel(period), endedPeriod: 'khách kết thúc ' + periodLabel(period) }[filters.kpi]
   const narrowed = filters.query || activeFilterCount
 
   return (
@@ -104,9 +107,12 @@ export function CustomersScreen() {
         <div>
           <h1>Khách hàng <button className="customer-help" aria-label="Xem quy trình khách hàng" title="Xem quy trình và quy tắc dữ liệu" onClick={() => showModal(<CustomerFlowModal />)}>?</button></h1>
         </div>
-        <button className="period-chip" type="button" title="Đổi kỳ xem" onClick={() => showModal(<PeriodModal />)}>
-          <Icon name="calendar-days" /> {period.mode === 'year' ? 'Năm ' + period.year : 'Tháng ' + period.month + '/' + period.year} <Icon name="chevron-down" />
-        </button>
+        <span className={'period-chip-wrap' + (periodFilter ? ' on' : '')}>
+          <button className="period-chip" type="button" title="Đổi kỳ xem" onClick={() => showModal(<PeriodModal />)}>
+            <Icon name="calendar-days" /> {period.mode === 'year' ? 'Năm ' + period.year : 'Tháng ' + period.month + '/' + period.year} <Icon name="chevron-down" />
+          </button>
+          {periodFilter && <button className="period-chip-clear" type="button" aria-label="Về năm nay" title="Về năm nay" onClick={resetPeriod}>×</button>}
+        </span>
         <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={(id) => openCustomer(id)} />)}>+ Tạo khách hàng</button>
       </div>
 
@@ -118,7 +124,7 @@ export function CustomersScreen() {
           onClick={() => change({ kpi: 'working' })}
           onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && change({ kpi: 'working' })}
         >
-          <label>Khách hiện hữu · hôm nay</label>
+          <label>{periodFilter ? 'Khách hợp tác ' + periodLabel(period) : 'Khách hiện hữu · hôm nay'}</label>
           <strong>{working.length}</strong>
           <small className="kpi-deltas">
             {working.filter((row) => row.status === 'active').length} đang hợp tác ·{' '}
@@ -175,10 +181,11 @@ export function CustomersScreen() {
           </div>
         </div>
 
-        {filters.kpi !== 'working' && (
+        {(filters.kpi !== 'working' || periodFilter) && (
           <div className="kpi-filter-bar">
-            Đang lọc: <b>{kpiLabel}</b>
-            <button type="button" aria-label="Bỏ lọc" onClick={() => toggleKpi(filters.kpi)}>×</button>
+            Đang lọc:
+            {periodFilter && <span className="kpi-filter-tag">Kỳ {periodLabel(period)} <button type="button" aria-label="Về năm nay" onClick={resetPeriod}>×</button></span>}
+            {filters.kpi !== 'working' && <span className="kpi-filter-tag">{kpiLabel} <button type="button" aria-label="Bỏ lọc" onClick={() => toggleKpi(filters.kpi)}>×</button></span>}
           </div>
         )}
         <div className="customer-table-wrap">

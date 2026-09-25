@@ -9,7 +9,7 @@ import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 4
+const DATA_VERSION = 5
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)
@@ -24,7 +24,7 @@ export function createSeed(): AppData {
     packages,
     operations: seedOperations(),
     profile: { name: 'Tài khoản mô phỏng', email: 'account@smartckhub.local', phone: '' },
-    period: { mode: 'month', month: '09', year: '2026' },
+    period: { mode: 'year', month: '09', year: '2026' },
     params: { ...DEFAULT_PARAMS },
   }
 }

@@ -209,7 +209,7 @@ export function CustomerFlowModal() {
       </div>
       <div className="customer-data-rules">
         <b>Chỉ số và kỳ xem</b>
-        <p>Khách hiện hữu: mọi khách chưa kết thúc hợp tác (gồm đang hợp tác, chờ khởi động, tạm ngưng, chưa có dự án). Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay. Khách mới trong kỳ: ngày tạo hồ sơ nằm trong kỳ xem, kể cả khách đã kết thúc hợp tác sau đó. Kết thúc trong kỳ: ngày kết thúc hợp tác nằm trong kỳ xem. Bấm +mới / −kết thúc để lọc danh sách. Kỳ xem (nút lịch cạnh tiêu đề) chỉ áp dụng cho hai số này và lưu chung cho mọi người dùng trong bản prototype.</p>
+        <p>Khách hiện hữu: mọi khách chưa kết thúc hợp tác (gồm đang hợp tác, chờ khởi động, tạm ngưng, chưa có dự án). Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay. Khách mới trong kỳ: ngày tạo hồ sơ nằm trong kỳ xem, kể cả khách đã kết thúc hợp tác sau đó. Kết thúc trong kỳ: ngày kết thúc hợp tác nằm trong kỳ xem. Bấm +mới / −kết thúc để lọc danh sách. Kỳ xem mặc định là năm nay; chọn kỳ khác sẽ lọc danh sách theo khách có hợp tác trong kỳ, bấm × để về năm nay. Bản prototype lưu kỳ xem chung cho mọi người dùng.</p>
       </div>
       <div className="customer-data-rules">
         <b>Kết thúc hợp tác</b>
@@ -241,7 +241,7 @@ export function PeriodModal() {
         <label className="field">Xem theo<select name="mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="month">Tháng</option><option value="year">Năm</option></select></label>
         {mode === 'month' && <label className="field">Tháng<select name="month" defaultValue={period.month}>{MONTHS.map((month) => <option key={month} value={month}>Tháng {month}</option>)}</select></label>}
         <label className="field">Năm<select name="year" defaultValue={period.year}>{['2025', '2026'].map((year) => <option key={year}>{year}</option>)}</select></label>
-        <div className="customer-data-rules"><p>Kỳ xem áp dụng cho số khách mới và khách kết thúc hợp tác. Khách hiện hữu và khách cần chú ý luôn tính tại hôm nay. Bản prototype lưu kỳ xem chung cho mọi người dùng trên trình duyệt này.</p></div>
+        <div className="customer-data-rules"><p>Mặc định là năm nay. Chọn kỳ khác thì danh sách chỉ còn khách có hợp tác trong kỳ đó (tạo trước khi kỳ kết thúc, chưa kết thúc trước khi kỳ bắt đầu); bấm × ở nút kỳ để về năm nay. Số mới / kết thúc luôn tính theo kỳ đang chọn. Bản prototype lưu kỳ xem chung cho mọi người dùng trên trình duyệt này.</p></div>
         <FormActions submit="Áp dụng" />
       </div>
     </Modal>

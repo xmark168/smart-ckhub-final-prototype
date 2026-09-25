@@ -55,6 +55,27 @@ export function inPeriod(iso: string | undefined, period: Period): boolean {
   return iso.startsWith(period.mode === 'year' ? period.year : period.year + '-' + period.month)
 }
 
+/** Default view: the current year. Any other period acts as a filter on the list. */
+export function defaultPeriod(today: string): Period {
+  return { mode: 'year', year: today.slice(0, 4), month: today.slice(5, 7) }
+}
+
+export function isDefaultPeriod(period: Period, today: string): boolean {
+  return period.mode === 'year' && period.year === today.slice(0, 4)
+}
+
+/** First and last day (yyyy-mm-dd) of the period. */
+function periodBounds(period: Period): [string, string] {
+  if (period.mode === 'year') return [period.year + '-01-01', period.year + '-12-31']
+  return [period.year + '-' + period.month + '-01', period.year + '-' + period.month + '-31']
+}
+
+/** Customer was cooperating at some point in the period: joined before it ended and not ended before it started. */
+export function activeInPeriod(customer: Customer, period: Period): boolean {
+  const [start, end] = periodBounds(period)
+  return customer.createdAt <= end && (!customer.ended || customer.ended.date >= start)
+}
+
 export function isNewInPeriod(customer: Customer, period: Period): boolean {
   return inPeriod(customer.createdAt, period)
 }
