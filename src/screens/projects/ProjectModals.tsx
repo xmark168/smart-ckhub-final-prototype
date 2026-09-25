@@ -464,7 +464,7 @@ export function CancelDraftModal({ project }: { project: Project }) {
       <div className="form">
         <div className="customer-data-rules"><p>Dùng khi khách không chốt. Dự án chuyển sang Đã dừng, không tạo chu kỳ; hợp đồng nháp (nếu có) cần hủy tại Hợp đồng &amp; công nợ.</p></div>
         <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chưa đủ ngân sách" /></label>
-        <FormActions submit="Hủy dự án nháp" />
+        <FormActions submit="Hủy dự án nháp" cancel="Giữ dự án" />
       </div>
     </Modal>
   )

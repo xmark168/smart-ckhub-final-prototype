@@ -228,12 +228,12 @@ export function CustomersScreen() {
                       <button type="button" className="customer-name row-link" onClick={(event) => { event.stopPropagation(); openCustomer(item.id) }}>{item.name}</button>
                       <span className="customer-meta">{servicesOf(own)}</span>
                     </td>
-                    <td>
+                    <td data-label="Account">
                       <button className="customer-account" type="button" aria-label={'Tóm tắt Account ' + item.owner} onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
                     </td>
-                    <td>{item.area}</td>
-                    <td><ProjectCell projects={own} /></td>
-                    <td>
+                    <td data-label="Khu vực">{item.area}</td>
+                    <td data-label="Chu kỳ"><ProjectCell projects={own} /></td>
+                    <td data-label="Trạng thái">
                       <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
                       {reasons.length > 0 && <ReasonPill reasons={reasons} />}
                     </td>

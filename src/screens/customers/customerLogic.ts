@@ -3,12 +3,13 @@ import { diffDays, displayToInput, foldText, TODAY } from '../../lib/format'
 import { projectHealth, runningCycle } from '../../lib/sop'
 import type { Contract, Customer, Period, Project, Role, SopParams } from '../../store/types'
 
-export type CustomerStatus = 'active' | 'onboarding' | 'paused' | 'none' | 'ended'
+export type CustomerStatus = 'active' | 'onboarding' | 'paused' | 'lost' | 'none' | 'ended'
 
 export const CUSTOMER_STATUS: Record<CustomerStatus, { label: string; tone: string }> = {
   active: { label: 'Đang hợp tác', tone: 'ok' },
   onboarding: { label: 'Chờ khởi động', tone: 'info' },
   paused: { label: 'Tạm ngưng', tone: 'waiting' },
+  lost: { label: 'Không chốt', tone: 'muted' },
   none: { label: 'Chưa có dự án', tone: 'muted' },
   ended: { label: 'Đã kết thúc hợp tác', tone: 'muted' },
 }
@@ -26,9 +27,14 @@ export function customerStatus(customer: Customer, projects: Project[]): Custome
   if (customer.ended) return 'ended'
   const own = customerProjects(customer, projects)
   if (own.some((item) => item.state === 'active')) return 'active'
-  if (own.some((item) => item.state === 'pending' || item.state === 'stopped')) return 'paused'
+  if (own.some((item) => item.state === 'pending' || (item.state === 'stopped' && !cancelledDraft(item)))) return 'paused'
   if (own.some((item) => item.state === 'draft')) return 'onboarding'
-  return 'none'
+  return own.length ? 'lost' : 'none'
+}
+
+/** A draft cancelled before T0 (the customer never signed): stopped without any cycle. */
+export function cancelledDraft(project: Project): boolean {
+  return project.state === 'stopped' && project.cycles.length === 0
 }
 
 export interface AttentionItem {
@@ -113,14 +119,24 @@ export function canManageCustomer(role: Role, account: string, customer: Custome
 }
 
 /** Ending cooperation needs every project stopped and no contract still in force. */
-export function endBlockers(customer: Customer, projects: Project[], contracts: Contract[]): string[] {
+export interface Blocker {
+  kind: 'project' | 'contract'
+  id: string
+  label: string
+}
+
+export function endBlockerItems(customer: Customer, projects: Project[], contracts: Contract[]): Blocker[] {
   const own = customerProjects(customer, projects)
   const running = own.filter((item) => item.state !== 'stopped')
   const open = contracts.filter((row) => own.some((item) => item.id === row.projectId) && (row.status === 'Hiệu lực' || row.status === 'Nháp'))
   return [
-    ...running.map((item) => item.code + ' chưa dừng'),
-    ...open.map((row) => row.code + ' còn ' + row.status.toLocaleLowerCase('vi')),
+    ...running.map((item): Blocker => ({ kind: 'project', id: item.id, label: item.code + ' chưa dừng' })),
+    ...open.map((row): Blocker => ({ kind: 'contract', id: row.id, label: row.code + ' còn ' + row.status.toLocaleLowerCase('vi') })),
   ]
+}
+
+export function endBlockers(customer: Customer, projects: Project[], contracts: Contract[]): string[] {
+  return endBlockerItems(customer, projects, contracts).map((item) => item.label)
 }
 
 export function sameName(a: string, b: string): boolean {

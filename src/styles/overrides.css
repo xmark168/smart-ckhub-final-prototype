@@ -273,3 +273,30 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 .reason-popover { box-sizing: border-box; max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 #customerDetail .customer-detail-layout .detail-main > section + section { margin-top: 14px; }
 #customerDetail .customer-detail-layout .detail-main { min-width: 0; }
+
+
+/* ---- Customer list: fit laptop widths, cards on phones ---- */
+#customers .customer-table { min-width: 0; }
+#customers .customer-table td:nth-child(5) { min-width: 0; }
+#customers .customer-table td:nth-child(1) { min-width: 190px; }
+#customers .customer-table td:nth-child(5) .pill { margin: 2px 0; }
+#customers .customer-table td:nth-child(5) { width: 150px; }
+.kpi-filter-tag { white-space: nowrap; }
+.blocker-list { margin: 6px 0; padding-left: 18px; }
+.blocker-list li + li { margin-top: 4px; }
+.blocker-list small { display: block; color: var(--muted); font-size: 11px; }
+.field-hint { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+.cpl-progress { display: grid; justify-items: start; gap: 2px; }
+.cpl-progress .cpl-posts { font-size: 11px; }
+.customer-project-line { grid-template-columns: minmax(0, 1fr) auto auto 16px; }
+@media (max-width: 720px) {
+  #customers .customer-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #customers .customer-table, #customers .customer-table tbody { display: block; }
+  #customers .customer-table tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 12px 14px; border-top: 1px solid rgb(238, 231, 223); }
+  #customers .customer-table td { display: block; padding: 0; border: 0; width: auto !important; min-width: 0 !important; }
+  #customers .customer-table td:nth-child(1) { grid-column: 1 / -1; }
+  #customers .customer-table td:last-child { display: none; }
+  #customers .customer-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--muted); font-size: 10px; font-weight: 700; }
+  #customers .customer-table td.list-empty { grid-column: 1 / -1; }
+  #customers .customer-table-wrap { overflow: visible; }
+}

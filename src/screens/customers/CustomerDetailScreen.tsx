@@ -103,7 +103,7 @@ export function CustomerDetailScreen() {
       <section className="customer-overview">
         <div className="customer-overview-main">
           <span>Tình hình khách hàng</span>
-          <strong>{item.ended ? 'Đã kết thúc hợp tác' : attention.length ? 'Cần theo dõi' : 'Ổn định'}</strong>
+          <strong>{item.ended ? 'Đã kết thúc hợp tác' : attention.length ? 'Cần theo dõi' : status === 'none' ? 'Chưa có dự án' : status === 'lost' ? 'Không chốt' : 'Ổn định'}</strong>
           {item.ended ? (
             <p>{formatDate(parseInput(item.ended.date))} · {item.ended.reason}</p>
           ) : attention.length ? (
@@ -121,6 +121,10 @@ export function CustomerDetailScreen() {
                 </li>
               ))}
             </ul>
+          ) : status === 'none' ? (
+            <p>Hồ sơ mới. Tạo dự án nháp để bắt đầu Cổng khởi động.</p>
+          ) : status === 'lost' ? (
+            <p>Dự án nháp đã hủy, khách chưa ký. Tạo dự án mới nếu khách quay lại, hoặc kết thúc hợp tác.</p>
           ) : (
             <p>Không có mốc trễ, công nợ quá hạn hay cờ đang mở.</p>
           )}
@@ -157,8 +161,10 @@ export function CustomerDetailScreen() {
                     {project.risk && <small className="cpl-reason tone-danger">Gắn cờ: {project.riskReason || '—'}</small>}
                     {project.notes && <small className="cpl-note" title={project.notes}><Icon name="notebook-pen" /> Ghi chú: {project.notes}</small>}
                   </span>
-                  <ProjectCell projects={[project]} />
-                  <span className="cpl-posts">{posts ? posts.published + '/' + posts.planned + ' bài' : '—'}</span>
+                  <span className="cpl-progress">
+                    <ProjectCell projects={[project]} />
+                    {posts && <small className="cpl-posts">{posts.published}/{posts.planned} bài</small>}
+                  </span>
                   <span className="cpl-status">
                     {project.state === 'active'
                       ? <span className={'pill ' + health.tone} title={health.reason}>{health.label}</span>
@@ -224,7 +230,7 @@ export function CustomerDetailScreen() {
               <Icon name={status === 'ended' ? 'rotate-ccw' : 'circle-stop'} />
               <span>
                 <b>{status === 'ended' ? 'Mở lại hợp tác' : 'Kết thúc hợp tác'}</b>
-                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : blockers.length ? 'Chưa thể: ' + blockers.slice(0, 2).join(', ') + (blockers.length > 2 ? '…' : '') : 'Sẵn sàng: mọi dự án đã dừng, hợp đồng đã đóng'}</small>
+                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : blockers.length ? 'Chưa thể: ' + blockers.slice(0, 2).join(', ') + (blockers.length > 2 ? '…' : '') : status === 'none' ? 'Khách chưa có dự án; dùng khi khách không tiếp tục' : 'Có thể kết thúc: mọi dự án đã dừng, hợp đồng đã đóng'}</small>
               </span>
             </button>
           </section>

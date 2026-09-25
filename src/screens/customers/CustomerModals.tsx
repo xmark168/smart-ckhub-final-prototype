@@ -6,7 +6,8 @@ import { projectHealth } from '../../lib/sop'
 import { getData, update, useData } from '../../store/store'
 import type { Customer } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
-import { addCustomerActivity, customerStatus, endBlockers, sameName } from './customerLogic'
+import { addCustomerActivity, customerStatus, endBlockerItems, sameName } from './customerLogic'
+import { ContractDetailModal } from '../contracts/ContractModals'
 
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -133,16 +134,25 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
 
 /** Kết thúc hợp tác: only once every project is stopped and no contract is still open. */
 export function EndCooperationModal({ customer }: { customer: Customer }) {
-  const { closeModal } = useApp()
+  const { closeModal, openProject, showModal } = useApp()
   const { projects, contracts } = useData()
-  const blockers = endBlockers(customer, projects, contracts)
+  const blockers = endBlockerItems(customer, projects, contracts)
+  const [date, setDate] = useState(TODAY)
   if (blockers.length) {
     return (
       <Modal title="Chưa thể kết thúc hợp tác">
         <div className="customer-data-rules">
           <b>Cần xử lý trước</b>
-          <p>{blockers.join(' · ')}</p>
-          <p>Dừng từng dự án tại trang dự án; kết thúc hoặc hủy hợp đồng tại Hợp đồng &amp; công nợ.</p>
+          <ul className="blocker-list">
+            {blockers.map((item) => (
+              <li key={item.id + item.kind}>
+                <button type="button" className="inline-link" onClick={() => (item.kind === 'project' ? openProject(item.id) : showModal(<ContractDetailModal contractId={item.id} />))}>
+                  {item.label} ›
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p>Dừng hoặc hủy nháp từng dự án tại trang dự án; kết thúc hoặc hủy hợp đồng trong chi tiết hợp đồng.</p>
         </div>
         <div className="form-actions"><button className="primary" type="button" onClick={closeModal}>Đóng</button></div>
       </Modal>
@@ -152,7 +162,6 @@ export function EndCooperationModal({ customer }: { customer: Customer }) {
     <Modal
       title="Kết thúc hợp tác"
       onSubmit={(form) => {
-        const date = field(form, 'date')
         const reason = field(form, 'reason')
         update((draft) => {
           const target = draft.customers.find((item) => item.id === customer.id)
@@ -166,16 +175,19 @@ export function EndCooperationModal({ customer }: { customer: Customer }) {
     >
       <div className="form">
         <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chuyển sang tự vận hành kênh" /></label>
-        <label className="field">Ngày kết thúc<input name="date" type="date" required defaultValue={TODAY} /></label>
+        <label className="field">Ngày kết thúc
+          <input name="date" type="date" required value={date} onChange={(event) => setDate(event.target.value)} aria-describedby="endDateHint" />
+          <span id="endDateHint" className="field-hint">{date ? 'Ngày ' + formatDate(parseInput(date)) : 'Chọn ngày'}</span>
+        </label>
         <label className="filter-check"><input type="checkbox" required /> Tôi xác nhận mọi dự án đã dừng và hợp đồng đã đóng.</label>
-        <FormActions submit="Kết thúc hợp tác" />
+        <FormActions submit="Kết thúc hợp tác" cancel="Đóng" />
       </div>
     </Modal>
   )
 }
 
 export function AccountSummaryModal({ owner }: { owner: string }) {
-  const { closeModal } = useApp()
+  const { closeModal, openProject } = useApp()
   const { customers, projects, params } = useData()
   const assigned = customers.filter((item) => item.owner === owner)
   const working = assigned.filter((item) => customerStatus(item, projects) === 'active')
@@ -188,7 +200,19 @@ export function AccountSummaryModal({ owner }: { owner: string }) {
         <div><span>Dự án đang triển khai</span><b>{active.length}</b></div>
         <div><span>Dự án trễ mốc SOP</span><b>{late.length}</b></div>
       </div>
-      {late.length > 0 && <div className="customer-data-rules"><b>Dự án trễ</b><p>{late.map((item) => item.customer + ' — ' + projectHealth(item, params).reason).join(' · ')}</p></div>}
+      {late.length > 0 && (
+        <div className="customer-data-rules">
+          <b>Dự án trễ</b>
+          <ul className="blocker-list">
+            {late.map((item) => (
+              <li key={item.id}>
+                <button type="button" className="inline-link" onClick={() => openProject(item.id)}>{item.customer} · {item.code} ›</button>
+                <small>{projectHealth(item, params).reason}</small>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="customer-data-rules"><b>Phạm vi dữ liệu</b><p>Account xem các khách hàng và dự án mình phụ trách hoặc tạo.</p></div>
       <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div>
     </Modal>

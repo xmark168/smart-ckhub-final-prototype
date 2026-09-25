@@ -29,7 +29,7 @@ function isTab(value: string | null): value is ProjectTab {
 }
 
 function Header({ project }: { project: Project }) {
-  const { go } = useApp()
+  const { go, openCustomer } = useApp()
   const actions = useProjectActions(project)
   const draft = project.state === 'draft'
   return (
@@ -38,7 +38,7 @@ function Header({ project }: { project: Project }) {
       <div className="project-detail-title">
         <div>
           <h1>{project.customer} <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></h1>
-          <p>{project.code} · {project.service} · {project.area} · Account {project.owner}</p>
+          <p>{project.code} · Khách <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>{project.customer}</button> · {project.service} · Account {project.owner}</p>
         </div>
         <div className="project-detail-actions">
           <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa dự án</button>
