@@ -73,3 +73,15 @@ button.customer-dashboard-settings { border: 0; background: transparent; color: 
   .param-default { text-align: left; }
   .content-toolbar .project-drive-link { margin-left: 0; }
 }
+
+/* ---- "?" help button next to page titles (legacy rule was scoped to .customer-workspace) ---- */
+h1 .customer-help {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 4px; padding: 0;
+  border: 1px solid rgb(223, 207, 194); border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, rgb(247, 238, 231));
+  color: rgb(158, 79, 44); font: 850 11px/1 var(--font-body); vertical-align: 4px;
+  box-shadow: rgba(75, 42, 20, 0.1) 0 1px 2px; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+h1 .customer-help:hover { border-color: rgb(193, 100, 57); background: rgb(255, 242, 234); color: rgb(154, 62, 24); box-shadow: rgba(133, 63, 25, 0.16) 0 2px 7px; transform: scale(1.06); }
+h1 .customer-help:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
