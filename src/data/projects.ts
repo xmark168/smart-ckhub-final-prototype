@@ -110,10 +110,13 @@ function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
   }
 }
 
+/** Thèm Nướng (Hiền): demo of a customer waiting for the Cổng khởi động. */
+const DEMO_DRAFT_INDEX = 51
+
 export function seedProjects(packages: ServicePackage[]): Project[] {
   const active = packages.filter((item) => item.status === 'Đang áp dụng')
   const records: Project[] = [...customerRows, extraCustomer].map(([customer, owner, area], index) => {
-    const state: ProjectState = index === 20 ? 'stopped' : index % 13 === 0 ? 'draft' : index % 11 === 0 ? 'pending' : 'active'
+    const state: ProjectState = index === 20 ? 'stopped' : index % 13 === 0 || index === DEMO_DRAFT_INDEX ? 'draft' : index % 11 === 0 ? 'pending' : 'active'
     const draft = state === 'draft'
     const risk = state === 'active' && index % 6 === 0
     const current = (index % 6) + 1

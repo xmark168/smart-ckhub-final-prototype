@@ -45,7 +45,7 @@ function matches(row: Row, filters: Filters): boolean {
 
 /** "4 / 6" for the running project, or the number of projects. */
 function projectSummary(projects: Project[]): [string, string] {
-  if (!projects.length) return ['—', 'Chưa có dự án']
+  if (!projects.length) return ['—', 'Hồ sơ mới, chưa lập dự án']
   const main = projects.find((item) => item.state === 'active') ?? projects[0]
   const cycle = currentCycle(main)
   const services = Array.from(new Set(projects.map((item) => item.service))).join(' · ')
@@ -77,7 +77,7 @@ export function CustomersScreen() {
   const owners = Array.from(new Set(all.map((row) => row.item.owner))).sort()
   const areas = Array.from(new Set(all.map((row) => row.item.area))).sort()
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
-  const kpiLabel = filters.kpi === 'working' ? 'khách đang hợp tác' : filters.kpi === 'ended' ? 'khách đã kết thúc' : 'khách cần chú ý'
+  const kpiLabel = filters.kpi === 'working' ? 'khách hiện hữu' : filters.kpi === 'ended' ? 'khách đã kết thúc' : 'khách cần chú ý'
   const narrowed = filters.query || activeFilterCount
 
   return (
@@ -86,7 +86,7 @@ export function CustomersScreen() {
         <div>
           <h1>Khách hàng <button className="customer-help" aria-label="Xem quy trình khách hàng" title="Xem quy trình và quy tắc dữ liệu" onClick={() => showModal(<CustomerFlowModal />)}>?</button></h1>
         </div>
-        <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={() => change({ kpi: 'working' })} />)}>+ Tạo khách hàng</button>
+        <button className="primary" onClick={() => showModal(<CreateCustomerModal onCreated={(id) => openCustomer(id)} />)}>+ Tạo khách hàng</button>
       </div>
 
       <section className="customer-dashboard">
@@ -97,9 +97,9 @@ export function CustomersScreen() {
           onClick={() => change({ kpi: 'working' })}
           onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && change({ kpi: 'working' })}
         >
-          <label>Khách đang hợp tác</label>
+          <label>Khách hiện hữu</label>
           <strong>{working.length}</strong>
-          <small><span className="positive">↑ {fresh} khách mới</span> {periodLabel(period)}</small>
+          <small>{working.filter((row) => row.status === 'active').length} đang hợp tác · <span className="positive">↑ {fresh} mới</span> {periodLabel(period)}</small>
           <button
             type="button"
             className="customer-dashboard-settings"

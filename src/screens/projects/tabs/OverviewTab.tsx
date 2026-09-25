@@ -40,6 +40,7 @@ function OnboardingPanel({ project }: { project: Project }) {
       )}
       <div className="onboarding-actions">
         <small>{ready ? 'Đủ điều kiện. Account có thể bắt đầu triển khai.' : 'Còn ' + (required.length - completed) + ' điều kiện cần xử lý.'}</small>
+        <button className="secondary" onClick={actions.cancelDraft} disabled={!actions.canStop} title={actions.canStop ? 'Khách không chốt' : 'Chỉ Account phụ trách hoặc Account tạo dự án'}><Icon name="circle-x" /> Hủy nháp</button>
         <button className="secondary" onClick={actions.onboarding}><Icon name="list-checks" /> Cập nhật</button>
       </div>
     </section>

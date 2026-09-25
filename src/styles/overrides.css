@@ -85,3 +85,8 @@ h1 .customer-help {
 }
 h1 .customer-help:hover { border-color: rgb(193, 100, 57); background: rgb(255, 242, 234); color: rgb(154, 62, 24); box-shadow: rgba(133, 63, 25, 0.16) 0 2px 7px; transform: scale(1.06); }
 h1 .customer-help:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* ---- Read-only notice on detail pages ---- */
+.scope-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 9px 12px; border: 1px solid rgb(230, 217, 206); border-radius: 10px; background: rgb(252, 247, 242); color: rgb(117, 80, 55); font-size: 12px; font-weight: 650; }
+.scope-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.customer-detail-actions button:disabled, .text-btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -6,7 +6,7 @@ import { useData } from '../../store/store'
 import type { Project } from '../../store/types'
 import { AccountSummaryModal } from '../customers/CustomerModals'
 import { CloseCycleModal } from './ContentModals'
-import { EditProjectModal, OnboardingModal, PauseProjectModal, StartProjectModal, StopProjectModal } from './ProjectModals'
+import { CancelDraftModal, EditProjectModal, OnboardingModal, PauseProjectModal, StartProjectModal, StopProjectModal } from './ProjectModals'
 import { addProjectActivity, canStopProject, onboardingReady, updateProject } from './projectLogic'
 
 /** Project actions shared by the detail header, its tabs and the list. */
@@ -43,6 +43,10 @@ export function useProjectActions(project: Project) {
         )
       }),
     pause: () => showModal(<PauseProjectModal project={project} />),
+    cancelDraft: () => {
+      if (!canStop) return toast('Chỉ Account phụ trách hoặc Account tạo dự án được hủy.')
+      showModal(<CancelDraftModal project={project} />)
+    },
     stop: () => {
       if (!canStop) return toast('Chỉ Account phụ trách hoặc Account tạo dự án được phép dừng.')
       showModal(<StopProjectModal project={project} />)

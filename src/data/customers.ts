@@ -30,7 +30,7 @@ export function customerIdAt(index: number): string {
 }
 
 export function seedCustomers(): Customer[] {
-  return [...customerRows, extraCustomer].map(([name, owner, area], index) => ({
+  const seeded: Customer[] = [...customerRows, extraCustomer].map(([name, owner, area], index) => ({
     id: customerIdAt(index),
     name,
     owner,
@@ -41,4 +41,16 @@ export function seedCustomers(): Customer[] {
     ended: name === 'Dìn Ký' ? { date: '2026-08-31', reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.' } : undefined,
     activities: seedActivities(owner),
   }))
+  // Demo: a customer just signed up this month, no project yet (Account Hiền).
+  seeded.unshift({
+    id: 'customer-demo-new',
+    name: 'Chè Bà Tư',
+    owner: 'Hiền',
+    area: 'HCM',
+    createdAt: '2026-09-22',
+    createdBy: 'Hiền',
+    attention: false,
+    activities: [{ title: 'Đã tạo hồ sơ khách hàng', time: '22.09.2026', detail: 'Account phụ trách: Hiền · chờ Sale gửi Sales Brief', icon: 'users-round' }],
+  })
+  return seeded
 }

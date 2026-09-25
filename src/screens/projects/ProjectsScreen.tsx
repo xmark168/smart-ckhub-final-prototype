@@ -28,7 +28,7 @@ const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '
 const PAGE_SIZE = 20
 
 const PROJECT_RULES =
-  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo.'
+  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo. Khách không chốt thì Hủy nháp (dự án chuyển sang Đã dừng, giữ lịch sử); sau đó mới kết thúc hợp tác với khách được.'
 
 function atRisk(item: Project, params: SopParams): boolean {
   return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late')
@@ -113,7 +113,7 @@ export function ProjectsScreen() {
       <div className="projects-page">
         <div className="project-page-head">
           <h1>Dự án <button className="customer-help" aria-label="Quy tắc dự án" onClick={() => showModal(<InfoModal title="Quy tắc dự án" message={PROJECT_RULES} />)}>?</button></h1>
-          <button className="primary" onClick={() => showModal(<CreateProjectModal onCreated={() => change({ kpi: 'all' })} />)}><Icon name="plus" /> Tạo dự án</button>
+          <button className="primary" onClick={() => showModal(<CreateProjectModal onCreated={(id) => openProject(id)} />)}><Icon name="plus" /> Tạo dự án</button>
         </div>
 
         <section className="project-dashboard">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ACCOUNTS } from '../lib/format'
 import { Icon } from '../lib/icons'
-import { useData } from '../store/store'
+import { resetData, useData } from '../store/store'
 import type { Role } from '../store/types'
 import { ROLES, useApp, type ScreenId } from './context'
 import { PAGES, sectionOf, type PageMeta } from './routes'
@@ -11,7 +11,7 @@ const ALL_ROLES: Role[] = ['account', 'partner', 'admin', 'bods']
 const NAV = (Object.entries(PAGES) as Array<[ScreenId, PageMeta]>).filter(([, page]) => page.nav)
 
 export function Sidebar() {
-  const { role, setRole, account, setAccount, screen, go } = useApp()
+  const { role, setRole, account, setAccount, screen, go, toast } = useApp()
   const { profile } = useData()
   const [menuOpen, setMenuOpen] = useState(false)
   const personRef = useRef<HTMLDivElement>(null)
@@ -58,6 +58,17 @@ export function Sidebar() {
           </div>
           <button type="button" onClick={() => { setMenuOpen(false); go('profile') }}>Hồ sơ cá nhân</button>
           <button type="button" onClick={() => { setMenuOpen(false); go('settings') }}>Cài đặt</button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false)
+              if (!window.confirm('Đặt lại toàn bộ dữ liệu mẫu? Mọi thay đổi đã lưu trên trình duyệt này sẽ mất.')) return
+              resetData()
+              toast('Đã đặt lại dữ liệu mẫu.')
+            }}
+          >
+            Đặt lại dữ liệu mẫu
+          </button>
         </div>
         <button
           type="button"

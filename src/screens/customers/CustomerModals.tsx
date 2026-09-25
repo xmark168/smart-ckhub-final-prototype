@@ -34,7 +34,7 @@ function rejectDuplicate(form: HTMLFormElement, exceptId = ''): boolean {
   return Boolean(match)
 }
 
-export function CreateCustomerModal({ onCreated }: { onCreated: () => void }) {
+export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => void }) {
   const { closeModal, account } = useApp()
   return (
     <Modal
@@ -42,9 +42,10 @@ export function CreateCustomerModal({ onCreated }: { onCreated: () => void }) {
       onSubmit={(form) => {
         if (rejectDuplicate(form)) return
         const owner = field(form, 'owner')
+        const id = 'customer-' + Date.now()
         update((draft) => {
           draft.customers.unshift({
-            id: 'customer-' + Date.now(),
+            id,
             name: field(form, 'name'),
             owner,
             area: field(form, 'area'),
@@ -55,14 +56,14 @@ export function CreateCustomerModal({ onCreated }: { onCreated: () => void }) {
           })
         })
         closeModal()
-        onCreated()
+        onCreated(id)
       }}
     >
       <div className="form">
         <label className="field">Tên thương hiệu<input name="name" required autoFocus onInput={(event) => event.currentTarget.setCustomValidity('')} /></label>
         <OwnerSelect value={account} />
         <AreaSelect />
-        <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, vào Dự án › Tạo dự án để lập dự án nháp cho khách.</p></div>
+        <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></div>
         <FormActions submit="Tạo khách hàng" />
       </div>
     </Modal>
@@ -201,7 +202,22 @@ export function CustomerFlowModal() {
           <div className="status-standard-row" key={code}><span>{code}</span><i>→</i><strong>{label}</strong><small>{text}</small></div>
         ))}
       </section>
-      <div className="customer-data-rules"><b>Quy tắc xem dữ liệu</b><p>Account chỉ xem khách hàng và dự án mình phụ trách hoặc tạo. BODs và Administrator xem toàn bộ dữ liệu. Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay.</p></div>
+<div className="customer-data-rules">
+        <b>Quy tắc xem và thao tác</b>
+        <p>Account chỉ xem khách hàng và dự án mình phụ trách hoặc tạo; mở khách ngoài phạm vi bằng link chỉ ở chế độ xem. Chỉ Account phụ trách hoặc Account tạo khách được sửa, gắn cờ, kết thúc hợp tác. BODs và Administrator xem toàn bộ, không thao tác.</p>
+      </div>
+      <div className="customer-data-rules">
+        <b>Chỉ số và kỳ xem</b>
+        <p>Khách hiện hữu: mọi khách chưa kết thúc hợp tác (gồm đang hợp tác, chờ khởi động, tạm ngưng, chưa có dự án). Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay. Khách mới trong kỳ: ngày tạo hồ sơ nằm trong kỳ xem, kể cả khách đã kết thúc hợp tác sau đó. Kỳ xem hiện chỉ áp dụng cho số khách mới.</p>
+      </div>
+      <div className="customer-data-rules">
+        <b>Kết thúc hợp tác</b>
+        <p>Chỉ thực hiện khi mọi dự án đã dừng và không còn hợp đồng Hiệu lực hoặc Nháp. Dự án nháp khách không chốt thì Hủy nháp tại trang dự án. Kết thúc cần lý do và ngày; có thể mở lại hợp tác rồi tạo dự án mới.</p>
+      </div>
+      <div className="customer-data-rules">
+        <b>Đổi Account phụ trách</b>
+        <p>Có thể chuyển kèm các dự án đang mở của Account cũ. Account đã tạo dự án vẫn thấy dự án đó. Đổi tên khách cập nhật tên trên dự án; hợp đồng đã lập giữ tên tại thời điểm ký (bản prototype chưa đồng bộ).</p>
+      </div>
     </Modal>
   )
 }

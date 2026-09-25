@@ -2,9 +2,10 @@ import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
 import { newCycle } from '../../data/cycles'
-import { ACCOUNTS, addBusinessDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
+import { ACCOUNTS, addBusinessDaysIso, formatDate, newId, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
 import { Icon } from '../../lib/icons'
+import { inScope } from '../../lib/scope'
 import { getData, update, useData } from '../../store/store'
 import type { Onboarding, Project, ProjectTeam } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
@@ -48,15 +49,17 @@ function QuotaNote({ quota }: { quota: Project['quota'] }) {
   )
 }
 
-export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
-  const { closeModal, account } = useApp()
+/** `customerId` pre-selects the customer (opened from the customer page). */
+export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: string) => void; customerId?: string }) {
+  const { closeModal, account, role } = useApp()
   const { categories, packages, projects, customers } = useData()
   const activePackages = packages.filter((item) => item.status === 'Đang áp dụng')
   const usableCategories = categories.filter((category) => activePackages.some((item) => item.category === category.id))
-  const choices = customers.filter((item) => !item.ended).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  const choices = customers.filter((item) => !item.ended && inScope(role, account, item)).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  const preset = customers.find((item) => item.id === customerId)
   const customerRef = useRef<HTMLInputElement>(null)
-  const [customerText, setCustomerText] = useState('')
-  const [owner, setOwner] = useState(account)
+  const [customerText, setCustomerText] = useState(preset?.name ?? '')
+  const [owner, setOwner] = useState(preset?.owner ?? account)
   const [category, setCategory] = useState(usableCategories[0]?.id ?? '')
   const categoryPackages = activePackages.filter((item) => item.category === category)
   const [packageId, setPackageId] = useState(categoryPackages[0]?.id ?? '')
@@ -83,9 +86,10 @@ export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
           return
         }
         if (!selectedPackage) return
+        const id = newId('project')
         update((draft) => {
           draft.projects.unshift({
-            id: 'project-' + Date.now(),
+            id,
             code: 'DA-2026-' + String(projects.length + 1).padStart(3, '0'),
             customerId: customer.id,
             customer: customer.name,
@@ -110,7 +114,7 @@ export function CreateProjectModal({ onCreated }: { onCreated: () => void }) {
           })
         })
         closeModal()
-        onCreated()
+        onCreated(id)
       }}
     >
       <div className="form">
@@ -435,6 +439,32 @@ export function OnboardingModal({ project }: { project: Project }) {
 
         <p className="onboarding-remain">{completed === required.length ? 'Đủ điều kiện khởi động dự án.' : 'Còn ' + (required.length - completed) + ' điều kiện bắt buộc.'}</p>
         <FormActions submit="Lưu cập nhật" />
+      </div>
+    </Modal>
+  )
+}
+
+/** Hủy dự án nháp: the customer did not sign. Keeps the record as stopped for history. */
+export function CancelDraftModal({ project }: { project: Project }) {
+  const { closeModal, toast } = useApp()
+  return (
+    <Modal
+      title="Hủy dự án nháp"
+      onSubmit={(form) => {
+        const reason = field(form, 'reason')
+        updateProject(project.id, (item) => {
+          item.state = 'stopped'
+          item.stop = { reason: 'Hủy nháp: ' + reason, date: TODAY }
+          addProjectActivity(item, 'circle-x', 'Đã hủy dự án nháp', reason)
+        })
+        closeModal()
+        toast('Đã hủy dự án nháp.')
+      }}
+    >
+      <div className="form">
+        <div className="customer-data-rules"><p>Dùng khi khách không chốt. Dự án chuyển sang Đã dừng, không tạo chu kỳ; hợp đồng nháp (nếu có) cần hủy tại Hợp đồng &amp; công nợ.</p></div>
+        <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chưa đủ ngân sách" /></label>
+        <FormActions submit="Hủy dự án nháp" />
       </div>
     </Modal>
   )

@@ -4,7 +4,9 @@ import { formatDate, initials, money, parseInput } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { currentCycle, projectHealth } from '../../lib/sop'
 import { update, useData } from '../../store/store'
+import { inScope } from '../../lib/scope'
 import { Modal } from '../../ui/Modal'
+import { CreateProjectModal } from '../projects/ProjectModals'
 import { cycleCounter, postProgress, projectLabel, projectTone } from '../projects/projectLogic'
 import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './CustomerModals'
 import { addCustomerActivity, attentionReasons, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, periodLabel } from './customerLogic'
@@ -38,6 +40,8 @@ export function CustomerDetailScreen() {
   const own = customerProjects(item, projects)
   const reasons = attentionReasons(item, projects, contracts, params)
   const canManage = canManageCustomer(role, account, item)
+  const outOfScope = !inScope(role, account, item)
+  const readOnlyHint = role === 'account' ? 'Chỉ Account ' + item.owner + (item.createdBy && item.createdBy !== item.owner ? ' hoặc ' + item.createdBy : '') + ' được thao tác' : 'BODs và Administrator chỉ xem'
   const ownContracts = contracts.filter((row) => own.some((project) => project.id === row.projectId) && row.status !== 'Đã hủy')
   const debt = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).remaining, 0)
   const overdue = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
@@ -45,7 +49,7 @@ export function CustomerDetailScreen() {
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
 
   const toggleAttention = () =>
-    update((draft) => {
+    canManage ? update((draft) => {
       const target = draft.customers.find((customer) => customer.id === item.id)
       if (!target) return
       target.attention = !target.attention
@@ -55,10 +59,10 @@ export function CustomerDetailScreen() {
         target.attention ? 'Cần Account rà soát trong kỳ này' : 'Không còn điểm cần theo dõi',
         'flag',
       )
-    })
+    }) : toast(readOnlyHint + '.')
 
   const changeCooperation = () => {
-    if (!canManage) return toast('Chỉ Account phụ trách hoặc Account tạo khách hàng được thao tác.')
+    if (!canManage) return toast(readOnlyHint + '.')
     if (status !== 'ended') return showModal(<EndCooperationModal customer={item} />)
     update((draft) => {
       const target = draft.customers.find((customer) => customer.id === item.id)
@@ -81,10 +85,13 @@ export function CustomerDetailScreen() {
             <p><span>{item.area} · khách từ {formatDate(parseInput(item.createdAt))}</span></p>
           </div>
           <div className="customer-detail-actions">
-            <button className="secondary" onClick={() => showModal(<EditCustomerModal customer={item} />)}><Icon name="pencil" /> Sửa khách hàng</button>
+            <button className="secondary" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<EditCustomerModal customer={item} />)}><Icon name="pencil" /> Sửa khách hàng</button>
           </div>
         </div>
       </div>
+
+      {outOfScope && <div className="scope-banner"><Icon name="shield-check" /> Khách này thuộc Account {item.owner}, ngoài phạm vi của bạn. Chế độ xem.</div>}
+      {!outOfScope && !canManage && <div className="scope-banner"><Icon name="shield-check" /> {readOnlyHint}. Chế độ xem.</div>}
 
       <section className="customer-overview">
         <div className="customer-overview-main">
@@ -104,7 +111,9 @@ export function CustomerDetailScreen() {
           <section className="panel customer-project-panel">
             <div className="panel-head">
               <div><h2>Dự án</h2><p className="subline">Tiến độ tính từ chu kỳ và bài đã đăng của từng dự án.</p></div>
-              <button className="text-btn" onClick={() => go('projects')}>Tạo dự án</button>
+              {status !== 'ended' && (
+                <button className="text-btn" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<CreateProjectModal customerId={item.id} onCreated={(id) => openProject(id)} />)}>+ Tạo dự án</button>
+              )}
             </div>
             {own.map((project) => {
               const posts = postProgress(project)
@@ -123,7 +132,7 @@ export function CustomerDetailScreen() {
                 </div>
               )
             })}
-            {!own.length && <p className="empty-copy">Chưa có dự án. Tạo dự án nháp tại trang Dự án.</p>}
+            {!own.length && <p className="empty-copy">Chưa có dự án. Bấm + Tạo dự án để lập dự án nháp; chu kỳ 1 bắt đầu khi qua Cổng khởi động.</p>}
           </section>
 
           <section className="panel">
@@ -150,7 +159,7 @@ export function CustomerDetailScreen() {
           <section className="panel customer-control-panel">
             <div className="panel-head"><h2>Kiểm soát hợp tác</h2></div>
             {status !== 'ended' && (
-              <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention}>
+              <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention} disabled={!canManage} title={canManage ? undefined : readOnlyHint}>
                 <Icon name="flag" />
                 <span>
                   <b>{item.attention ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
@@ -158,7 +167,7 @@ export function CustomerDetailScreen() {
                 </span>
               </button>
             )}
-            <button className="customer-control" onClick={changeCooperation}>
+            <button className="customer-control" onClick={changeCooperation} disabled={!canManage} title={canManage ? undefined : readOnlyHint}>
               <Icon name={status === 'ended' ? 'rotate-ccw' : 'circle-stop'} />
               <span>
                 <b>{status === 'ended' ? 'Mở lại hợp tác' : 'Kết thúc hợp tác'}</b>
