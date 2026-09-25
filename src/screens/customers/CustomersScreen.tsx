@@ -11,6 +11,7 @@ import { ReasonPill } from './ReasonPill'
 import { motionBehavior } from '../../lib/motion'
 import type { Customer, Project } from '../../store/types'
 import { ProjectCell } from './ProjectCell'
+import { ServicesLine } from './ServicesLine'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
 import { attentionKind, attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, endedInPeriod, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
 import type { Period } from '../../store/types'
@@ -65,10 +66,6 @@ function sortRows(rows: Row[], sort: Sort = 'name'): Row[] {
   return [...rows].sort(byName)
 }
 
-/** Services line under the customer name. */
-function servicesOf(projects: Project[]): string {
-  return projects.length ? Array.from(new Set(projects.map((item) => item.service))).join(' · ') : 'Hồ sơ mới, chưa lập dự án'
-}
 
 
 
@@ -226,7 +223,7 @@ export function CustomersScreen() {
                   <tr key={item.id} onClick={() => openCustomer(item.id)}>
                     <td>
                       <button type="button" className="customer-name row-link" onClick={(event) => { event.stopPropagation(); openCustomer(item.id) }}>{item.name}</button>
-                      <span className="customer-meta">{servicesOf(own)}</span>
+                      <ServicesLine projects={own} />
                     </td>
                     <td data-label="Account">
                       <button className="customer-account" type="button" aria-label={'Tóm tắt Account ' + item.owner} onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>

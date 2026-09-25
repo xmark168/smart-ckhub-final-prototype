@@ -300,3 +300,14 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
   #customers .customer-table td.list-empty { grid-column: 1 / -1; }
   #customers .customer-table-wrap { overflow: visible; }
 }
+
+/* ---- Services line: main package + "+N" with tooltip on hover/focus ---- */
+.services-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.services-main { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.services-more { position: relative; flex: 0 0 auto; }
+.services-more > button { min-width: 24px; min-height: 20px; padding: 0 6px; border: 0; border-radius: 99px; background: rgb(240, 233, 226); color: #6b5646; font: 800 10px var(--font-body); cursor: default; }
+.services-tip { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; display: none; min-width: 240px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: var(--shadow); color: var(--ink); font-size: 11px; line-height: 1.5; white-space: nowrap; }
+.services-tip span { display: block; }
+.services-tip b { margin-right: 4px; font-family: var(--font-mono); font-weight: 700; }
+.services-more:hover .services-tip, .services-more:focus-within .services-tip { display: block; }
+#customers .customer-table-wrap:has(.services-more:hover), #customers .customer-table-wrap:has(.services-more:focus-within) { overflow: visible; }
