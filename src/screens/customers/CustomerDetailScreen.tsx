@@ -1,29 +1,23 @@
 import { useApp } from '../../app/context'
-import { paymentMetrics } from '../../data/contracts'
-import { formatDate, initials, money, parseInput } from '../../lib/format'
+import { contractTone, paymentMetrics } from '../../data/contracts'
+import { formatDate, initials, money, parseInput, shortDate } from '../../lib/format'
 import { Icon } from '../../lib/icons'
+import { inScope } from '../../lib/scope'
 import { currentCycle, projectHealth } from '../../lib/sop'
 import { update, useData } from '../../store/store'
-import { inScope } from '../../lib/scope'
-import { Modal } from '../../ui/Modal'
+import type { Activity } from '../../store/types'
+import { ContractDetailModal } from '../contracts/ContractModals'
 import { CreateProjectModal } from '../projects/ProjectModals'
-import { cycleCounter, postProgress, projectLabel, projectTone } from '../projects/projectLogic'
+import { postProgress, projectLabel, projectTone } from '../projects/projectLogic'
 import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './CustomerModals'
-import { addCustomerActivity, attentionReasons, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, periodLabel } from './customerLogic'
+import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, shortMoney } from './customerLogic'
+import { ProjectCell } from './ProjectCell'
 
-function ActivityInfoModal() {
-  const { closeModal } = useApp()
-  return (
-    <Modal title="Hoạt động khách hàng">
-      <div className="customer-data-rules"><b>Nhật ký hoạt động</b><p>Lưu thay đổi Account, trạng thái hợp tác và cờ theo dõi. Thao tác trên dự án xem ở Nhật ký của từng dự án.</p></div>
-      <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div>
-    </Modal>
-  )
-}
+const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text' }
 
 export function CustomerDetailScreen() {
   const { customerId, go, role, account, toast, showModal, openProject } = useApp()
-  const { customers, projects, contracts, params, period } = useData()
+  const { customers, projects, contracts, params } = useData()
   const item = customers.find((customer) => customer.id === customerId)
   if (!item) {
     return (
@@ -38,7 +32,7 @@ export function CustomerDetailScreen() {
 
   const status = customerStatus(item, projects)
   const own = customerProjects(item, projects)
-  const reasons = attentionReasons(item, projects, contracts, params)
+  const attention = attentionItems(item, projects, contracts, params)
   const canManage = canManageCustomer(role, account, item)
   const outOfScope = !inScope(role, account, item)
   const readOnlyHint = role === 'account' ? 'Chỉ Account ' + item.owner + (item.createdBy && item.createdBy !== item.owner ? ' hoặc ' + item.createdBy : '') + ' được thao tác' : 'BODs và Administrator chỉ xem'
@@ -47,19 +41,27 @@ export function CustomerDetailScreen() {
   const overdue = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
   const activeCount = own.filter((project) => project.state === 'active').length
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
+  const openContract = (id: string) => showModal(<ContractDetailModal contractId={id} />)
+  const scrollToContracts = () => document.getElementById('customerContracts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const log: Array<Activity & { source: string }> = [
+    ...item.activities.map((entry) => ({ ...entry, source: 'Khách hàng' })),
+    ...own.flatMap((project) => project.activities.slice(0, 3).map((entry) => ({ ...entry, source: project.code }))),
+  ].slice(0, 8)
 
   const toggleAttention = () =>
-    canManage ? update((draft) => {
-      const target = draft.customers.find((customer) => customer.id === item.id)
-      if (!target) return
-      target.attention = !target.attention
-      addCustomerActivity(
-        target,
-        target.attention ? 'Đã gắn cờ cần chú ý' : 'Đã bỏ cờ cần chú ý',
-        target.attention ? 'Cần Account rà soát trong kỳ này' : 'Không còn điểm cần theo dõi',
-        'flag',
-      )
-    }) : toast(readOnlyHint + '.')
+    canManage
+      ? update((draft) => {
+          const target = draft.customers.find((customer) => customer.id === item.id)
+          if (!target) return
+          target.attention = !target.attention
+          addCustomerActivity(
+            target,
+            target.attention ? 'Đã gắn cờ cần chú ý' : 'Đã bỏ cờ cần chú ý',
+            target.attention ? 'Cần Account rà soát trong kỳ này' : 'Không còn điểm cần theo dõi',
+            'flag',
+          )
+        })
+      : toast(readOnlyHint + '.')
 
   const changeCooperation = () => {
     if (!canManage) return toast(readOnlyHint + '.')
@@ -82,7 +84,7 @@ export function CustomerDetailScreen() {
               <h1>{item.name}</h1>
               <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
             </div>
-            <p><span>{item.area} · khách từ {formatDate(parseInput(item.createdAt))}</span></p>
+            <p><span>{item.area} · khách từ {formatDate(parseInput(item.createdAt))} · Account <button className="inline-link" onClick={openAccount}>{item.owner}</button></span></p>
           </div>
           <div className="customer-detail-actions">
             <button className="secondary" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<EditCustomerModal customer={item} />)}><Icon name="pencil" /> Sửa khách hàng</button>
@@ -96,21 +98,39 @@ export function CustomerDetailScreen() {
       <section className="customer-overview">
         <div className="customer-overview-main">
           <span>Tình hình khách hàng</span>
-          <strong>{item.ended ? 'Đã kết thúc hợp tác' : reasons.length ? 'Cần theo dõi' : 'Ổn định'}</strong>
-          <p>{item.ended ? formatDate(parseInput(item.ended.date)) + ' · ' + item.ended.reason : reasons.length ? reasons.slice(0, 2).join(' · ') + (reasons.length > 2 ? ' · +' + (reasons.length - 2) : '') : 'Không có mốc trễ, công nợ quá hạn hay cờ đang mở.'}</p>
-          <div>
-            <Icon name="calendar-days" /> Kỳ xem: {periodLabel(period)} <Icon name="user-round" /> Account: <button onClick={openAccount}>{item.owner}</button>
-          </div>
+          <strong>{item.ended ? 'Đã kết thúc hợp tác' : attention.length ? 'Cần theo dõi' : 'Ổn định'}</strong>
+          {item.ended ? (
+            <p>{formatDate(parseInput(item.ended.date))} · {item.ended.reason}</p>
+          ) : attention.length ? (
+            <ul className="attention-list">
+              {attention.map((entry) => (
+                <li key={entry.label}>
+                  <button
+                    type="button"
+                    title={entry.detail}
+                    disabled={!entry.targetId}
+                    onClick={() => (entry.kind === 'debt' ? openContract(entry.targetId) : entry.targetId && openProject(entry.targetId))}
+                  >
+                    <Icon name={ATTENTION_ICON[entry.kind]} /> {entry.label} {entry.targetId && <Icon name="chevron-right" />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Không có mốc trễ, công nợ quá hạn hay cờ đang mở.</p>
+          )}
         </div>
         <div className="customer-overview-stat"><span>Dự án</span><strong>{activeCount} / {own.length}</strong><small>đang triển khai / tổng</small></div>
-        <div className="customer-overview-stat"><span>Công nợ còn lại</span><strong>{money(debt)}</strong><small>{overdue ? 'quá hạn ' + money(overdue) : 'không có khoản quá hạn'}</small></div>
+        <button type="button" className="customer-overview-stat as-button" onClick={scrollToContracts} disabled={!ownContracts.length}>
+          <span>Công nợ còn lại</span><strong>{money(debt)}</strong><small>{overdue ? 'quá hạn ' + money(overdue) : 'không có khoản quá hạn'}{ownContracts.length ? ' · xem hợp đồng ↓' : ''}</small>
+        </button>
       </section>
 
       <div className="customer-detail-layout">
         <main>
           <section className="panel customer-project-panel">
             <div className="panel-head">
-              <div><h2>Dự án</h2><p className="subline">Tiến độ tính từ chu kỳ và bài đã đăng của từng dự án.</p></div>
+              <div><h2>Dự án</h2><p className="subline">Chu kỳ hiện tại, bài đã đăng và sức khỏe tự tính.</p></div>
               {status !== 'ended' && (
                 <button className="text-btn" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<CreateProjectModal customerId={item.id} onCreated={(id) => openProject(id)} />)}>+ Tạo dự án</button>
               )}
@@ -120,27 +140,62 @@ export function CustomerDetailScreen() {
               const health = projectHealth(project, params)
               const cycle = currentCycle(project)
               return (
-                <div className="customer-project-row" key={project.id}>
-                  <Icon name="folder-kanban" className="project-symbol" />
-                  <div>
-                    <b>{project.code} · {project.service} <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></b>
-                    <p>Account {project.owner} · Chu kỳ {cycleCounter(project)}{cycle ? ' · ' + formatDate(parseInput(cycle.start)) + ' – ' + formatDate(parseInput(cycle.plannedEnd)) : ''}</p>
-                    {posts && <div className="customer-progress"><i style={{ width: Math.min(100, posts.percent) + '%' }} /></div>}
-                    <small>{posts ? posts.published + ' / ' + posts.planned + ' bài · ' : ''}<span className={'pill ' + health.tone}>{health.label}</span> {health.reason}</small>
-                  </div>
-                  <button className="text-btn" onClick={() => openProject(project.id)}>Xem chi tiết</button>
-                </div>
+                <button type="button" className="customer-project-line" key={project.id} onClick={() => openProject(project.id)}>
+                  <span className="cpl-main">
+                    <b>{project.code} · {project.service}</b>
+                    <small>
+                      {cycle ? shortDate(cycle.start) + ' – ' + shortDate(cycle.plannedEnd) : 'Chưa bắt đầu'}
+                      {project.owner !== item.owner ? ' · Account ' + project.owner : ''}
+                    </small>
+                  </span>
+                  <ProjectCell projects={[project]} />
+                  <span className="cpl-posts">{posts ? posts.published + '/' + posts.planned + ' bài' : '—'}</span>
+                  <span className="cpl-status">
+                    {project.state === 'active'
+                      ? <span className={'pill ' + health.tone} title={health.reason}>{health.label}</span>
+                      : <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span>}
+                  </span>
+                  <Icon name="chevron-right" />
+                </button>
               )
             })}
             {!own.length && <p className="empty-copy">Chưa có dự án. Bấm + Tạo dự án để lập dự án nháp; chu kỳ 1 bắt đầu khi qua Cổng khởi động.</p>}
           </section>
 
+          <section className="panel" id="customerContracts">
+            <div className="panel-head"><div><h2>Hợp đồng</h2><p className="subline">Hợp đồng chính và phụ lục của các dự án.</p></div></div>
+            {ownContracts.map((row) => {
+              const metrics = paymentMetrics(row)
+              return (
+                <button type="button" className="customer-contract-line" key={row.id} onClick={() => openContract(row.id)}>
+                  <span className="cpl-main">
+                    <b>{row.code} · {row.type}</b>
+                    <small>{row.service} · {row.cycles} chu kỳ</small>
+                  </span>
+                  <span className="cpl-money">
+                    <b>{shortMoney(row.paid)} / {shortMoney(row.value)}</b>
+                    <small>{metrics.overdue ? 'quá hạn ' + shortMoney(metrics.overdue) : metrics.remaining ? 'còn ' + shortMoney(metrics.remaining) : 'đã thu đủ'}</small>
+                  </span>
+                  <span className="cpl-status">
+                    <span className={'pill ' + contractTone(row.status)}>{row.status}</span>
+                    {metrics.overdue > 0 && <span className="pill danger">Quá hạn</span>}
+                  </span>
+                  <Icon name="chevron-right" />
+                </button>
+              )
+            })}
+            {!ownContracts.length && <p className="empty-copy">Chưa có hợp đồng. Hợp đồng được tạo từ Cổng khởi động của dự án.</p>}
+          </section>
+
           <section className="panel">
-            <div className="panel-head"><h2>Hoạt động gần đây</h2><button className="text-btn" onClick={() => showModal(<ActivityInfoModal />)}>Quy tắc</button></div>
+            <div className="panel-head"><div><h2>Hoạt động gần đây</h2><p className="subline">Thay đổi trên khách và 3 sự kiện mới nhất của mỗi dự án.</p></div></div>
             <div className="customer-activity">
-              {item.activities.length
-                ? item.activities.map((entry, index) => (
-                    <div key={index}><Icon name={entry.icon} /><span><b>{entry.title}</b><small>{entry.time} · {entry.detail}</small></span></div>
+              {log.length
+                ? log.map((entry, index) => (
+                    <div key={index}>
+                      <Icon name={entry.icon} />
+                      <span><b>{entry.title}</b><small><em className="log-source">{entry.source}</em>{entry.time ? ' · ' + entry.time : ''} · {entry.detail}</small></span>
+                    </div>
                   ))
                 : <div className="customer-activity-empty">Chưa có hoạt động được ghi nhận.</div>}
             </div>
@@ -149,21 +204,18 @@ export function CustomerDetailScreen() {
 
         <aside>
           <section className="panel customer-account-panel">
-            <div className="panel-head"><h2>Account phụ trách</h2></div>
+            <div className="panel-head"><h2>Account &amp; kiểm soát</h2></div>
             <button className="customer-account-card" onClick={openAccount}>
               <i>{initials(item.owner)}</i>
-              <span><b>{item.owner}</b><small>{item.createdBy && item.createdBy !== item.owner ? 'Tạo bởi ' + item.createdBy : 'Điều phối timeline và nguồn lực'}</small></span>
+              <span><b>{item.owner}</b><small>{item.createdBy && item.createdBy !== item.owner ? 'Tạo bởi ' + item.createdBy : 'Account phụ trách'}</small></span>
               <Icon name="chevron-right" />
             </button>
-          </section>
-          <section className="panel customer-control-panel">
-            <div className="panel-head"><h2>Kiểm soát hợp tác</h2></div>
             {status !== 'ended' && (
               <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention} disabled={!canManage} title={canManage ? undefined : readOnlyHint}>
                 <Icon name="flag" />
                 <span>
                   <b>{item.attention ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
-                  <small>{item.attention ? 'Gỡ khi đã xử lý xong' : 'Cờ tay; dự án trễ và công nợ quá hạn tự tính'}</small>
+                  <small>{item.attention ? 'Gỡ khi đã xử lý xong' : 'Cờ tay; trễ mốc và công nợ tự tính'}</small>
                 </span>
               </button>
             )}
@@ -171,7 +223,7 @@ export function CustomerDetailScreen() {
               <Icon name={status === 'ended' ? 'rotate-ccw' : 'circle-stop'} />
               <span>
                 <b>{status === 'ended' ? 'Mở lại hợp tác' : 'Kết thúc hợp tác'}</b>
-                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : 'Khi mọi dự án đã dừng và hợp đồng đã đóng. Dừng dự án thực hiện tại trang dự án.'}</small>
+                <small>{status === 'ended' ? 'Sau đó tạo dự án mới' : 'Khi mọi dự án đã dừng và hợp đồng đã đóng'}</small>
               </span>
             </button>
           </section>

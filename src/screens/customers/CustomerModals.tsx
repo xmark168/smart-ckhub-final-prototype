@@ -178,7 +178,7 @@ export function AccountSummaryModal({ owner }: { owner: string }) {
 export function CustomerFlowModal() {
   const steps: Array<[string, string, string]> = [
     ['01', 'Tạo hồ sơ', 'Gán Account phụ trách.'],
-    ['02', 'Thiết lập đầu mối', 'Chọn đầu mối chính và kênh liên hệ.'],
+    ['02', 'Thiết lập đầu mối (giai đoạn sau)', 'Đầu mối chính và kênh liên hệ sẽ bổ sung ở bản sau; hiện lưu trong Sales Brief.'],
     ['03', 'Mở dự án', 'Tạo dự án nháp, hoàn tất Cổng khởi động rồi bắt đầu chu kỳ 1.'],
     ['04', 'Theo dõi vòng đời', 'Tạm dừng / dừng trên từng dự án. Kết thúc hợp tác khi mọi dự án đã dừng và hợp đồng đã đóng.'],
   ]

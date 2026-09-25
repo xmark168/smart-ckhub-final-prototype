@@ -32,6 +32,7 @@ export function customerIdAt(index: number): string {
 /** Mê Thái, Gà Ta Thảo Vân and Phước Quắn joined this month; others spread over 06/2025–08/2026. */
 function joinedAt(index: number): string {
   if (index === 3 || index === 54 || index === 55) return '2026-09-10'
+  if (index === 15) return '2026-05-08' // Cơm Tấm Tài: real contract from 23.05.2026
   const month = (index * 7) % 15 // 0..14 → 06/2025 .. 08/2026
   const date = new Date(2025, 5 + month, 1 + ((index * 3) % 25))
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0')

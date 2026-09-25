@@ -30,23 +30,43 @@ export function customerStatus(customer: Customer, projects: Project[]): Custome
   return 'none'
 }
 
-/** Reasons a customer needs attention: manual flag, late projects, overdue payments. */
-export function attentionReasons(customer: Customer, projects: Project[], contracts: Contract[], params: SopParams): string[] {
+export interface AttentionItem {
+  kind: 'flag' | 'late' | 'risk' | 'debt'
+  /** Short label, e.g. "DA-2026-056 · chậm tiến độ". */
+  label: string
+  /** Full explanation for tooltips. */
+  detail: string
+  /** Project or contract id to open; empty for the manual flag. */
+  targetId: string
+}
+
+/** Why a customer needs attention: manual flag, late or flagged projects, overdue payments. */
+export function attentionItems(customer: Customer, projects: Project[], contracts: Contract[], params: SopParams): AttentionItem[] {
   if (customer.ended) return []
-  const reasons: string[] = []
-  if (customer.attention) reasons.push('Account đã gắn cờ cần chú ý')
+  const items: AttentionItem[] = []
+  if (customer.attention) items.push({ kind: 'flag', label: 'Account gắn cờ cần chú ý', detail: 'Cờ tay trên khách hàng', targetId: '' })
   customerProjects(customer, projects).forEach((project) => {
     const health = projectHealth(project, params)
-    if (health.level === 'late') reasons.push(project.code + ': ' + health.reason)
-    else if (project.risk) reasons.push(project.code + ': gắn cờ rủi ro')
+    if (health.level === 'late') items.push({ kind: 'late', label: project.code + ' · chậm tiến độ', detail: health.reason, targetId: project.id })
+    else if (project.risk) items.push({ kind: 'risk', label: project.code + ' · gắn cờ rủi ro', detail: 'Account gắn cờ trên dự án', targetId: project.id })
     contracts
       .filter((row) => row.projectId === project.id && row.status === 'Hiệu lực')
       .forEach((row) => {
         const overdue = paymentMetrics(row).overdue
-        if (overdue) reasons.push(row.code + ': công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ')
+        if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', targetId: row.id })
       })
   })
-  return reasons
+  return items
+}
+
+/** 17496000 → "17,5tr". */
+export function shortMoney(value: number): string {
+  return value >= 1e6 ? (Math.round(value / 1e5) / 10).toLocaleString('vi-VN') + 'tr' : value.toLocaleString('vi-VN') + 'đ'
+}
+
+/** Text form used by the list (tooltips and KPI breakdown). */
+export function attentionReasons(customer: Customer, projects: Project[], contracts: Contract[], params: SopParams): string[] {
+  return attentionItems(customer, projects, contracts, params).map((item) => item.label + ': ' + item.detail)
 }
 
 /** yyyy-mm-dd falls in the dashboard period (a month or a year). */
