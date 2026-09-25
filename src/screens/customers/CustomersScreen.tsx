@@ -7,6 +7,7 @@ import { usePagedList } from '../../lib/usePagedList'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
+import { Pager } from '../../ui/Pager'
 import type { Customer, Project } from '../../store/types'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
 import { attentionKind, attentionReasons, CUSTOMER_STATUS, customerProjects, customerStatus, endedInPeriod, isNewInPeriod, periodLabel, type CustomerStatus } from './customerLogic'
@@ -20,8 +21,11 @@ interface Filters {
   status: '' | CustomerStatus
   owner: string
   area: string
-  attention: boolean
+  sort: Sort
 }
+
+type Sort = 'name' | 'recent' | 'attention'
+const SORTS: Record<Sort, string> = { name: 'Tên A–Z', recent: 'Mới tạo gần đây', attention: 'Cần chú ý trước' }
 
 interface Row {
   item: Customer
@@ -30,7 +34,7 @@ interface Row {
   reasons: string[]
 }
 
-const INITIAL: Filters = { kpi: 'working', query: '', status: '', owner: '', area: '', attention: false }
+const INITIAL: Filters = { kpi: 'working', query: '', status: '', owner: '', area: '', sort: 'name' }
 const PAGE_SIZE = 20
 
 function matchesKpi(row: Row, kpi: Kpi, period: Period): boolean {
@@ -48,9 +52,15 @@ function matches(row: Row, filters: Filters, period: Period): boolean {
     includesText([row.item.name, row.item.owner, row.item.area, ...row.projects.map((project) => project.code)], filters.query) &&
     (!filters.status || row.status === filters.status) &&
     (!filters.owner || row.item.owner === filters.owner) &&
-    (!filters.area || row.item.area === filters.area) &&
-    (!filters.attention || row.reasons.length > 0)
+    (!filters.area || row.item.area === filters.area)
   )
+}
+
+function sortRows(rows: Row[], sort: Sort = 'name'): Row[] {
+  const byName = (a: Row, b: Row) => a.item.name.localeCompare(b.item.name, 'vi')
+  if (sort === 'recent') return [...rows].sort((a, b) => b.item.createdAt.localeCompare(a.item.createdAt) || byName(a, b))
+  if (sort === 'attention') return [...rows].sort((a, b) => b.reasons.length - a.reasons.length || byName(a, b))
+  return [...rows].sort(byName)
 }
 
 /** "4 / 6" for the running project, or the number of projects. */
@@ -90,12 +100,21 @@ export function CustomersScreen() {
     .filter(([kind]) => kindCount(kind))
     .map(([kind, label]) => kindCount(kind) + ' ' + label)
     .join(' · ') || 'Không có khách cần chú ý'
-  const matched = all.filter((row) => matches(row, filters, period))
+  const matched = sortRows(all.filter((row) => matches(row, filters, period)), filters.sort)
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(matched, PAGE_SIZE)
   const owners = Array.from(new Set(all.map((row) => row.item.owner))).sort()
   const areas = Array.from(new Set(all.map((row) => row.item.area))).sort()
-  const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
-  const kpiLabel = { working: 'khách hiện hữu', ended: 'khách đã kết thúc', attention: 'khách cần chú ý', new: 'khách mới ' + periodLabel(period), endedPeriod: 'khách kết thúc ' + periodLabel(period) }[filters.kpi]
+  const activeFilterCount = [filters.status, filters.owner, filters.area].filter(Boolean).length
+  const kpiLabelOf = (kpi: Kpi) => ({ working: 'khách hiện hữu', ended: 'khách đã kết thúc', attention: 'khách cần chú ý', new: 'khách mới ' + periodLabel(period), endedPeriod: 'khách kết thúc ' + periodLabel(period) })[kpi]
+  const kpiLabel = kpiLabelOf(filters.kpi)
+  const chips: Array<[string, () => void]> = [
+    ...(filters.kpi !== 'working' ? [[kpiLabelOf(filters.kpi), () => toggleKpi(filters.kpi)] as [string, () => void]] : []),
+    ...(filters.query.trim() ? [['“' + filters.query.trim() + '”', () => change({ query: '' })] as [string, () => void]] : []),
+    ...(filters.status ? [[CUSTOMER_STATUS[filters.status].label, () => change({ status: '' })] as [string, () => void]] : []),
+    ...(filters.owner ? [['Account ' + filters.owner, () => change({ owner: '' })] as [string, () => void]] : []),
+    ...(filters.area ? [['Khu vực ' + filters.area, () => change({ area: '' })] as [string, () => void]] : []),
+  ]
+  const clearAll = () => change({ kpi: 'working', query: '', status: '', owner: '', area: '' })
   const narrowed = filters.query || activeFilterCount
 
   return (
@@ -140,7 +159,21 @@ export function CustomersScreen() {
         <div className="customer-toolbar">
           <label className="customer-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-            <input type="search" value={filters.query} placeholder="Tìm khách hàng, Account, khu vực, mã dự án" onChange={(event) => change({ query: event.target.value })} />
+            <input
+              type="text"
+              value={filters.query}
+              placeholder="Tìm tên khách, Account, khu vực, mã dự án (không cần dấu)"
+              aria-label="Tìm khách hàng"
+              onChange={(event) => change({ query: event.target.value })}
+              onKeyDown={(event) => event.key === 'Escape' && change({ query: '' })}
+            />
+            {filters.query && <button type="button" className="search-clear" aria-label="Xóa tìm kiếm" onClick={() => change({ query: '' })}>×</button>}
+          </label>
+          <label className="list-sort">
+            <span>Sắp xếp</span>
+            <select value={filters.sort ?? 'name'} onChange={(event) => change({ sort: event.target.value as Sort })}>
+              {(Object.keys(SORTS) as Sort[]).map((key) => <option key={key} value={key}>{SORTS[key]}</option>)}
+            </select>
           </label>
           <div className={'customer-filter-control' + (filterOpen ? ' open' : '')} ref={filterRef}>
             <button className="customer-filter-trigger" type="button" aria-label="Lọc khách hàng" title="Lọc khách hàng" onClick={() => setFilterOpen(!filterOpen)}>
@@ -150,7 +183,7 @@ export function CustomersScreen() {
             <div className="customer-filter-popover">
               <div className="filter-popover-head">
                 <b>Lọc khách hàng</b>
-                <button type="button" onClick={() => change({ status: '', owner: '', area: '', attention: false })}>Xóa lọc</button>
+                <button type="button" disabled={!activeFilterCount} onClick={() => change({ status: '', owner: '', area: '' })}>Xóa lọc</button>
               </div>
               <label>Trạng thái
                 <select value={filters.status} onChange={(event) => change({ status: event.target.value as Filters['status'] })}>
@@ -158,27 +191,32 @@ export function CustomersScreen() {
                   {(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((key) => <option key={key} value={key}>{CUSTOMER_STATUS[key].label}</option>)}
                 </select>
               </label>
-              <label>Account
-                <select value={filters.owner} onChange={(event) => change({ owner: event.target.value })}>
-                  <option value="">Tất cả Account</option>
-                  {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
-                </select>
-              </label>
+              {owners.length > 1 && (
+                <label>Account
+                  <select value={filters.owner} onChange={(event) => change({ owner: event.target.value })}>
+                    <option value="">Tất cả Account</option>
+                    {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+                  </select>
+                </label>
+              )}
               <label>Khu vực
                 <select value={filters.area} onChange={(event) => change({ area: event.target.value })}>
                   <option value="">Tất cả khu vực</option>
                   {areas.map((area) => <option key={area} value={area}>{area}</option>)}
                 </select>
               </label>
-              <label className="filter-check"><input type="checkbox" checked={filters.attention} onChange={(event) => change({ attention: event.target.checked })} /> Chỉ khách cần chú ý</label>
+              <p className="filter-note">Khách cần chú ý, khách mới, khách kết thúc: bấm các thẻ số ở trên.</p>
             </div>
           </div>
         </div>
 
-        {filters.kpi !== 'working' && (
+        {chips.length > 0 && (
           <div className="kpi-filter-bar">
-            Đang lọc: <b>{kpiLabel}</b>
-            <button type="button" aria-label="Bỏ lọc" onClick={() => toggleKpi(filters.kpi)}>×</button>
+            Đang lọc:
+            {chips.map(([label, clear]) => (
+              <span className="kpi-filter-tag" key={label}>{label} <button type="button" aria-label={'Bỏ ' + label} onClick={clear}>×</button></span>
+            ))}
+            {chips.length > 1 && <button type="button" className="text-btn" onClick={clearAll}>Xóa tất cả</button>}
           </div>
         )}
         <div className="customer-table-wrap">
@@ -210,7 +248,15 @@ export function CustomersScreen() {
                   </tr>
                 )
               })}
-              {!matched.length && <tr><td colSpan={6}>Không có khách hàng phù hợp.</td></tr>}
+              {!matched.length && (
+                <tr>
+                  <td colSpan={6} className="list-empty">
+                    <b>Không có khách hàng phù hợp</b>
+                    <span>{chips.length ? 'Thử bỏ bớt điều kiện lọc hoặc đổi từ khóa.' : 'Chưa có khách hàng trong phạm vi của bạn.'}</span>
+                    {chips.length > 0 && <button type="button" className="secondary" onClick={clearAll}>Xóa bộ lọc</button>}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -221,11 +267,7 @@ export function CustomersScreen() {
               ? <>Hiển thị <b>{from}–{to}</b> trong <b>{matched.length}</b> {narrowed ? 'kết quả phù hợp' : kpiLabel}</>
               : 'Không có khách hàng phù hợp'}
           </span>
-          <div className="customer-pager" hidden={pages <= 1}>
-            <button disabled={page === 1} onClick={() => goTo(page - 1)}>‹</button>
-            <button className="current">{page} / {pages}</button>
-            <button disabled={page === pages} onClick={() => goTo(page + 1)}>›</button>
-          </div>
+          <Pager page={page} pages={pages} goTo={(next) => { goTo(next); document.querySelector('#customers .customer-list-shell')?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }} />
         </footer>
       </section>
     </section>

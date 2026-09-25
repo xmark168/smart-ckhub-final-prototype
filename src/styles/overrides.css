@@ -112,3 +112,28 @@ body:has(.modal-backdrop.show) { overflow: hidden; }
 .kpi-filter-bar b { color: var(--ink); }
 .kpi-filter-bar button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer; }
 .kpi-filter-bar button:hover { color: var(--orange2); border-color: var(--orange); }
+
+/* ---- List UX: search clear, sort, numbered pager, empty state ---- */
+.customer-search { position: relative; }
+.search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: rgb(240, 233, 226); color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; }
+.search-clear:hover { background: rgb(230, 215, 204); color: var(--ink); }
+.list-sort { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.list-sort select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font: 650 12px var(--font-body); }
+.filter-note { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.filter-popover-head button:disabled { opacity: 0.4; cursor: default; }
+.kpi-filter-bar { flex-wrap: wrap; }
+.kpi-filter-bar .text-btn { margin-left: 4px; font-size: 11px; }
+.pager { display: flex; align-items: center; gap: 4px; }
+.pager button { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: 700 12px var(--font-body); cursor: pointer; }
+.pager button:hover:not(:disabled):not(.current) { border-color: rgb(204, 128, 96); background: rgb(255, 248, 243); }
+.pager button.current { border-color: var(--ink); background: var(--ink); color: #fff; cursor: default; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager-gap { padding: 0 2px; color: var(--muted); }
+td.list-empty { padding: 36px 16px !important; text-align: center; }
+td.list-empty b, td.list-empty span { display: block; }
+td.list-empty b { font-size: 13px; }
+td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
+@media (max-width: 650px) {
+  .list-sort span { display: none; }
+  .customer-toolbar { flex-wrap: wrap; }
+}

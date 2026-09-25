@@ -54,8 +54,21 @@ export function addBusinessDays(start: string, days: number): string {
   return formatDate(date)
 }
 
+/** Lower-case, accents removed, spaces collapsed: "Cơm  Tấm" → "com tam". */
+export function foldText(value: string): string {
+  return value
+    .toLocaleLowerCase('vi')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Accent-insensitive search; every word of the query must appear. */
 export function includesText(haystack: Array<string | number | undefined>, query: string): boolean {
-  return haystack.join(' ').toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi'))
+  const text = foldText(haystack.join(' '))
+  return foldText(query).split(' ').every((word) => text.includes(word))
 }
 
 export function initials(name: string): string {
