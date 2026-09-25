@@ -2,45 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../lib/icons'
 import { useData } from '../store/store'
 import type { Role } from '../store/types'
-import { PARENT_SCREEN, ROLES, useApp, type ScreenId } from './context'
-
-interface NavItem {
-  screen: ScreenId
-  roles: Role[]
-  icon: string
-  label: string
-  badge?: string
-}
+import { ROLES, useApp, type ScreenId } from './context'
+import { PAGES, sectionOf, type PageMeta } from './routes'
 
 const ALL_ROLES: Role[] = ['account', 'partner', 'admin', 'bods']
 
-const NAV: NavItem[] = [
-  { screen: 'overview', roles: ['account'], icon: 'layout-dashboard', label: 'Tổng quan' },
-  { screen: 'customers', roles: ['account'], icon: 'users-round', label: 'Khách hàng' },
-  { screen: 'projects', roles: ['account', 'bods'], icon: 'folder-kanban', label: 'Dự án' },
-  { screen: 'contracts', roles: ['account', 'bods'], icon: 'file-text', label: 'Hợp đồng & công nợ', badge: '2' },
-  { screen: 'posts', roles: ['account', 'bods'], icon: 'file-pen-line', label: 'Bài đăng' },
-  { screen: 'shootings', roles: ['account', 'bods'], icon: 'calendar-clock', label: 'Lịch shooting' },
-  { screen: 'tasks', roles: ['account'], icon: 'list-checks', label: 'Công việc', badge: '2' },
-  { screen: 'partners', roles: ['account'], icon: 'handshake', label: 'Partner & năng lực' },
-  { screen: 'partnerWork', roles: ['partner'], icon: 'check-square', label: 'Việc của tôi', badge: '1' },
-  { screen: 'partnerProject', roles: ['partner'], icon: 'folder-kanban', label: 'Dự án được giao' },
-  { screen: 'partnerSchedule', roles: ['partner'], icon: 'calendar-days', label: 'Lịch của tôi' },
-  { screen: 'reviews', roles: ['bods'], icon: 'clipboard-check', label: 'Hàng chờ phê duyệt', badge: '2' },
-  { screen: 'poc', roles: ['admin'], icon: 'settings', label: 'Quản trị hệ thống' },
-  { screen: 'docs', roles: ['admin'], icon: 'notebook-tabs', label: 'Tài liệu' },
-  { screen: 'services', roles: ['admin'], icon: 'package', label: 'Quản lý gói dịch vụ' },
-  { screen: 'access', roles: ['admin'], icon: 'shield-check', label: 'Phân quyền' },
-  { screen: 'profile', roles: ALL_ROLES, icon: 'circle-user-round', label: 'Hồ sơ' },
-  { screen: 'settings', roles: ALL_ROLES, icon: 'settings', label: 'Cài đặt' },
-]
+const NAV = (Object.entries(PAGES) as Array<[ScreenId, PageMeta]>).filter(([, page]) => page.nav)
 
 export function Sidebar() {
   const { role, setRole, screen, go } = useApp()
   const { profile } = useData()
   const [menuOpen, setMenuOpen] = useState(false)
   const personRef = useRef<HTMLDivElement>(null)
-  const activeScreen = PARENT_SCREEN[screen] ?? screen
+  const activeScreen = screen && sectionOf(screen)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -56,11 +30,11 @@ export function Sidebar() {
       <div className="brand"><i className="mark">C</i><span>CK HUB</span><small>SMART</small></div>
       <div className="navcap">MENU ROLE</div>
       <nav className="nav">
-        {NAV.filter((item) => item.roles.includes(role)).map((item) => (
-          <button key={item.screen} className={item.screen === activeScreen ? 'active' : ''} onClick={() => go(item.screen)}>
-            <Icon name={item.icon} className="ico" />
-            <label>{item.label}</label>
-            {item.badge && <b>{item.badge}</b>}
+        {NAV.filter(([, page]) => page.nav!.roles.includes(role)).map(([id, page]) => (
+          <button key={id} className={id === activeScreen ? 'active' : ''} onClick={() => go(id)}>
+            <Icon name={page.nav!.icon} className="ico" />
+            <label>{page.nav!.label}</label>
+            {page.nav!.badge && <b>{page.nav!.badge}</b>}
           </button>
         ))}
       </nav>

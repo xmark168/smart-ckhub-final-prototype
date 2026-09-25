@@ -16,16 +16,40 @@ npm run lint
 
 `dist/` build với đường dẫn tương đối, mở được từ GitHub Pages hoặc thư mục con.
 
+## Đường dẫn
+
+Mỗi trang có URL riêng dạng hash (`#/...`), chạy được cả khi mở `dist/` từ GitHub Pages hay thư mục thường.
+
+| Trang | URL | Vai trò được mở |
+|---|---|---|
+| Tổng quan | `#/overview` | Account, BODs, Administrator |
+| Khách hàng / chi tiết | `#/customers`, `#/customers/:id` | Account, BODs, Administrator |
+| Dự án / chi tiết / chu kỳ | `#/projects`, `#/projects/:id`, `#/projects/:id/cycle` | Account, BODs, Administrator |
+| Hợp đồng & công nợ | `#/contracts` | Account, BODs, Administrator |
+| Bài đăng, Lịch shooting, Công việc | `#/posts`, `#/shootings`, `#/tasks` | Account, BODs, Administrator |
+| Partner & năng lực | `#/partners` | Account, BODs, Administrator |
+| Việc / Dự án / Lịch của Partner | `#/my-work`, `#/my-projects`, `#/my-schedule` | Partner, Administrator |
+| Hàng chờ phê duyệt | `#/reviews` | BODs, Administrator |
+| Quản trị, Tài liệu, Gói dịch vụ, Phân quyền | `#/admin`, `#/docs`, `#/services`, `#/access` | Administrator |
+| Hồ sơ, Cài đặt | `#/profile`, `#/settings` | Tất cả |
+
+- Danh sách phân trang bằng `?page=N` (ví dụ `#/projects?page=2`). Số trang sai hoặc vượt quá được tự sửa; đổi bộ lọc đưa về trang 1.
+- Back/Forward của trình duyệt đi qua từng trang và từng trang danh sách. Quay lại danh sách từ menu giữ trang đang xem.
+- Mở URL không đúng vai trò hiện màn "Không có quyền truy cập"; URL không tồn tại hiện "Không tìm thấy trang".
+- Quyền và menu khai báo một chỗ trong `src/app/routes.ts`, đường dẫn trong `src/app/router.ts`.
+
 ## Cấu trúc
 
 ```
 src/
-  App.tsx              Khung app: vai trò, điều hướng màn hình, modal, toast
-  app/                 Sidebar, thanh trên (breadcrumb, thông báo), màn đăng nhập, context
-  screens/             Mỗi màn hình một file; customers/, projects/, contracts/ có modal riêng
+  App.tsx              Khung app: vai trò, chọn trang theo URL, modal, toast
+  app/                 router.ts (URL), routes.ts (quyền, menu, tiêu đề), Sidebar, Topbar, đăng nhập
+  screens/             Mỗi trang một file *Screen.tsx, gom theo nhóm:
+    overview/ customers/ projects/ contracts/ operations/
+    partners/ partner/ reviews/ admin/ account/ system/
   data/                Dữ liệu mẫu + quy tắc nghiệp vụ (thanh toán, công nợ, trạng thái)
   store/               Kiểu dữ liệu và store dùng chung, lưu vào localStorage
-  lib/                 Định dạng ngày/tiền, icon, form helper, hook
+  lib/                 Định dạng ngày/tiền, icon, form helper, phân trang theo URL, hook
   ui/Modal.tsx         Modal dùng chung
   styles/legacy.css    CSS gốc của final_prototype, giữ nguyên thứ tự cascade
   styles/overrides.css Chỉnh nhỏ thay cho inline style của bản cũ

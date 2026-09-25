@@ -1,29 +1,32 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { NOTIFICATION_TIMES, notificationsByScreen } from '../data/notifications'
 import { useData } from '../store/store'
-import { PARENT_SCREEN, useApp, type ScreenId } from './context'
-
-const LABELS: Partial<Record<ScreenId, string>> = {
-  customers: 'Khách hàng', projects: 'Dự án', contracts: 'Hợp đồng & công nợ', posts: 'Bài đăng', shootings: 'Lịch shooting',
-  tasks: 'Công việc', partners: 'Partner & năng lực', partnerWork: 'Việc của tôi', partnerProject: 'Dự án được giao',
-  partnerSchedule: 'Lịch của tôi', reviews: 'Hàng chờ phê duyệt', poc: 'Quản trị hệ thống', access: 'Phân quyền',
-  services: 'Quản lý gói dịch vụ', docs: 'Tài liệu thiết kế', profile: 'Hồ sơ cá nhân', settings: 'Cài đặt',
-}
+import { ROLES, useApp, type ScreenId } from './context'
+import { PAGES, sectionOf } from './routes'
 
 function Breadcrumb() {
-  const { screen, go, customerId, projectId } = useApp()
+  const { role, screen, go, customerId, projectId } = useApp()
   const { customers, projects } = useData()
-  const parts: Array<[string, ScreenId | null]> = [['Smart CKHUB', 'overview']]
+  const home = ROLES[role].home
+  const parts: Array<[string, ScreenId | null]> = [['Smart CKHUB', home]]
   const project = projects.find((item) => item.id === projectId)
-  if (screen === 'customerDetail') {
-    parts.push(['Khách hàng', 'customers'], [customers.find((item) => item.id === customerId)?.name ?? 'Chi tiết', null])
+  if (!screen) {
+    parts.push(['Không tìm thấy trang', null])
+  } else if (screen === 'customerDetail') {
+    parts.push(['Khách hàng', 'customers'], [customers.find((item) => item.id === customerId)?.name ?? 'Không tìm thấy', null])
   } else if (screen === 'projectDetail') {
-    parts.push(['Dự án', 'projects'], [project?.customer ?? 'Chi tiết', null])
+    parts.push(['Dự án', 'projects'], [project?.customer ?? 'Không tìm thấy', null])
   } else if (screen === 'cycleWorkspace') {
-    parts.push(['Dự án', 'projects'], [project?.customer ?? 'Chi tiết', 'projectDetail'], ['Chu kỳ ' + (project?.cycle ?? '') + ' / ' + (project?.total ?? ''), null])
-  } else if (screen !== 'overview') {
-    parts.push([LABELS[screen] ?? 'Smart CKHUB', screen])
+    parts.push(['Dự án', 'projects'], [project?.customer ?? 'Không tìm thấy', 'projectDetail'], ['Chu kỳ ' + (project?.cycle ?? '') + ' / ' + (project?.total ?? ''), null])
+  } else if (screen !== home) {
+    parts.push([PAGES[screen].title, screen])
   }
+  const pageTitle = parts.length > 1 ? parts[parts.length - 1][0] : PAGES[home].title
+
+  useEffect(() => {
+    document.title = pageTitle + ' · Smart CKHUB'
+  }, [pageTitle])
+
   return (
     <nav className="crumb" aria-label="Điều hướng">
       {parts.map(([label, target], index) => (
@@ -42,7 +45,7 @@ function Notifications() {
   const [guideOpen, setGuideOpen] = useState(false)
   const [read, setRead] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const data = notificationsByScreen[PARENT_SCREEN[screen] ?? screen] ?? notificationsByScreen.projects
+  const data = (screen && notificationsByScreen[sectionOf(screen)]) || notificationsByScreen.projects
 
   useEffect(() => {
     if (!open) return

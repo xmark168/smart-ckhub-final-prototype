@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, includesText, pageSlice } from '../../lib/format'
+import { ACCOUNTS, includesText } from '../../lib/format'
+import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
@@ -19,10 +20,9 @@ interface Filters {
   owner: string
   area: string
   risk: boolean
-  page: number
 }
 
-const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '', risk: false, page: 1 }
+const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '', risk: false }
 const PAGE_SIZE = 20
 
 const PROJECT_RULES =
@@ -43,7 +43,10 @@ export function ProjectsScreen() {
   const [filterOpen, setFilterOpen] = useScreenState('projects.filterOpen', false)
   const filterRef = useOutsideClose<HTMLDivElement>(filterOpen, () => setFilterOpen(false))
 
-  const change = (patch: Partial<Filters>) => setFilters((current) => ({ ...current, page: 1, ...patch }))
+  const change = (patch: Partial<Filters>) => {
+    setFilters((current) => ({ ...current, ...patch }))
+    resetPage()
+  }
   const active = projects.filter((item) => item.state === 'active')
   const risk = active.filter((item) => item.risk)
   const paused = projects.filter((item) => item.state === 'pending' || item.state === 'stopped')
@@ -57,7 +60,7 @@ export function ProjectsScreen() {
       (!filters.risk || item.risk) &&
       matchesKpi(item, filters.kpi),
   )
-  const { rows, page, pages, from, to } = pageSlice(list, filters.page, PAGE_SIZE)
+  const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
   const areas = Array.from(new Set(projects.map((item) => item.area)))
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.risk].filter(Boolean).length
   const kpiClass = (kpi: Kpi, extra = '') => ('project-kpi ' + extra + (filters.kpi === kpi ? ' selected' : '')).replace(/\s+/g, ' ').trim()
@@ -143,9 +146,9 @@ export function ProjectsScreen() {
           <footer className="project-footer-new">
             <span>Hiển thị <b>{list.length ? from + '–' + to : 0}</b> trong <b>{list.length}</b> dự án</span>
             <div className="project-pager">
-              <button disabled={page === 1} onClick={() => setFilters({ ...filters, page: page - 1 })}>‹</button>
+              <button disabled={page === 1} onClick={() => goTo(page - 1)}>‹</button>
               <button disabled>{page} / {pages}</button>
-              <button disabled={page === pages} onClick={() => setFilters({ ...filters, page: page + 1 })}>›</button>
+              <button disabled={page === pages} onClick={() => goTo(page + 1)}>›</button>
             </div>
           </footer>
         </section>

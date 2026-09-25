@@ -4,7 +4,7 @@ import { useData } from '../../store/store'
 import { CycleTaskModal, DemoModal, ExceptionModal, PlanModal, PostsModal, ShootingModal } from './CycleModals'
 import { cycleDataFor, cycleRange, planLabel, statusTone } from './projectLogic'
 
-export function CycleWorkspace() {
+export function CycleWorkspaceScreen() {
   const { projectId, go, toast, showModal } = useApp()
   const project = useData().projects.find((item) => item.id === projectId)
   if (!project) {

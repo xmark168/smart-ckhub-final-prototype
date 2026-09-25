@@ -1,6 +1,7 @@
 import { useApp } from '../../app/context'
 import { contractTone, paymentMetrics, paymentState, paymentTone } from '../../data/contracts'
-import { formatDate, includesText, money, pageSlice, parseInput } from '../../lib/format'
+import { formatDate, includesText, money, parseInput } from '../../lib/format'
+import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
@@ -14,10 +15,9 @@ interface Filters {
   query: string
   status: string
   collection: Collection
-  page: number
 }
 
-const INITIAL: Filters = { query: '', status: '', collection: '', page: 1 }
+const INITIAL: Filters = { query: '', status: '', collection: '' }
 const PAGE_SIZE = 10
 
 const RULES =
@@ -49,7 +49,10 @@ export function ContractsScreen() {
   const { showModal } = useApp()
   const { contracts } = useData()
   const [filters, setFilters] = useScreenState<Filters>('contracts.filters', INITIAL)
-  const change = (patch: Partial<Filters>) => setFilters((current) => ({ ...current, page: 1, ...patch }))
+  const change = (patch: Partial<Filters>) => {
+    setFilters((current) => ({ ...current, ...patch }))
+    resetPage()
+  }
 
   const summary = contracts
     .filter((row) => row.status === 'Hiệu lực')
@@ -72,7 +75,7 @@ export function ContractsScreen() {
       matchesCollection(row, filters.collection) &&
       includesText([row.code, row.customer, row.project, row.service, row.type], filters.query),
   )
-  const { rows, page, pages, from, to } = pageSlice(list, filters.page, PAGE_SIZE)
+  const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
   const card = (key: Collection, label: string, value: number, note: string, tone = '') => (
     <button className={('contract-kpi ' + tone).trim()} onClick={() => change({ collection: key })}>
       <span>{label}</span><b>{money(value)}</b><small>{note}</small>
@@ -139,9 +142,9 @@ export function ContractsScreen() {
           <footer className="project-footer-new">
             <span>Hiển thị <b>{list.length ? from + '–' + to : 0}</b> trong <b>{list.length}</b> hợp đồng</span>
             <div className="project-pager">
-              <button disabled={page === 1} onClick={() => setFilters({ ...filters, page: page - 1 })}>‹</button>
+              <button disabled={page === 1} onClick={() => goTo(page - 1)}>‹</button>
               <button disabled>{page} / {pages}</button>
-              <button disabled={page === pages} onClick={() => setFilters({ ...filters, page: page + 1 })}>›</button>
+              <button disabled={page === pages} onClick={() => goTo(page + 1)}>›</button>
             </div>
           </footer>
         </section>

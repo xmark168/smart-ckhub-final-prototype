@@ -13,17 +13,12 @@ export const ROLES: Record<Role, { initial: string; label: string; note: string;
   bods: { initial: 'BD', label: 'BODs', note: 'Theo dõi chỉ số, rủi ro và phê duyệt.', home: 'reviews' },
 }
 
-/** Detail screens keep their parent list highlighted in the menu. */
-export const PARENT_SCREEN: Partial<Record<ScreenId, ScreenId>> = {
-  customerDetail: 'customers',
-  projectDetail: 'projects',
-  cycleWorkspace: 'projects',
-}
-
 export interface AppContextValue {
   role: Role
   setRole: (role: Role) => void
-  screen: ScreenId
+  /** Current page, or null when the URL matches no page. */
+  screen: ScreenId | null
+  /** Open a page. List pages come back on the page/filters last used; detail pages keep the current record. */
   go: (screen: ScreenId) => void
   customerId: string
   openCustomer: (id: string) => void

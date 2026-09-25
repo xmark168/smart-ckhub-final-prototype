@@ -1,41 +1,52 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { AppContext, ROLES, type AppContextValue, type ScreenId } from './app/context'
 import { LoginOverlay } from './app/LoginOverlay'
+import { currentLocation, navigate, pathFor, useLocation } from './app/router'
+import { canOpen } from './app/routes'
 import { Sidebar } from './app/Sidebar'
 import { Topbar } from './app/Topbar'
-import { AccessScreen, AdminDashboard } from './screens/Admin'
+import { ProfileScreen } from './screens/account/ProfileScreen'
+import { SettingsScreen } from './screens/account/SettingsScreen'
+import { AccessScreen } from './screens/admin/AccessScreen'
+import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen'
+import { DocsScreen } from './screens/admin/DocsScreen'
+import { ServicesScreen } from './screens/admin/ServicesScreen'
 import { ContractsScreen } from './screens/contracts/ContractsScreen'
-import { CustomerDetail } from './screens/customers/CustomerDetail'
+import { CustomerDetailScreen } from './screens/customers/CustomerDetailScreen'
 import { CustomersScreen } from './screens/customers/CustomersScreen'
-import { DocsScreen } from './screens/Docs'
-import { PostsScreen, ShootingsScreen, TasksScreen } from './screens/Operations'
-import { Overview } from './screens/Overview'
-import { PartnerProjects, PartnerSchedule, PartnersScreen, PartnerWork, ReviewsScreen } from './screens/Partners'
-import { ProfileScreen } from './screens/Profile'
-import { CycleWorkspace } from './screens/projects/CycleWorkspace'
-import { ProjectDetail } from './screens/projects/ProjectDetail'
+import { PostsScreen } from './screens/operations/PostsScreen'
+import { ShootingsScreen } from './screens/operations/ShootingsScreen'
+import { TasksScreen } from './screens/operations/TasksScreen'
+import { OverviewScreen } from './screens/overview/OverviewScreen'
+import { PartnerProjectsScreen } from './screens/partner/PartnerProjectsScreen'
+import { PartnerScheduleScreen } from './screens/partner/PartnerScheduleScreen'
+import { PartnerWorkScreen } from './screens/partner/PartnerWorkScreen'
+import { PartnersScreen } from './screens/partners/PartnersScreen'
+import { CycleWorkspaceScreen } from './screens/projects/CycleWorkspaceScreen'
+import { ProjectDetailScreen } from './screens/projects/ProjectDetailScreen'
 import { ProjectsScreen } from './screens/projects/ProjectsScreen'
-import { ServicesScreen } from './screens/Services'
-import { SettingsScreen } from './screens/Settings'
+import { ReviewsScreen } from './screens/reviews/ReviewsScreen'
+import { ForbiddenScreen } from './screens/system/ForbiddenScreen'
+import { NotFoundScreen } from './screens/system/NotFoundScreen'
 import type { Role } from './store/types'
 
-const SCREENS: Record<ScreenId, () => ReactNode> = {
-  overview: Overview,
+const SCREENS: Record<ScreenId, ComponentType> = {
+  overview: OverviewScreen,
   customers: CustomersScreen,
-  customerDetail: CustomerDetail,
+  customerDetail: CustomerDetailScreen,
   projects: ProjectsScreen,
-  projectDetail: ProjectDetail,
-  cycleWorkspace: CycleWorkspace,
+  projectDetail: ProjectDetailScreen,
+  cycleWorkspace: CycleWorkspaceScreen,
   contracts: ContractsScreen,
   posts: PostsScreen,
   shootings: ShootingsScreen,
   tasks: TasksScreen,
   partners: PartnersScreen,
-  partnerWork: PartnerWork,
-  partnerProject: PartnerProjects,
-  partnerSchedule: PartnerSchedule,
+  partnerWork: PartnerWorkScreen,
+  partnerProject: PartnerProjectsScreen,
+  partnerSchedule: PartnerScheduleScreen,
   reviews: ReviewsScreen,
-  poc: AdminDashboard,
+  poc: AdminDashboardScreen,
   services: ServicesScreen,
   docs: DocsScreen,
   access: AccessScreen,
@@ -43,41 +54,58 @@ const SCREENS: Record<ScreenId, () => ReactNode> = {
   settings: SettingsScreen,
 }
 
-const UI_KEY = 'smart-ckhub-ui'
+const ROLE_KEY = 'smart-ckhub-ui'
 
-interface UiState {
-  role: Role
-  screen: ScreenId
-  customerId: string
-  projectId: string
-}
-
-function loadUi(): UiState {
-  const fallback: UiState = { role: 'account', screen: 'overview', customerId: '', projectId: '' }
+function loadRole(): Role {
   try {
-    const saved = JSON.parse(localStorage.getItem(UI_KEY) || 'null') as UiState | null
-    if (saved && saved.role in ROLES && saved.screen in SCREENS) return saved
+    const saved = JSON.parse(localStorage.getItem(ROLE_KEY) || 'null') as { role?: Role } | null
+    if (saved?.role && saved.role in ROLES) return saved.role
   } catch {
     // Ignore unreadable UI state.
   }
-  return fallback
+  return 'account'
+}
+
+/** Last URL (path + page query) seen for each page, so returning to a list keeps its page. */
+const lastPaths = new Map<ScreenId, string>()
+
+/** A modal belongs to the page (path, not `?page=`) it was opened on; Back/Forward to another page hides it. */
+interface OpenModal {
+  node: ReactNode
+  key: string
 }
 
 export default function App() {
-  const [ui, setUi] = useState<UiState>(loadUi)
-  const [modal, setModal] = useState<ReactNode>(null)
+  const location = useLocation()
+  const route = location.route
+  const [role, setRoleState] = useState<Role>(loadRole)
+  const [modal, setModal] = useState<OpenModal | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
   const [toastText, setToastText] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
   const toastTimer = useRef<number | undefined>(undefined)
+  const pathOnly = location.path
 
   useEffect(() => {
     try {
-      localStorage.setItem(UI_KEY, JSON.stringify(ui))
+      localStorage.setItem(ROLE_KEY, JSON.stringify({ role }))
     } catch {
-      // Navigation still works without persistence.
+      // Role still works for this session without storage.
     }
-  }, [ui])
+  }, [role])
+
+  // Empty hash → the current role's home page.
+  useEffect(() => {
+    if (pathOnly === '/') navigate(pathFor(ROLES[role].home), { replace: true })
+  }, [pathOnly, role])
+
+  useEffect(() => {
+    if (route) lastPaths.set(route.screen, route.key)
+  }, [route])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [pathOnly])
 
   const toast = useCallback((text: string) => {
     setToastText(text)
@@ -86,42 +114,53 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToastVisible(false), 2800)
   }, [])
 
+  const screen = route?.screen ?? null
+  const customerId = screen === 'customerDetail' ? route!.id : ''
+  const projectId = screen === 'projectDetail' || screen === 'cycleWorkspace' ? route!.id : ''
+
   const context = useMemo<AppContextValue>(() => {
-    const go = (screen: ScreenId) => {
+    const go = (target: ScreenId) => {
       setModal(null)
-      setUi((current) => ({ ...current, screen }))
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (target === 'customerDetail') navigate(pathFor(target, customerId))
+      else if (target === 'projectDetail' || target === 'cycleWorkspace') navigate(pathFor(target, projectId))
+      else navigate(lastPaths.get(target) ?? pathFor(target))
     }
     return {
-      ...ui,
-      setRole: (role) => {
+      role,
+      screen,
+      customerId,
+      projectId,
+      setRole: (next) => {
         setModal(null)
-        setUi((current) => ({ ...current, role, screen: ROLES[role].home }))
+        setRoleState(next)
+        navigate(pathFor(ROLES[next].home))
       },
       go,
-      openCustomer: (customerId) => {
-        setUi((current) => ({ ...current, customerId }))
-        go('customerDetail')
-      },
-      openProject: (projectId) => {
-        setUi((current) => ({ ...current, projectId }))
-        go('projectDetail')
-      },
-      openCycle: (projectId) => {
-        setUi((current) => ({ ...current, projectId }))
-        go('cycleWorkspace')
-      },
+      openCustomer: (id) => { setModal(null); navigate(pathFor('customerDetail', id)) },
+      openProject: (id) => { setModal(null); navigate(pathFor('projectDetail', id)) },
+      openCycle: (id) => { setModal(null); navigate(pathFor('cycleWorkspace', id)) },
       toast,
-      showModal: setModal,
+      showModal: (node) => {
+        const now = currentLocation()
+        setModal({ node, key: now.path })
+      },
       closeModal: () => setModal(null),
       openLogin: (afterLogout) => {
         setLoginOpen(true)
         if (afterLogout) toast('Phiên mô phỏng đã đăng xuất. Đăng nhập để tiếp tục.')
       },
     }
-  }, [ui, toast])
+  }, [role, screen, customerId, projectId, toast])
 
-  const Screen = SCREENS[ui.screen]
+  let page: ReactNode = null
+  if (pathOnly !== '/') {
+    if (!route) page = <NotFoundScreen />
+    else if (!canOpen(role, route.screen)) page = <ForbiddenScreen screen={route.screen} />
+    else {
+      const Screen = SCREENS[route.screen]
+      page = <Screen />
+    }
+  }
 
   return (
     <AppContext.Provider value={context}>
@@ -129,12 +168,10 @@ export default function App() {
         <Sidebar />
         <main className="main">
           <Topbar />
-          <div className="content">
-            <Screen />
-          </div>
+          <div className="content">{page}</div>
         </main>
       </div>
-      {modal}
+      {modal && modal.key === pathOnly && modal.node}
       <div className={'toast' + (toastVisible ? ' show' : '')} role="status">{toastText}</div>
       <LoginOverlay open={loginOpen} onClose={() => setLoginOpen(false)} />
     </AppContext.Provider>

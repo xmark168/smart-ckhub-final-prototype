@@ -148,7 +148,7 @@ function GenericProjectDetail({ project }: { project: Project }) {
   )
 }
 
-export function ProjectDetail() {
+export function ProjectDetailScreen() {
   const { projectId, go } = useApp()
   const project = useData().projects.find((item) => item.id === projectId)
   if (!project) {

@@ -1,5 +1,6 @@
 import { useApp } from '../../app/context'
-import { includesText, pageSlice } from '../../lib/format'
+import { includesText } from '../../lib/format'
+import { usePagedList } from '../../lib/usePagedList'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
@@ -15,10 +16,9 @@ interface Filters {
   owner: string
   area: string
   attention: boolean
-  page: number
 }
 
-const INITIAL: Filters = { kpi: 'active', query: '', status: '', owner: '', area: '', attention: false, page: 1 }
+const INITIAL: Filters = { kpi: 'active', query: '', status: '', owner: '', area: '', attention: false }
 const PAGE_SIZE = 20
 
 function matches(item: Customer, filters: Filters): boolean {
@@ -42,12 +42,15 @@ export function CustomersScreen() {
   const [filterOpen, setFilterOpen] = useScreenState('customers.filterOpen', false)
   const filterRef = useOutsideClose<HTMLDivElement>(filterOpen, () => setFilterOpen(false))
 
-  const change = (patch: Partial<Filters>) => setFilters((current) => ({ ...current, page: 1, ...patch }))
+  const change = (patch: Partial<Filters>) => {
+    setFilters((current) => ({ ...current, ...patch }))
+    resetPage()
+  }
   const operating = customers.filter((item) => item.state === 'active')
   const stopped = customers.filter((item) => item.state === 'stopped')
   const attention = operating.filter((item) => item.attention)
   const matched = customers.filter((item) => matches(item, filters))
-  const { rows, page, pages, from, to } = pageSlice(matched, filters.page, PAGE_SIZE)
+  const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(matched, PAGE_SIZE)
   const owners = Array.from(new Set(customers.map((item) => item.owner))).sort()
   const areas = Array.from(new Set(customers.map((item) => item.area))).sort()
   const activeFilterCount = [filters.status, filters.owner, filters.area, filters.attention].filter(Boolean).length
@@ -157,9 +160,9 @@ export function CustomersScreen() {
               : 'Không có khách hàng phù hợp'}
           </span>
           <div className="customer-pager" hidden={pages <= 1}>
-            <button disabled={page === 1} onClick={() => setFilters({ ...filters, page: page - 1 })}>‹</button>
+            <button disabled={page === 1} onClick={() => goTo(page - 1)}>‹</button>
             <button className="current">{page} / {pages}</button>
-            <button disabled={page === pages} onClick={() => setFilters({ ...filters, page: page + 1 })}>›</button>
+            <button disabled={page === pages} onClick={() => goTo(page + 1)}>›</button>
           </div>
         </footer>
       </section>

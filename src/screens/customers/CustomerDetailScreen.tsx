@@ -19,7 +19,7 @@ function ActivityInfoModal() {
   )
 }
 
-export function CustomerDetail() {
+export function CustomerDetailScreen() {
   const { customerId, go, role, toast, showModal } = useApp()
   const { customers, period } = useData()
   const item = customers.find((customer) => customer.id === customerId)

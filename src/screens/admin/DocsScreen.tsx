@@ -1,3 +1,5 @@
+
+
 import type { ReactNode } from 'react'
 
 function Rule({ mark, title, children }: { mark: string; title: string; children: ReactNode }) {
