@@ -112,8 +112,3 @@ body:has(.modal-backdrop.show) { overflow: hidden; }
 .kpi-filter-bar b { color: var(--ink); }
 .kpi-filter-bar button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer; }
 .kpi-filter-bar button:hover { color: var(--orange2); border-color: var(--orange); }
-.period-chip-wrap { display: inline-flex; align-items: center; }
-.period-chip-wrap.on .period-chip { border-color: var(--orange); background: var(--orange-pale); color: rgb(159, 69, 32); border-radius: 99px 0 0 99px; }
-.period-chip-clear { height: 34px; padding: 0 10px; border: 1px solid var(--orange); border-left: 0; border-radius: 0 99px 99px 0; background: var(--orange-pale); color: rgb(159, 69, 32); font-size: 14px; cursor: pointer; }
-.period-chip-clear:hover { background: #ffe1d2; }
-.kpi-filter-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px 2px 9px; border: 1px solid rgb(236, 210, 194); border-radius: 99px; background: #fff; color: var(--ink); font-weight: 700; }
