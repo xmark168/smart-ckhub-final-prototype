@@ -90,3 +90,8 @@ h1 .customer-help:focus-visible { outline: 2px solid var(--orange); outline-offs
 .scope-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 9px 12px; border: 1px solid rgb(230, 217, 206); border-radius: 10px; background: rgb(252, 247, 242); color: rgb(117, 80, 55); font-size: 12px; font-weight: 650; }
 .scope-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 .customer-detail-actions button:disabled, .text-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Long dialogs scroll inside the viewport; title row stays visible ---- */
+.modal-backdrop .modal { max-height: calc(100vh - 36px); max-height: calc(100dvh - 36px); overflow-y: auto; overscroll-behavior: contain; }
+.modal-backdrop .modal > .modal-top { position: sticky; top: -20px; z-index: 2; margin: -20px -20px 0; padding: 20px 20px 10px; background: #fff; }
+body:has(.modal-backdrop.show) { overflow: hidden; }
