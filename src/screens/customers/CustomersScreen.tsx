@@ -63,13 +63,31 @@ function sortRows(rows: Row[], sort: Sort = 'name'): Row[] {
   return [...rows].sort(byName)
 }
 
-/** "4 / 6" for the running project, or the number of projects. */
-function projectSummary(projects: Project[]): [string, string] {
-  if (!projects.length) return ['—', 'Hồ sơ mới, chưa lập dự án']
+/** Services line under the customer name. */
+function servicesOf(projects: Project[]): string {
+  return projects.length ? Array.from(new Set(projects.map((item) => item.service))).join(' · ') : 'Hồ sơ mới, chưa lập dự án'
+}
+
+/** Compact project cell: main project's cycle as "4/6" with a mini bar, other projects as "+N". */
+function ProjectCell({ projects }: { projects: Project[] }) {
+  if (!projects.length) return <span className="project-cell-empty">—</span>
   const main = projects.find((item) => item.state === 'active') ?? projects[0]
   const cycle = currentCycle(main)
-  const services = Array.from(new Set(projects.map((item) => item.service))).join(' · ')
-  return [(cycle ? 'Chu kỳ ' + cycle.no + ' / ' + (main.total || '–') : 'Chưa bắt đầu') + (projects.length > 1 ? ' · ' + projects.length + ' dự án' : ''), services]
+  const more = projects.length - 1
+  const title = projects.map((item) => item.code + ' · ' + item.service + ' · ' + (currentCycle(item) ? 'chu kỳ ' + currentCycle(item)!.no + '/' + (item.total || '–') : 'chưa bắt đầu')).join('\n')
+  return (
+    <span className="project-cell" title={title}>
+      {cycle && main.total ? (
+        <>
+          <b>{cycle.no}/{main.total}</b>
+          <i className="project-cell-bar"><em style={{ width: Math.min(100, (cycle.no / main.total) * 100) + '%' }} /></i>
+        </>
+      ) : (
+        <b className="project-cell-draft">Chưa bắt đầu</b>
+      )}
+      {more > 0 && <small className="project-cell-more">+{more}</small>}
+    </span>
+  )
 }
 
 
@@ -221,10 +239,9 @@ export function CustomersScreen() {
         )}
         <div className="customer-table-wrap">
           <table className="customer-table">
-            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th>Dự án</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th title="Chu kỳ hiện tại / tổng chu kỳ hợp đồng của dự án chính; +N là số dự án khác">Chu kỳ</th><th>Trạng thái</th><th /></tr></thead>
             <tbody>
               {rows.map(({ item, status, projects: own, reasons }) => {
-                const [cycle, services] = projectSummary(own)
                 return (
                   <tr
                     key={item.id}
@@ -234,12 +251,12 @@ export function CustomersScreen() {
                       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCustomer(item.id) }
                     }}
                   >
-                    <td><span className="customer-name">{item.name}</span><span className="customer-meta">{services}</span></td>
+                    <td><span className="customer-name">{item.name}</span><span className="customer-meta">{servicesOf(own)}</span></td>
                     <td>
                       <button className="customer-account" type="button" onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
                     </td>
                     <td>{item.area}</td>
-                    <td>{cycle}</td>
+                    <td><ProjectCell projects={own} /></td>
                     <td>
                       <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
                       {reasons.length > 0 && <span className="pill danger" title={reasons.join('\n')}>Cần chú ý</span>}

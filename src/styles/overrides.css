@@ -137,3 +137,10 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
   .list-sort span { display: none; }
   .customer-toolbar { flex-wrap: wrap; }
 }
+.project-cell { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.project-cell b { font: 700 12px var(--font-mono); color: var(--ink); }
+.project-cell-bar { display: block; width: 44px; height: 5px; overflow: hidden; border-radius: 99px; background: rgb(238, 230, 222); }
+.project-cell-bar em { display: block; height: 100%; border-radius: inherit; background: rgb(185, 72, 23); }
+.project-cell-draft { font: 650 11px var(--font-body) !important; color: var(--muted) !important; }
+.project-cell-more { padding: 1px 6px; border-radius: 99px; background: rgb(240, 233, 226); color: var(--muted); font-size: 10px; font-weight: 800; }
+.project-cell-empty { color: var(--muted); }
