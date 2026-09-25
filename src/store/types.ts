@@ -17,6 +17,8 @@ export interface Customer {
   createdBy?: string
   /** Manual watch flag; project delays also make a customer "cần chú ý". */
   attention: boolean
+  /** Why the manual flag was set (required when flagging). */
+  attentionReason?: string
   /** Set when the cooperation is ended; only allowed once no project is running. */
   ended?: { date: string; reason: string }
   activities: Activity[]
@@ -176,6 +178,8 @@ export interface Project {
   total: number
   state: ProjectState
   risk: boolean
+  /** Why the project was flagged (required when flagging). */
+  riskReason?: string
   pause?: { reason: string; returnDate: string }
   stop?: { reason: string; date: string }
   cycles: Cycle[]

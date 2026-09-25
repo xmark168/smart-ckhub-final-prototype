@@ -209,3 +209,10 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
 .event-filter button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
 .event-filter button.on small { color: rgba(255, 255, 255, 0.65); }
 .event-more { margin-top: 6px; }
+
+/* ---- Flag reason + project notes ---- */
+.flag-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.flag-quick button { padding: 4px 9px; border: 1px dashed rgb(214, 196, 182); border-radius: 99px; background: #fff; color: var(--muted); font: 650 11px var(--font-body); cursor: pointer; }
+.flag-quick button:hover { border-style: solid; border-color: rgb(204, 128, 96); color: rgb(159, 69, 32); }
+.project-note-text { margin: 0; padding: 10px 12px; border-left: 3px solid rgb(229, 190, 160); border-radius: 0 8px 8px 0; background: rgb(252, 248, 243); color: rgb(68, 52, 43); font-size: 12px; line-height: 1.5; white-space: pre-line; }
+.cpl-note { overflow: hidden; color: rgb(117, 97, 81); text-overflow: ellipsis; white-space: nowrap; }

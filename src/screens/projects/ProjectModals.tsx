@@ -469,3 +469,29 @@ export function CancelDraftModal({ project }: { project: Project }) {
     </Modal>
   )
 }
+
+/** Ghi chú vận hành of the project: short, current, visible on project and customer pages. */
+export function NotesModal({ project }: { project: Project }) {
+  const { closeModal, account } = useApp()
+  return (
+    <Modal
+      title="Ghi chú dự án"
+      onSubmit={(form) => {
+        const notes = field(form, 'notes')
+        updateProject(project.id, (item) => {
+          item.notes = notes
+          addProjectActivity(item, 'notebook-pen', 'Cập nhật ghi chú dự án', (notes || 'Đã xóa ghi chú').slice(0, 90) + ' · ' + account)
+        })
+        closeModal()
+      }}
+    >
+      <div className="form">
+        <label className="field">Ghi chú
+          <textarea name="notes" rows={6} autoFocus defaultValue={project.notes} placeholder="Điều cả team cần nhớ khi làm dự án này: yêu cầu riêng của khách, lưu ý sản xuất, thỏa thuận ngoài hợp đồng…" />
+        </label>
+        <div className="customer-data-rules"><p>Ghi chú hiện ở trang dự án và trang khách hàng. Kiến thức lâu dài về khách (feedback, recap) ghi vào Key notes ở tab Tài liệu.</p></div>
+        <FormActions submit="Lưu ghi chú" />
+      </div>
+    </Modal>
+  )
+}

@@ -5,8 +5,9 @@ import { runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
 import type { Project } from '../../store/types'
 import { AccountSummaryModal } from '../customers/CustomerModals'
+import { FlagModal } from '../../ui/FlagModal'
 import { CloseCycleModal } from './ContentModals'
-import { CancelDraftModal, EditProjectModal, OnboardingModal, PauseProjectModal, StartProjectModal, StopProjectModal } from './ProjectModals'
+import { CancelDraftModal, EditProjectModal, NotesModal, OnboardingModal, PauseProjectModal, StartProjectModal, StopProjectModal } from './ProjectModals'
 import { addProjectActivity, canStopProject, onboardingReady, updateProject } from './projectLogic'
 
 /** Project actions shared by the detail header, its tabs and the list. */
@@ -32,16 +33,28 @@ export function useProjectActions(project: Project) {
       if (!runningCycle(project)) return toast('Không có chu kỳ đang chạy.')
       showModal(<CloseCycleModal project={project} />)
     },
-    toggleRisk: () =>
-      updateProject(project.id, (item) => {
-        item.risk = !item.risk
-        addProjectActivity(
-          item,
-          'flag',
-          item.risk ? 'Đã gắn cờ cần chú ý' : 'Đã gỡ cờ cần chú ý',
-          item.risk ? 'Account cần kiểm soát tiến độ trong chu kỳ hiện tại.' : 'Không còn điểm rủi ro đang mở.',
-        )
-      }),
+    toggleRisk: () => {
+      if (project.risk) {
+        return updateProject(project.id, (item) => {
+          addProjectActivity(item, 'flag', 'Đã gỡ cờ cần chú ý', 'Đã xử lý: ' + (item.riskReason || ''))
+          item.risk = false
+          item.riskReason = undefined
+        })
+      }
+      showModal(
+        <FlagModal
+          subject={'Gắn cờ dự án ' + project.code}
+          onConfirm={(reason) =>
+            updateProject(project.id, (item) => {
+              item.risk = true
+              item.riskReason = reason
+              addProjectActivity(item, 'flag', 'Đã gắn cờ cần chú ý', reason)
+            })
+          }
+        />,
+      )
+    },
+    notes: () => showModal(<NotesModal project={project} />),
     pause: () => showModal(<PauseProjectModal project={project} />),
     cancelDraft: () => {
       if (!canStop) return toast('Chỉ Account phụ trách hoặc Account tạo dự án được hủy.')

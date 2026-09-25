@@ -12,6 +12,7 @@ import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './C
 import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, daysToEnd, endBlockers, shortMoney } from './customerLogic'
 import { EventLog, type SourcedActivity } from './EventLog'
 import { ProjectCell } from './ProjectCell'
+import { FlagModal } from '../../ui/FlagModal'
 
 const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text', renew: 'rotate-ccw' }
 
@@ -51,20 +52,20 @@ export function CustomerDetailScreen() {
     ...own.flatMap((project) => project.activities.slice(0, 3).map((entry) => ({ ...entry, source: project.code }))),
   ]
 
-  const toggleAttention = () =>
-    canManage
-      ? update((draft) => {
-          const target = draft.customers.find((customer) => customer.id === item.id)
-          if (!target) return
-          target.attention = !target.attention
-          addCustomerActivity(
-            target,
-            target.attention ? 'Đã gắn cờ cần chú ý' : 'Đã bỏ cờ cần chú ý',
-            target.attention ? 'Cần Account rà soát trong kỳ này' : 'Không còn điểm cần theo dõi',
-            'flag',
-          )
-        })
-      : toast(readOnlyHint + '.')
+  const setAttention = (reason: string | null) =>
+    update((draft) => {
+      const target = draft.customers.find((customer) => customer.id === item.id)
+      if (!target) return
+      if (reason === null) addCustomerActivity(target, 'Đã gỡ cờ cần chú ý', 'Đã xử lý: ' + (target.attentionReason || ''), 'flag')
+      else addCustomerActivity(target, 'Đã gắn cờ cần chú ý', reason, 'flag')
+      target.attention = reason !== null
+      target.attentionReason = reason ?? undefined
+    })
+  const toggleAttention = () => {
+    if (!canManage) return toast(readOnlyHint + '.')
+    if (item.attention) return setAttention(null)
+    showModal(<FlagModal subject={'Gắn cờ khách ' + item.name} onConfirm={(reason) => setAttention(reason)} />)
+  }
 
   const changeCooperation = () => {
     if (!canManage) return toast(readOnlyHint + '.')
@@ -152,6 +153,8 @@ export function CustomerDetailScreen() {
                     </small>
                     {project.state === 'active' && health.level !== 'ok' && <small className={'cpl-reason tone-' + health.tone}>{health.reason}</small>}
                     {project.state === 'pending' && project.pause && <small className="cpl-reason">{project.pause.reason}</small>}
+                    {project.risk && <small className="cpl-reason tone-danger">Gắn cờ: {project.riskReason || '—'}</small>}
+                    {project.notes && <small className="cpl-note" title={project.notes}>📝 {project.notes}</small>}
                   </span>
                   <ProjectCell projects={[project]} />
                   <span className="cpl-posts">{posts ? posts.published + '/' + posts.planned + ' bài' : '—'}</span>
@@ -211,8 +214,8 @@ export function CustomerDetailScreen() {
               <button className={'customer-control' + (item.attention ? ' is-attention' : '')} onClick={toggleAttention} disabled={!canManage} title={canManage ? undefined : readOnlyHint}>
                 <Icon name="flag" />
                 <span>
-                  <b>{item.attention ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
-                  <small>{item.attention ? 'Gỡ khi đã xử lý xong' : 'Cờ tay; trễ mốc và công nợ tự tính'}</small>
+                  <b>{item.attention ? 'Gỡ cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b>
+                  <small>{item.attention ? 'Lý do: ' + (item.attentionReason || '—') : 'Cần ghi lý do; trễ mốc và công nợ tự tính'}</small>
                 </span>
               </button>
             )}

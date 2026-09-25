@@ -9,7 +9,7 @@ import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 6
+const DATA_VERSION = 7
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)

@@ -150,6 +150,7 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
       total: draft ? 0 : total,
       state,
       risk,
+      riskReason: risk ? 'Khách duyệt nội dung chậm, cần họp lại lịch đăng.' : undefined,
       pause: state === 'pending' ? { reason: 'Khách tạm ngưng vận hành để sửa quán.', returnDate: '2026-10-15' } : undefined,
       stop: state === 'stopped' ? { reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.', date: '2026-08-31' } : undefined,
       cycles,

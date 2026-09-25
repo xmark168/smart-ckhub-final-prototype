@@ -56,7 +56,7 @@ function Controls({ project }: { project: Project }) {
       <div className="panel-head"><h2>Kiểm soát dự án</h2></div>
       <button className={'customer-control' + (project.risk ? ' is-attention' : '')} onClick={actions.toggleRisk}>
         <Icon name="flag" />
-        <span><b>{project.risk ? 'Đang gắn cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b><small>{project.risk ? 'Gỡ khi đã xử lý xong' : 'Cờ tay, hiển thị cùng sức khỏe tự tính'}</small></span>
+        <span><b>{project.risk ? 'Gỡ cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b><small>{project.risk ? 'Lý do: ' + (project.riskReason || '—') : 'Cần ghi lý do; hiển thị cùng sức khỏe tự tính'}</small></span>
       </button>
       {project.state === 'active' && (
         <button className="customer-control" onClick={actions.pause}>
@@ -120,6 +120,13 @@ export function OverviewTab({ project }: { project: Project }) {
             <MilestoneList items={cycleMilestones(cycle, quota, params)} />
           </section>
         )}
+        <section className="panel project-notes-panel">
+          <div className="panel-head">
+            <div><h2>Ghi chú dự án</h2><p className="subline">Điều cả team cần nhớ khi làm dự án này.</p></div>
+            <button className="text-btn" onClick={actions.notes}>{project.notes ? 'Sửa' : '+ Thêm ghi chú'}</button>
+          </div>
+          {project.notes ? <p className="project-note-text">{project.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
+        </section>
         <section className="panel project-service-panel">
           <div className="panel-head"><div><h2>Dịch vụ và định mức</h2><p className="subline">Snapshot tại thời điểm gán gói vào dự án.</p></div></div>
           <div className="project-service-grid">
@@ -131,7 +138,6 @@ export function OverviewTab({ project }: { project: Project }) {
               <small>{quota.posts ? quota.brandPosts + ' thương hiệu / ' + quota.salesPosts + ' bán hàng · ' + quota.plans + ' Content Plan' : 'Không áp dụng mốc nội dung'}</small>
             </div>
           </div>
-          {project.notes && <p className="project-tab-note">{project.notes}</p>}
         </section>
       </main>
       <aside>

@@ -45,11 +45,11 @@ export interface AttentionItem {
 export function attentionItems(customer: Customer, projects: Project[], contracts: Contract[], params: SopParams): AttentionItem[] {
   if (customer.ended) return []
   const items: AttentionItem[] = []
-  if (customer.attention) items.push({ kind: 'flag', label: 'Account gắn cờ cần chú ý', detail: 'Cờ tay trên khách hàng', targetId: '' })
+  if (customer.attention) items.push({ kind: 'flag', label: 'Gắn cờ · ' + (customer.attentionReason || 'cần chú ý'), detail: 'Cờ tay trên khách hàng', targetId: '' })
   customerProjects(customer, projects).forEach((project) => {
     const health = projectHealth(project, params)
     if (health.level === 'late') items.push({ kind: 'late', label: project.code + ' · chậm tiến độ', detail: health.reason, targetId: project.id })
-    else if (project.risk) items.push({ kind: 'risk', label: project.code + ' · gắn cờ rủi ro', detail: 'Account gắn cờ trên dự án', targetId: project.id })
+    else if (project.risk) items.push({ kind: 'risk', label: project.code + ' · gắn cờ', detail: project.riskReason || 'Account gắn cờ trên dự án', targetId: project.id })
     contracts
       .filter((row) => row.projectId === project.id && row.status === 'Hiệu lực')
       .forEach((row) => {

@@ -197,7 +197,7 @@ export function projectHealth(project: Project, params: SopParams, today = TODAY
   }
   const due = milestones.filter((item) => item.state === 'due')
   if (due.length || project.risk) {
-    return { level: 'watch', label: 'Cần theo dõi', reason: due.length ? due[0].label + ' đến hạn ' + shortDate(due[0].due) : 'Account đã gắn cờ cần chú ý.', tone: 'waiting' }
+    return { level: 'watch', label: 'Cần theo dõi', reason: due.length ? due[0].label + ' đến hạn ' + shortDate(due[0].due) : 'Gắn cờ: ' + (project.riskReason || 'Account cần theo dõi.'), tone: 'waiting' }
   }
   return { level: 'ok', label: 'Đúng tiến độ', reason: 'Không có mốc trễ trong chu kỳ ' + cycle.no + '.', tone: 'ok' }
 }
