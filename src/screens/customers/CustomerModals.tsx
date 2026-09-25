@@ -26,22 +26,36 @@ function OwnerSelect({ value }: { value: string }) {
   )
 }
 
-/** Blocks a second customer with the same brand name (case and spacing ignored). */
-function rejectDuplicate(form: HTMLFormElement, exceptId = ''): boolean {
+/** Duplicate brand name (case and spacing ignored) → error text for the name field, else ''. */
+function duplicateError(form: HTMLFormElement, exceptId = ''): string {
   const input = form.elements.namedItem('name') as HTMLInputElement
   const match = getData().customers.find((item) => item.id !== exceptId && sameName(item.name, input.value))
-  input.setCustomValidity(match ? 'Đã có khách hàng "' + match.name + '" (Account ' + match.owner + ').' : '')
-  if (match) input.reportValidity()
-  return Boolean(match)
+  return match ? 'Đã có khách hàng "' + match.name + '" (Account ' + match.owner + '). Đổi tên hoặc mở khách hiện có.' : ''
+}
+
+/** Name input with an error message tied to it (aria-invalid + aria-describedby). */
+function NameField({ value, error, onEdit }: { value?: string; error: string; onEdit: () => void }) {
+  return (
+    <label className="field">Tên thương hiệu
+      <input name="name" required autoFocus defaultValue={value} aria-invalid={Boolean(error)} aria-describedby={error ? 'customerNameError' : undefined} onInput={onEdit} />
+      {error && <span id="customerNameError" className="field-error" role="alert">{error}</span>}
+    </label>
+  )
 }
 
 export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => void }) {
   const { closeModal, account } = useApp()
+  const [error, setError] = useState('')
   return (
     <Modal
       title="Tạo khách hàng"
       onSubmit={(form) => {
-        if (rejectDuplicate(form)) return
+        const duplicate = duplicateError(form)
+        setError(duplicate)
+        if (duplicate) {
+          ;(form.elements.namedItem('name') as HTMLInputElement).focus()
+          return
+        }
         const owner = field(form, 'owner')
         const id = 'customer-' + Date.now()
         update((draft) => {
@@ -61,7 +75,7 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
       }}
     >
       <div className="form">
-        <label className="field">Tên thương hiệu<input name="name" required autoFocus onInput={(event) => event.currentTarget.setCustomValidity('')} /></label>
+        <NameField error={error} onEdit={() => setError('')} />
         <OwnerSelect value={account} />
         <AreaSelect />
         <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></div>
@@ -73,11 +87,17 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
 
 export function EditCustomerModal({ customer }: { customer: Customer }) {
   const { closeModal } = useApp()
+  const [error, setError] = useState('')
   return (
     <Modal
       title="Sửa khách hàng"
       onSubmit={(form) => {
-        if (rejectDuplicate(form, customer.id)) return
+        const duplicate = duplicateError(form, customer.id)
+        setError(duplicate)
+        if (duplicate) {
+          ;(form.elements.namedItem('name') as HTMLInputElement).focus()
+          return
+        }
         const owner = field(form, 'owner')
         const moveProjects = checked(form, 'moveProjects')
         update((draft) => {
@@ -101,7 +121,7 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
       }}
     >
       <div className="form">
-        <label className="field">Tên thương hiệu<input name="name" required defaultValue={customer.name} onInput={(event) => event.currentTarget.setCustomValidity('')} /></label>
+        <NameField value={customer.name} error={error} onEdit={() => setError('')} />
         <OwnerSelect value={customer.owner} />
         <label className="filter-check"><input name="moveProjects" type="checkbox" defaultChecked /> Chuyển cả dự án đang mở của Account cũ sang Account mới</label>
         <AreaSelect value={customer.area} />

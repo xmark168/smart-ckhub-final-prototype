@@ -12,6 +12,7 @@ import { AccountSummaryModal, EditCustomerModal, EndCooperationModal } from './C
 import { addCustomerActivity, attentionItems, canManageCustomer, CUSTOMER_STATUS, customerProjects, customerStatus, daysToEnd, endBlockers, shortMoney } from './customerLogic'
 import { EventLog, type SourcedActivity } from './EventLog'
 import { ProjectCell } from './ProjectCell'
+import { motionBehavior } from '../../lib/motion'
 import { FlagModal } from '../../ui/FlagModal'
 
 const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'file-text', renew: 'rotate-ccw' }
@@ -46,7 +47,7 @@ export function CustomerDetailScreen() {
   const activeCount = own.filter((project) => project.state === 'active').length
   const openAccount = () => showModal(<AccountSummaryModal owner={item.owner} />)
   const openContract = (id: string) => showModal(<ContractDetailModal contractId={id} />)
-  const scrollToContracts = () => document.getElementById('customerContracts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const scrollToContracts = () => document.getElementById('customerContracts')?.scrollIntoView({ behavior: motionBehavior(), block: 'start' })
   const log: SourcedActivity[] = [
     ...item.activities.map((entry) => ({ ...entry, source: 'Khách hàng' })),
     ...own.flatMap((project) => project.activities.slice(0, 3).map((entry) => ({ ...entry, source: project.code }))),
@@ -106,7 +107,7 @@ export function CustomerDetailScreen() {
           {item.ended ? (
             <p>{formatDate(parseInput(item.ended.date))} · {item.ended.reason}</p>
           ) : attention.length ? (
-            <ul className="attention-list">
+            <ul className="attention-list" aria-label="Lý do cần chú ý">
               {attention.map((entry) => (
                 <li key={entry.label}>
                   <button
@@ -115,7 +116,7 @@ export function CustomerDetailScreen() {
                     disabled={!entry.targetId}
                     onClick={() => (entry.kind === 'debt' ? openContract(entry.targetId) : entry.targetId && openProject(entry.targetId))}
                   >
-                    <Icon name={ATTENTION_ICON[entry.kind]} /> {entry.label} {entry.targetId && <Icon name="chevron-right" />}
+                    <Icon name={ATTENTION_ICON[entry.kind]} /> {entry.label}{entry.kind === 'flag' && <span className="sr-only"> (cờ tay, không có liên kết)</span>} {entry.targetId && <Icon name="chevron-right" />}
                   </button>
                 </li>
               ))}
@@ -131,10 +132,10 @@ export function CustomerDetailScreen() {
       </section>
 
       <div className="customer-detail-layout">
-        <main>
-          <section className="panel customer-project-panel">
+        <div className="detail-main">
+          <section className="panel customer-project-panel" aria-labelledby="custProjects">
             <div className="panel-head">
-              <div><h2>Dự án</h2><p className="subline">Chu kỳ hiện tại, bài đã đăng và sức khỏe tự tính.</p></div>
+              <div><h2 id="custProjects">Dự án</h2><p className="subline">Chu kỳ hiện tại, bài đã đăng và sức khỏe tự tính.</p></div>
               {status !== 'ended' && (
                 <button className="text-btn" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<CreateProjectModal customerId={item.id} onCreated={(id) => openProject(id)} />)}>+ Tạo dự án</button>
               )}
@@ -154,7 +155,7 @@ export function CustomerDetailScreen() {
                     {project.state === 'active' && health.level !== 'ok' && <small className={'cpl-reason tone-' + health.tone}>{health.reason}</small>}
                     {project.state === 'pending' && project.pause && <small className="cpl-reason">{project.pause.reason}</small>}
                     {project.risk && <small className="cpl-reason tone-danger">Gắn cờ: {project.riskReason || '—'}</small>}
-                    {project.notes && <small className="cpl-note" title={project.notes}>📝 {project.notes}</small>}
+                    {project.notes && <small className="cpl-note" title={project.notes}><Icon name="notebook-pen" /> Ghi chú: {project.notes}</small>}
                   </span>
                   <ProjectCell projects={[project]} />
                   <span className="cpl-posts">{posts ? posts.published + '/' + posts.planned + ' bài' : '—'}</span>
@@ -200,9 +201,9 @@ export function CustomerDetailScreen() {
             <div className="panel-head"><div><h2>Sự kiện theo khách &amp; dự án</h2><p className="subline">Thay đổi trên khách và 3 sự kiện mới nhất của mỗi dự án; lọc theo nguồn.</p></div></div>
             <EventLog entries={log} />
           </section>
-        </main>
+        </div>
 
-        <aside>
+        <aside role="region" aria-label="Account và kiểm soát hợp tác">
           <section className="panel customer-account-panel">
             <div className="panel-head"><h2>Account &amp; kiểm soát</h2></div>
             <button className="customer-account-card" onClick={openAccount}>

@@ -93,7 +93,7 @@ h1 .customer-help:focus-visible { outline: 2px solid var(--orange); outline-offs
 
 /* ---- Long dialogs scroll inside the viewport; title row stays visible ---- */
 .modal-backdrop .modal { max-height: calc(100vh - 36px); max-height: calc(100dvh - 36px); overflow-y: auto; overscroll-behavior: contain; }
-.modal-backdrop .modal > .modal-top { position: sticky; top: -20px; z-index: 2; margin: -20px -20px 0; padding: 20px 20px 10px; background: #fff; }
+.modal-backdrop .modal .modal-top { position: sticky; top: -20px; z-index: 2; margin: -20px -20px 0; padding: 20px 20px 10px; background: #fff; }
 body:has(.modal-backdrop.show) { overflow: hidden; }
 
 /* ---- Customer dashboard: period chip and clickable deltas ---- */
@@ -216,3 +216,58 @@ td.list-empty span { margin: 4px 0 12px; color: var(--muted); font-size: 12px; }
 .flag-quick button:hover { border-style: solid; border-color: rgb(204, 128, 96); color: rgb(159, 69, 32); }
 .project-note-text { margin: 0; padding: 10px 12px; border-left: 3px solid rgb(229, 190, 160); border-radius: 0 8px 8px 0; background: rgb(252, 248, 243); color: rgb(68, 52, 43); font-size: 12px; line-height: 1.5; white-space: pre-line; }
 .cpl-note { overflow: hidden; color: rgb(117, 97, 81); text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* ================= Accessibility (WCAG 2.2 AA) ================= */
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Contrast ≥ 4.5:1 for text */
+.primary { background: #c43d0c; box-shadow: rgba(196, 61, 12, 0.22) 0 4px 12px; }
+.primary:hover { background: #a3320a; }
+.customer-meta { color: #75604f !important; }
+.cpl-reason.tone-danger, td.is-late, .project-next.is-late b { color: #b42318 !important; }
+.cpl-reason.tone-waiting { color: #8a5300 !important; }
+#customerDetail .customer-detail-title p, #customerDetail .customer-detail-title p span { color: #6b5646; }
+
+/* Visible focus on every control */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid #c43d0c; outline-offset: 2px; }
+.customer-kpi.hero :focus-visible, .attention-list button:focus-visible { outline-color: #ffb48f; }
+
+/* KPI cards: main area is a real button, deltas are separate buttons */
+.customer-kpi .kpi-main { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.customer-kpi .kpi-label { display: block; color: rgb(120, 102, 87); font-size: 11px; font-weight: 700; }
+.customer-kpi.hero .kpi-label { color: rgba(255, 255, 255, 0.78); }
+.customer-kpi strong { display: block; }
+div.customer-kpi { cursor: default; }
+.kpi-delta { min-height: 24px; padding: 3px 9px; }
+.kpi-link { min-height: 24px; padding: 0 2px; border: 0; background: none; font: inherit; }
+
+/* Row link: name is the keyboard target; the whole row stays clickable for mouse */
+.row-link { display: block; padding: 0; border: 0; background: none; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.row-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Attention reasons without hover */
+.reason-pill { position: relative; display: inline-block; margin-left: 4px; }
+.reason-pill > .pill { border: 0; cursor: pointer; font-family: inherit; }
+.reason-popover { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: 280px; margin: 0; padding: 10px 12px 10px 26px; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: var(--shadow); color: var(--ink); font-size: 12px; line-height: 1.45; text-align: left; }
+.reason-popover li + li { margin-top: 4px; }
+
+.field-error { display: block; margin-top: 4px; color: #b42318; font-size: 12px; font-weight: 650; }
+input[aria-invalid="true"] { border-color: #b42318 !important; }
+.cpl-note svg { width: 12px; height: 12px; vertical-align: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  h1 .customer-help:hover { transform: none; }
+}
+@media (forced-colors: active) {
+  .pill, .kpi-delta, .attention-list button, .event-filter button { border: 1px solid CanvasText; }
+}
+.modal-form { display: contents; }
+/* Reasons open inline in the cell (the table wrapper scrolls and would clip a popover). */
+.reason-pill { display: inline; margin-left: 0; }
+.reason-popover { position: static; width: auto; max-width: 280px; margin-top: 6px; box-shadow: none; background: rgb(255, 248, 243); }
+.reason-pill { display: block; margin-top: 4px; }
+#customers .customer-table td:nth-child(5) { min-width: 180px; }
+.reason-popover { min-width: 200px; }
+.reason-popover { box-sizing: border-box; max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }

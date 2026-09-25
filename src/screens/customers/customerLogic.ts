@@ -1,5 +1,5 @@
 import { paymentMetrics } from '../../data/contracts'
-import { diffDays, displayToInput, TODAY } from '../../lib/format'
+import { diffDays, displayToInput, foldText, TODAY } from '../../lib/format'
 import { projectHealth, runningCycle } from '../../lib/sop'
 import type { Contract, Customer, Period, Project, Role, SopParams } from '../../store/types'
 
@@ -124,6 +124,5 @@ export function endBlockers(customer: Customer, projects: Project[], contracts: 
 }
 
 export function sameName(a: string, b: string): boolean {
-  const normal = (value: string) => value.trim().toLocaleLowerCase('vi').replace(/\s+/g, ' ')
-  return normal(a) === normal(b)
+  return foldText(a) === foldText(b)
 }

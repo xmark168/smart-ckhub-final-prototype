@@ -7,6 +7,8 @@ import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import { Pager } from '../../ui/Pager'
+import { ReasonPill } from './ReasonPill'
+import { motionBehavior } from '../../lib/motion'
 import type { Customer, Project } from '../../store/types'
 import { ProjectCell } from './ProjectCell'
 import { AccountSummaryModal, CreateCustomerModal, CustomerFlowModal, PeriodModal } from './CustomerModals'
@@ -127,35 +129,34 @@ export function CustomersScreen() {
       </div>
 
       <section className="customer-dashboard">
-        <div
-          role="button"
-          tabIndex={0}
-          className={'customer-kpi hero' + (filters.kpi === 'working' ? ' selected' : '')}
-          onClick={() => change({ kpi: 'working' })}
-          onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && change({ kpi: 'working' })}
-        >
-          <label>Khách hiện hữu · hôm nay</label>
-          <strong>{working.length}</strong>
+        <div className={'customer-kpi hero' + (filters.kpi === 'working' ? ' selected' : '')}>
+          <button type="button" className="kpi-main" aria-pressed={filters.kpi === 'working'} onClick={() => change({ kpi: 'working' })}>
+            <span className="kpi-label">Khách hiện hữu · hôm nay</span>
+            <strong>{working.length}</strong>
+          </button>
           <small className="kpi-deltas">
             {working.filter((row) => row.status === 'active').length} đang hợp tác ·{' '}
-            <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} title="Lọc khách mới trong kỳ" onClick={(event) => { event.stopPropagation(); toggleKpi('new') }}>+{fresh} mới</button>{' '}
-            <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} title="Lọc khách kết thúc trong kỳ" onClick={(event) => { event.stopPropagation(); toggleKpi('endedPeriod') }}>−{endedNow} kết thúc</button>{' '}
+            <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} aria-pressed={filters.kpi === 'new'} aria-label={fresh + ' khách mới ' + periodLabel(period) + ', lọc danh sách'} onClick={() => toggleKpi('new')}>+{fresh} mới</button>{' '}
+            <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} aria-pressed={filters.kpi === 'endedPeriod'} aria-label={endedNow + ' khách kết thúc ' + periodLabel(period) + ', lọc danh sách'} onClick={() => toggleKpi('endedPeriod')}>−{endedNow} kết thúc</button>{' '}
             {periodLabel(period)}
           </small>
         </div>
-        <button className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')} onClick={() => toggleKpi('endedPeriod')}>
-          <label>Kết thúc hợp tác {periodLabel(period)}</label><strong>{endedNow}</strong>
-          <small>Tổng từ trước đến nay: <span className="kpi-link" role="link" onClick={(event) => { event.stopPropagation(); toggleKpi('ended') }}>{ended.length} khách</span></small>
-        </button>
-        <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} onClick={() => toggleKpi('attention')}>
-          <label>Khách cần chú ý</label><strong>{attention.length}</strong><small>{attentionText}</small>
+        <div className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')}>
+          <button type="button" className="kpi-main" aria-pressed={filters.kpi === 'endedPeriod'} onClick={() => toggleKpi('endedPeriod')}>
+            <span className="kpi-label">Kết thúc hợp tác {periodLabel(period)}</span><strong>{endedNow}</strong>
+          </button>
+          <small>Tổng từ trước đến nay: <button type="button" className="kpi-link" aria-pressed={filters.kpi === 'ended'} onClick={() => toggleKpi('ended')}>{ended.length} khách</button></small>
+        </div>
+        <button className={'customer-kpi attention' + (filters.kpi === 'attention' ? ' selected' : '')} aria-pressed={filters.kpi === 'attention'} onClick={() => toggleKpi('attention')}>
+          <span className="kpi-label">Khách cần chú ý</span><strong>{attention.length}</strong><small>{attentionText}</small>
         </button>
       </section>
 
-      <section className="customer-list-shell">
+      <section className="customer-list-shell" aria-labelledby="customerListTitle">
+        <h2 id="customerListTitle" className="sr-only">Danh sách khách hàng</h2>
         <div className="customer-toolbar">
           <label className="customer-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
             <input
               type="text"
               value={filters.query}
@@ -173,11 +174,11 @@ export function CustomersScreen() {
             </select>
           </label>
           <div className={'customer-filter-control' + (filterOpen ? ' open' : '')} ref={filterRef}>
-            <button className="customer-filter-trigger" type="button" aria-label="Lọc khách hàng" title="Lọc khách hàng" onClick={() => setFilterOpen(!filterOpen)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M7 12h10m-7 6h4" /></svg>
+            <button className="customer-filter-trigger" type="button" aria-label={'Lọc khách hàng' + (activeFilterCount ? ', đang áp dụng ' + activeFilterCount : '')} aria-expanded={filterOpen} aria-controls="customerFilterPanel" title="Lọc khách hàng" onClick={() => setFilterOpen(!filterOpen)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M7 12h10m-7 6h4" /></svg>
               {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
             </button>
-            <div className="customer-filter-popover">
+            <div className="customer-filter-popover" id="customerFilterPanel" role="group" aria-label="Bộ lọc khách hàng">
               <div className="filter-popover-head">
                 <b>Lọc khách hàng</b>
                 <button type="button" disabled={!activeFilterCount} onClick={() => change({ status: '', owner: '', area: '' })}>Xóa lọc</button>
@@ -208,7 +209,7 @@ export function CustomersScreen() {
         </div>
 
         {chips.length > 0 && (
-          <div className="kpi-filter-bar">
+          <div className="kpi-filter-bar" role="group" aria-label="Điều kiện đang lọc">
             Đang lọc:
             {chips.map(([label, clear]) => (
               <span className="kpi-filter-tag" key={label}>{label} <button type="button" aria-label={'Bỏ ' + label} onClick={clear}>×</button></span>
@@ -218,29 +219,25 @@ export function CustomersScreen() {
         )}
         <div className="customer-table-wrap">
           <table className="customer-table">
-            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th title="Chu kỳ hiện tại / tổng chu kỳ hợp đồng của dự án chính; +N là số dự án khác">Chu kỳ</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th title="Chu kỳ hiện tại / tổng chu kỳ hợp đồng của dự án chính; +N là số dự án khác">Chu kỳ</th><th>Trạng thái</th><th><span className="sr-only">Mở</span></th></tr></thead>
             <tbody>
               {rows.map(({ item, status, projects: own, reasons }) => {
                 return (
-                  <tr
-                    key={item.id}
-                    tabIndex={0}
-                    onClick={() => openCustomer(item.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCustomer(item.id) }
-                    }}
-                  >
-                    <td><span className="customer-name">{item.name}</span><span className="customer-meta">{servicesOf(own)}</span></td>
+                  <tr key={item.id} onClick={() => openCustomer(item.id)}>
                     <td>
-                      <button className="customer-account" type="button" onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
+                      <button type="button" className="customer-name row-link" onClick={(event) => { event.stopPropagation(); openCustomer(item.id) }}>{item.name}</button>
+                      <span className="customer-meta">{servicesOf(own)}</span>
+                    </td>
+                    <td>
+                      <button className="customer-account" type="button" aria-label={'Tóm tắt Account ' + item.owner} onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
                     </td>
                     <td>{item.area}</td>
                     <td><ProjectCell projects={own} /></td>
                     <td>
                       <span className={'pill ' + CUSTOMER_STATUS[status].tone}>{CUSTOMER_STATUS[status].label}</span>
-                      {reasons.length > 0 && <span className="pill danger" title={reasons.join('\n')}>Cần chú ý</span>}
+                      {reasons.length > 0 && <ReasonPill reasons={reasons} />}
                     </td>
-                    <td><button className="customer-open" aria-label={'Mở ' + item.name}>›</button></td>
+                    <td><span className="customer-open" aria-hidden="true">›</span></td>
                   </tr>
                 )
               })}
@@ -258,12 +255,12 @@ export function CustomersScreen() {
         </div>
 
         <footer className="customer-foot">
-          <span className="customer-result-summary">
+          <span className="customer-result-summary" role="status" aria-live="polite">
             {matched.length
               ? <>Hiển thị <b>{from}–{to}</b> trong <b>{matched.length}</b> {narrowed ? 'kết quả phù hợp' : kpiLabel}</>
               : 'Không có khách hàng phù hợp'}
           </span>
-          <Pager page={page} pages={pages} goTo={(next) => { goTo(next); document.querySelector('#customers .customer-list-shell')?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }} />
+          <Pager page={page} pages={pages} goTo={(next) => { goTo(next); document.querySelector('#customers .customer-list-shell')?.scrollIntoView({ block: 'start', behavior: motionBehavior() }) }} />
         </footer>
       </section>
     </section>

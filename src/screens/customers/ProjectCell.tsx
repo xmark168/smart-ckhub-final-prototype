@@ -10,15 +10,16 @@ export function ProjectCell({ projects }: { projects: Project[] }) {
   const title = projects.map((item) => item.code + ' · ' + item.service + ' · ' + (currentCycle(item) ? 'chu kỳ ' + currentCycle(item)!.no + '/' + (item.total || '–') : 'chưa bắt đầu')).join('\n')
   return (
     <span className="project-cell" title={title}>
+      <span className="sr-only">{title}</span>
       {cycle && main.total ? (
         <>
-          <b>{cycle.no}/{main.total}</b>
-          <i className="project-cell-bar"><em style={{ width: Math.min(100, (cycle.no / main.total) * 100) + '%' }} /></i>
+          <b aria-hidden="true">{cycle.no}/{main.total}</b>
+          <i className="project-cell-bar" aria-hidden="true"><em style={{ width: Math.min(100, (cycle.no / main.total) * 100) + '%' }} /></i>
         </>
       ) : (
-        <b className="project-cell-draft">Chưa bắt đầu</b>
+        <b className="project-cell-draft" aria-hidden="true">Chưa bắt đầu</b>
       )}
-      {more > 0 && <small className="project-cell-more">+{more}</small>}
+      {more > 0 && <small className="project-cell-more" aria-hidden="true">+{more}</small>}
     </span>
   )
 }
