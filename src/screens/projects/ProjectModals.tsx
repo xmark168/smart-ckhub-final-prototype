@@ -107,7 +107,7 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
             state: 'draft',
             risk: false,
             cycles: [],
-            team: readTeam(form, owner),
+            team: { account: owner, planner: '', media: [], ads: '' },
             links: { folder: field(form, 'folder'), contentPlan: '', contentPost: '', keyNotes: '' },
             notes: '',
             keyNotes: [],
@@ -162,9 +162,8 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
           </select>
         </label>
         {selectedPackage && <QuotaNote quota={selectedPackage.quota} />}
-        <TeamFields />
         <label className="field">Folder dự án trên Drive<input name="folder" type="url" placeholder="https://drive.google.com/drive/folders/..." /></label>
-        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện và Account bấm Bắt đầu triển khai. Định mức lấy từ gói và lưu snapshot tại thời điểm tạo.</p></div>
+        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Đội dự án (Planner, Media, Ads) phân công khi bắt đầu triển khai. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></div>
         <FormActions submit="Tạo dự án nháp" />
       </div>
     </Modal>
@@ -313,7 +312,9 @@ export function StartProjectModal({ project }: { project: Project }) {
       title="Bắt đầu triển khai"
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
+        const team = readTeam(form, project.owner)
         updateProject(project.id, (item) => {
+          item.team = team
           item.state = 'active'
           item.risk = false
           item.cycles = [newCycle(1, start, params)]
@@ -329,6 +330,10 @@ export function StartProjectModal({ project }: { project: Project }) {
       <div className="form">
         <div className="customer-data-rules"><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></div>
         <label className="field">Ngày bắt đầu chu kỳ (T0)<input name="cycleStart" type="date" required defaultValue={TODAY} /></label>
+        <fieldset className="field">
+          <legend>Đội dự án <small>(có thể bổ sung sau tại Sửa dự án)</small></legend>
+          <TeamFields team={project.team} />
+        </fieldset>
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận bắt đầu triển khai theo điều kiện đã kiểm tra.</label>
         <FormActions submit="Bắt đầu triển khai" />
       </div>
