@@ -781,3 +781,32 @@ em.pill { font-style: normal; }
   .health-band { grid-template-columns: 1fr; }
   .health-band > .hb-contract { border-left: 0; border-top: 1px solid rgb(238, 229, 221); }
 }
+
+/* ---- Project dashboard: dark hero, same family as customer overview / KPI hero cards ---- */
+.health-band { border-color: rgb(43, 32, 24); background: linear-gradient(135deg, rgb(48, 35, 26), rgb(29, 22, 17)); color: #fff; }
+.health-band > * + * { border-left-color: rgba(255, 255, 255, 0.12) !important; }
+.health-band .hb-main { background: transparent !important; border-bottom-color: rgba(255, 255, 255, 0.12) !important; }
+.health-band.tone-late .hb-main { box-shadow: inset 4px 0 0 #f87171; }
+.health-band.tone-watch .hb-main { box-shadow: inset 4px 0 0 #fbbf24; }
+.health-band.tone-ok .hb-main { box-shadow: inset 4px 0 0 #4ade80; }
+.health-band.tone-muted .hb-main { box-shadow: inset 4px 0 0 #a8a29e; }
+.health-band .hb-label { color: rgba(255, 255, 255, 0.62); }
+.health-band strong, .health-band .hb-next b, .health-band .pace-val, .health-band .hb-money { color: #fff; }
+.health-band small, .health-band .hb-next small, .health-band .pace-note, .health-band .pace-name, .health-band .hb-note, .health-band .hb-contract small.inline { color: rgba(255, 255, 255, 0.66); }
+.health-band .hb-money.is-late, .health-band strong.is-late { color: #fca5a5; }
+.health-band .pace-note.is-late { color: #fcd34d; }
+.health-band em.is-late { color: #fca5a5; }
+.health-band em.is-due { color: #fcd34d; }
+.health-band .hb-chip { border-color: rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.06); color: #fff; }
+.health-band .hb-chip.is-late { border-color: rgba(248, 113, 113, 0.7); background: rgba(248, 113, 113, 0.14); color: #fecaca; }
+.health-band .hb-chip.is-due { border-color: rgba(251, 191, 36, 0.7); background: rgba(251, 191, 36, 0.12); color: #fde68a; }
+.health-band .hb-chip:hover { background: rgba(255, 255, 255, 0.14); box-shadow: none; }
+.health-band .hb-chip:focus-visible, .health-band .hb-link:focus-visible, .health-band .hb-next:focus-visible { outline-color: #ffb48f; }
+.health-band .pace-bar { background: rgba(255, 255, 255, 0.14); }
+.health-band .pace-bar i.over { background: #f87171; }
+.health-band .pace-bar i.ahead { background: #4ade80; }
+.health-band .pace-bar i.behind { background: #fbbf24; }
+.health-band .pace-bar i:not(.over):not(.ahead):not(.behind) { background: rgba(255, 255, 255, 0.55); }
+.health-band .pace-mark { background: #fff; }
+.health-band .hb-link:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); }
+.health-band .hb-next:hover b { color: #ffb48f; }
