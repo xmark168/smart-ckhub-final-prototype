@@ -5,8 +5,8 @@ import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runnin
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
-import { CycleTaskModal, DemoModal, ExceptionModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
-import { resolveException, statusTone } from '../projectLogic'
+import { CycleTaskModal, DemoModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
+import { statusTone } from '../projectLogic'
 
 /** "Gửi 14.08 · Duyệt 16.08", or the due date while the step is open. */
 function when(step: Milestone | undefined, sent: string, approved = ''): string {
@@ -112,7 +112,6 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
 
 function SidePanels({ project, cycle }: { project: Project; cycle: Cycle }) {
   const { showModal } = useApp()
-  const openExceptions = cycle.exceptions.filter((item) => !item.resolved)
   const completed = cycle.tasks.filter((task) => task.status === 'Đã hoàn thành').length
   return (
     <aside>
@@ -132,21 +131,6 @@ function SidePanels({ project, cycle }: { project: Project; cycle: Cycle }) {
         </div>
       </section>
 
-      <section className="panel cycle-panel">
-        <div className="panel-head">
-          <h2>Ngoại lệ</h2>
-          <button className="text-btn" onClick={() => showModal(<ExceptionModal project={project} />)}>+ Ghi nhận</button>
-        </div>
-        <div className="cycle-compact-list">
-          {openExceptions.map((exception) => (
-            <div key={exception.id}>
-              <b>{exception.type}</b><small>{exception.reason}</small>
-              <button className="text-btn" onClick={() => resolveException(project.id, exception.id)}>Đã xử lý</button>
-            </div>
-          ))}
-          {!openExceptions.length && <p className="empty-copy">Không có.</p>}
-        </div>
-      </section>
     </aside>
   )
 }
