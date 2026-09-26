@@ -135,7 +135,7 @@ export function comTamTaiProject(): Project {
     contents: t9Contents(),
     tasks: [
       { id: 'ctt-edit-56', name: 'Dựng Mini-game chả trứng muối (bài 5, 6)', owner: 'Hải', deadline: '26.09.2026', status: 'Đang thực hiện', type: 'Sản xuất' },
-      { id: 'ctt-script-1012', name: 'Chốt script bài 10–12', owner: 'Thương', deadline: '26.09.2026', status: 'Việc cần làm', type: 'Nội dung' },
+      { id: 'ctt-script-1012', name: 'Chốt script bài 10–12', owner: 'Content nội bộ', deadline: '26.09.2026', status: 'Việc cần làm', type: 'Nội dung' },
     ],
     exceptions: [{ id: 'ctt-ex-1', type: 'Đang bù chu kỳ', reason: 'Còn 5 bài của Content Plan T9 chưa đăng; bù sang đầu chu kỳ 5.', resolved: false }],
     activity: [

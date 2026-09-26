@@ -87,8 +87,8 @@ export function ShootingPlanModal({ project }: { project: Project }) {
 
 export function ShootingModal({ project, shooting }: { project: Project; shooting?: Shooting }) {
   const { closeModal } = useApp()
-  const people = Array.from(new Set([...project.team.media, ...MEDIA_PEOPLE]))
-  const current: Shooting = shooting ?? { id: '', date: '', time: '', location: '', media: [...project.team.media], status: 'Chờ xác nhận', checklist: '' }
+  const people = MEDIA_PEOPLE
+  const current: Shooting = shooting ?? { id: '', date: '', time: '', location: '', media: [], status: 'Chờ xác nhận', checklist: '' }
   return (
     <Modal
       title={shooting ? 'Cập nhật lịch shooting' : 'Tạo lịch shooting'}
@@ -173,7 +173,7 @@ export function DemoModal({ project }: { project: Project }) {
 export function CycleTaskModal({ project, task }: { project: Project; task?: CycleTask }) {
   const { closeModal } = useApp()
   const current = task ?? { id: '', name: '', owner: '', deadline: '', status: 'Nháp', type: 'Nội dung' }
-  const owners = Array.from(new Set([...ACCOUNTS, project.team.planner, ...project.team.media, project.team.ads].filter(Boolean)))
+  const owners = Array.from(new Set([project.owner, 'Content nội bộ', ...MEDIA_PEOPLE, ...ACCOUNTS]))
   return (
     <Modal
       title={task ? 'Cập nhật công việc' : 'Tạo công việc'}

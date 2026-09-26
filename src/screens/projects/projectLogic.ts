@@ -5,7 +5,6 @@ import { viewOnlyReason } from '../../ui/viewOnly'
 import type { Cycle, PlanStatus, Project, SopParams } from '../../store/types'
 
 export const MEDIA_PEOPLE = ['Hải', 'Như', 'Hân', 'Bình', 'Phước', 'Anh Thư', 'Ngọc']
-export const PLANNERS = ['Thương', 'Minh', 'Linh']
 
 export function projectLabel(item: Project): string {
   return item.state === 'active' ? 'Đang triển khai' : item.state === 'pending' ? 'Tạm dừng' : item.state === 'stopped' ? 'Đã dừng' : 'Dự án nháp'

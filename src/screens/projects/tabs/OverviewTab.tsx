@@ -92,7 +92,16 @@ export function OverviewTab({ project }: { project: Project }) {
   const cycle = runningCycle(project)
   const next = nextActions(project, params).slice(0, 5)
   const quota = project.quota
-  const team = project.team
+  // People working this cycle, gathered from shootings (Media) and cycle tasks (Owner).
+  const roles = new Map<string, string[]>()
+  const addRole = (name: string, role: string) => {
+    if (!name || name === project.owner) return
+    const list = roles.get(name) ?? []
+    if (!list.includes(role)) roles.set(name, [...list, role])
+  }
+  cycle?.shootings.forEach((shoot) => shoot.media.forEach((name) => addRole(name, 'Shoot ' + shortDate(shoot.date))))
+  cycle?.tasks.forEach((task) => addRole(task.owner, task.name))
+  const participants = [...roles.entries()]
   return (
     <div className="project-detail-grid">
       <main>
@@ -145,17 +154,17 @@ export function OverviewTab({ project }: { project: Project }) {
       </main>
       <aside>
         <section className="panel">
-          <div className="panel-head"><h2>Đội dự án</h2>{project.state !== 'draft' && <button className="text-btn" onClick={actions.edit}>{team.planner || team.media.length ? 'Sửa' : '+ Phân công'}</button>}</div>
-          {project.state === 'draft' && <p className="empty-copy">Phân công Planner, Media, Ads khi bắt đầu triển khai.</p>}
+          <div className="panel-head"><div><h2>Người tham gia</h2><p className="subline">Account cố định; partner gán theo từng buổi shoot và công việc.</p></div></div>
           <button className="customer-account-card" onClick={actions.account}>
             <i>{initials(project.owner)}</i>
-            <span><b>{project.owner}</b><small>Account · điều phối timeline và nguồn lực</small></span>
+            <span><b>{project.owner}</b><small>Account · điều phối khách và partner</small></span>
             <Icon name="chevron-right" />
           </button>
-          <div className="cycle-compact-list team-list" hidden={project.state === 'draft'}>
-            <div><b>{team.planner || 'Chưa phân công'}</b><small>Planner / Content · Content Plan, script</small></div>
-            <div><b>{team.media.length ? team.media.join(', ') : 'Chưa phân công'}</b><small>Media · quay, dựng, đăng</small></div>
-            <div><b>{team.ads || 'Không có'}</b><small>Ads</small></div>
+          <div className="cycle-compact-list team-list">
+            {quota.plans > 0 && <div><b>Content nội bộ</b><small>Content Plan, script</small></div>}
+            {participants.length > 0
+              ? participants.map(([name, roles]) => <div key={name}><b>{name}</b><small>{roles.join(' · ')}</small></div>)
+              : <p className="empty-copy">{cycle ? 'Chưa gán partner cho buổi shoot hay công việc nào trong chu kỳ ' + cycle.no + '.' : 'Gán partner khi tạo lịch shoot và công việc sau khi bắt đầu triển khai.'}</p>}
           </div>
         </section>
         <Controls project={project} />

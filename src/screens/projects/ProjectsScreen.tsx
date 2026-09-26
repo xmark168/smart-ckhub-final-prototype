@@ -5,7 +5,7 @@ import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { inScope } from '../../lib/scope'
-import { MILESTONE_TONE, nextActions, projectHealth } from '../../lib/sop'
+import { MILESTONE_TONE, nextActions, projectHealth, runningCycle } from '../../lib/sop'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
@@ -43,6 +43,15 @@ function matchesKpi(item: Project, kpi: Kpi, params: SopParams, contracts: Contr
   return true
 }
 
+/** Partners on the running cycle's shootings and tasks (Account excluded). */
+function partnersOf(item: Project): string {
+  const cycle = runningCycle(item)
+  const names = new Set<string>()
+  cycle?.shootings.forEach((shoot) => shoot.media.forEach((name) => names.add(name)))
+  cycle?.tasks.forEach((task) => task.owner && task.owner !== item.owner && task.owner !== 'Content nội bộ' && names.add(task.owner))
+  return [...names].join(', ') || '—'
+}
+
 function ProjectRow({ item, params, contracts, onOpen }: { item: Project; params: SopParams; contracts: Contract[]; onOpen: () => void }) {
   const posts = postProgress(item)
   const next = nextActions(item, params)[0]
@@ -68,7 +77,7 @@ function ProjectRow({ item, params, contracts, onOpen }: { item: Project; params
           </span>
         ) : <span className="project-record-meta">{health.reason}</span>}
       </td>
-      <td>{item.team.media.join(', ') || '—'}</td>
+      <td>{partnersOf(item)}</td>
       <td>
         <span className={'pill ' + projectTone(item)}>{projectLabel(item)}</span>
         {item.state === 'active' && health.level !== 'ok' && <span className={'pill ' + (next ? MILESTONE_TONE[next.state] : health.tone)} title={health.reason}>{health.label}</span>}
@@ -164,7 +173,7 @@ export function ProjectsScreen() {
 
           <div className="project-table-wrap">
             <table className="project-table-new">
-              <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Media</th><th>Trạng thái</th><th /></tr></thead>
+              <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Partner</th><th>Trạng thái</th><th /></tr></thead>
               <tbody>
                 {rows.map((item) => (
                   <ProjectRow key={item.id} item={item} params={params} contracts={data.contracts} onOpen={() => openProject(item.id)} />

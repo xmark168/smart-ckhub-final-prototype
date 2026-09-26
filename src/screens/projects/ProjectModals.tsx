@@ -8,35 +8,10 @@ import { checked, field } from '../../lib/form'
 import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { getData, update, useData } from '../../store/store'
-import type { Onboarding, Project, ProjectTeam } from '../../store/types'
+import type { Onboarding, Project } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
 import { ContractDetailModal, ContractFormModal } from '../contracts/ContractModals'
-import { addProjectActivity, MEDIA_PEOPLE, onboardingItems, onboardingReady, PLANNERS, updateProject } from './projectLogic'
-
-function splitNames(value: string): string[] {
-  return value.split(',').map((name) => name.trim()).filter(Boolean)
-}
-
-/** Team fields shared by create and edit (SOP roles: Account, Planner/Content, Media, Ads). */
-function TeamFields({ team }: { team?: ProjectTeam }) {
-  return (
-    <>
-      <label className="field">Planner / Content
-        <input name="planner" list="plannerOptions" defaultValue={team?.planner} placeholder="Người lên Content Plan và viết script" />
-        <datalist id="plannerOptions">{PLANNERS.map((name) => <option key={name} value={name} />)}</datalist>
-      </label>
-      <label className="field">Media (cách nhau bằng dấu phẩy)
-        <input name="media" list="mediaOptions" defaultValue={team?.media.join(', ')} placeholder="Ví dụ: Hải, Như" />
-        <datalist id="mediaOptions">{MEDIA_PEOPLE.map((name) => <option key={name} value={name} />)}</datalist>
-      </label>
-      <label className="field">Ads<input name="ads" defaultValue={team?.ads} placeholder="Người hoặc team chạy quảng cáo" /></label>
-    </>
-  )
-}
-
-function readTeam(form: HTMLFormElement, account: string): ProjectTeam {
-  return { account, planner: field(form, 'planner'), media: splitNames(field(form, 'media')), ads: field(form, 'ads') }
-}
+import { addProjectActivity, onboardingItems, onboardingReady, updateProject } from './projectLogic'
 
 function QuotaNote({ quota }: { quota: Project['quota'] }) {
   if (!quota.posts && !quota.shoots && !quota.plans) {
@@ -163,7 +138,7 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
         </label>
         {selectedPackage && <QuotaNote quota={selectedPackage.quota} />}
         <label className="field">Folder dự án trên Drive<input name="folder" type="url" placeholder="https://drive.google.com/drive/folders/..." /></label>
-        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Đội dự án (Planner, Media, Ads) phân công khi bắt đầu triển khai. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></div>
+        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Partner gán theo từng buổi shoot và công việc; Content nội bộ dùng chung. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></div>
         <FormActions submit="Tạo dự án nháp" />
       </div>
     </Modal>
@@ -190,7 +165,7 @@ export function EditProjectModal({ project }: { project: Project }) {
             item.servicePrice = service.price
             item.quota = { ...service.quota }
           }
-          item.team = readTeam(form, item.owner)
+          item.team = { ...item.team, account: item.owner }
           item.notes = field(form, 'notes')
           addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', changedPackage ? 'Đổi gói dự kiến: ' + item.service + '.' : 'Account, đội dự án hoặc ghi chú vận hành được điều chỉnh.')
         })
@@ -215,7 +190,6 @@ export function EditProjectModal({ project }: { project: Project }) {
             </select>
           </label>
         )}
-        <TeamFields team={project.team} />
         <label className="field">Ghi chú vận hành<textarea name="notes" defaultValue={project.notes} placeholder="Ví dụ: thuê diễn viên, còn shoot 2, khách muốn viral TikTok" /></label>
         <div className="customer-data-rules"><p>{locked ? 'Gói đã ghi trên hợp đồng; hóa đơn xuất theo hạng mục hợp đồng nên đổi gói phải làm phụ lục hoặc hợp đồng mới.' : 'Dự án chưa có hợp đồng: gói là dự kiến, sẽ ghi vào hợp đồng khi tạo từ Cổng khởi động.'}</p></div>
         <FormActions submit="Lưu thay đổi" />
@@ -312,9 +286,7 @@ export function StartProjectModal({ project }: { project: Project }) {
       title="Bắt đầu triển khai"
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
-        const team = readTeam(form, project.owner)
         updateProject(project.id, (item) => {
-          item.team = team
           item.state = 'active'
           item.risk = false
           item.cycles = [newCycle(1, start, params)]
@@ -330,10 +302,6 @@ export function StartProjectModal({ project }: { project: Project }) {
       <div className="form">
         <div className="customer-data-rules"><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></div>
         <label className="field">Ngày bắt đầu chu kỳ (T0)<input name="cycleStart" type="date" required defaultValue={TODAY} /></label>
-        <fieldset className="field">
-          <legend>Đội dự án <small>(có thể bổ sung sau tại Sửa dự án)</small></legend>
-          <TeamFields team={project.team} />
-        </fieldset>
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận bắt đầu triển khai theo điều kiện đã kiểm tra.</label>
         <FormActions submit="Bắt đầu triển khai" />
       </div>
