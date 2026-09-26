@@ -570,3 +570,29 @@ div.project-kpi { cursor: default; }
   #projects .project-table-new.with-owner th:nth-child(5) { width: 27%; }
   #projects .project-table-new.with-owner th:nth-child(6) { width: 12%; }
 }
+
+
+/* ---- Projects cards (≤900px) by cell role: title + health on one line ---- */
+@media (max-width: 900px) {
+  #projects .project-table-new tbody tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto !important; grid-template-areas: "name name health" "cycle progress progress" "next next next"; gap: 6px 10px; }
+  #projects .project-table-new td.c-name { grid-area: name; grid-column: auto; }
+  #projects .project-table-new td.c-health { grid-area: health; display: block !important; justify-self: end; }
+  #projects .project-table-new td.c-cycle { grid-area: cycle; }
+  #projects .project-table-new td.c-progress { grid-area: progress; display: block !important; }
+  #projects .project-table-new td.c-next { grid-area: next; display: block !important; grid-column: auto !important; }
+  #projects .project-table-new td.c-owner, #projects .project-table-new td.c-open { display: none !important; }
+  #projects .project-table-new .project-row-title { white-space: normal; }
+}
+@media (max-width: 900px) {
+  #projects .project-table-new tbody tr { position: relative; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; grid-template-areas: "name name" "cycle progress" "next next"; }
+  #projects .project-table-new td.c-health { position: absolute; top: 12px; right: 14px; }
+  #projects .project-table-new td.c-name { padding-right: 116px !important; }
+  #projects .project-table-new .project-row-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #projects .project-table-new .project-row-service { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  #projects .project-table-new td.c-name .project-record-meta { display: none; }
+}
+@media (max-width: 900px) {
+  #projects .project-table-new td.c-name, #projects .project-table-new td.c-next { grid-column: 1 / -1 !important; }
+  #projects .project-table-new td.c-cycle { grid-column: 1; }
+  #projects .project-table-new td.c-progress { grid-column: 2; }
+}

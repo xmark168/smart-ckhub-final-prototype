@@ -7,6 +7,7 @@ import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import { Pager } from '../../ui/Pager'
+import { FilterChips } from '../../ui/FilterChips'
 import { ReasonPill } from './ReasonPill'
 import { motionBehavior } from '../../lib/motion'
 import type { Customer, Project } from '../../store/types'
@@ -205,15 +206,7 @@ export function CustomersScreen() {
           </div>
         </div>
 
-        {chips.length > 0 && (
-          <div className="kpi-filter-bar" role="group" aria-label="Điều kiện đang lọc">
-            Đang lọc:
-            {chips.map(([label, clear]) => (
-              <span className="kpi-filter-tag" key={label}>{label} <button type="button" aria-label={'Bỏ ' + label} onClick={clear}>×</button></span>
-            ))}
-            {chips.length > 1 && <button type="button" className="text-btn" onClick={clearAll}>Xóa tất cả</button>}
-          </div>
-        )}
+        <FilterChips chips={chips} onClearAll={clearAll} />
         <div className="customer-table-wrap">
           <table className="customer-table">
             <thead><tr><th>Khách hàng</th><th>Account</th><th>Khu vực</th><th title="Chu kỳ hiện tại / tổng chu kỳ hợp đồng của dự án chính; +N là số dự án khác">Chu kỳ</th><th>Trạng thái</th><th><span className="sr-only">Mở</span></th></tr></thead>

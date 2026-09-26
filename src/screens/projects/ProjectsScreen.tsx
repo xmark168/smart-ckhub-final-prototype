@@ -11,10 +11,11 @@ import { useData } from '../../store/store'
 import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
 import { primaryContract, projectOverdue } from '../../data/contracts'
 import { Pager } from '../../ui/Pager'
+import { FilterChips } from '../../ui/FilterChips'
 import { renewalDue, shortMoney } from '../customers/customerLogic'
 import { CreateProjectModal } from './ProjectModals'
 import { ProjectRulesModal } from './ProjectRulesModal'
-import { onboardingItems, postProgress, projectLabel, projectTone } from './projectLogic'
+import { onboardingItems, onboardingReady, postProgress, projectLabel, projectTone } from './projectLogic'
 
 /** 'open' = default view (everything except stopped projects). */
 type Kpi = 'open' | 'active' | 'week' | 'money' | 'draft' | 'paused' | 'debt' | 'renew'
@@ -102,14 +103,14 @@ function ProjectRow({ row, params, showOwner, onOpen }: { row: Row; params: SopP
   const pill = item.state === 'active' ? { label: health.label, tone: health.tone } : { label: projectLabel(item), tone: projectTone(item) }
   return (
     <tr onClick={onOpen} className={'health-' + health.level}>
-      <td>
+      <td className="c-name">
         <button type="button" className="row-link project-row-title" onClick={(event) => { event.stopPropagation(); onOpen() }}>
           {item.customer} <span className="project-row-service">· {item.service}</span>
         </button>
         <span className="project-record-meta">{item.code}</span>
       </td>
-      {showOwner && <td>{item.owner}</td>}
-      <td>
+      {showOwner && <td className="c-owner">{item.owner}</td>}
+      <td className="c-cycle">
         {cycle && item.total ? (
           <span className="project-cycle-cell">
             <b>{cycle.no}/{item.total}</b>
@@ -118,7 +119,7 @@ function ProjectRow({ row, params, showOwner, onOpen }: { row: Row; params: SopP
           </span>
         ) : <span className="project-record-meta">Chưa bắt đầu</span>}
       </td>
-      <td>
+      <td className="c-progress">
         {posts ? (
           <div className="project-progress">
             <i style={{ '--progress': Math.min(100, posts.percent) + '%' } as CSSProperties} />
@@ -126,7 +127,7 @@ function ProjectRow({ row, params, showOwner, onOpen }: { row: Row; params: SopP
           </div>
         ) : partners !== '—' ? <span className="project-record-meta">Partner: {partners}</span> : <span className="project-record-meta">—</span>}
       </td>
-      <td>
+      <td className="c-next">
         {item.state === 'draft' ? (
           <span className="project-next is-due"><b>Cổng khởi động {gate.filter((entry) => entry.ready).length}/{gate.length}</b><span className="project-record-meta">{gate.find((entry) => !entry.ready)?.title ?? 'Đủ điều kiện · bấm Bắt đầu'}</span></span>
         ) : item.state !== 'active' ? (
@@ -140,8 +141,8 @@ function ProjectRow({ row, params, showOwner, onOpen }: { row: Row; params: SopP
           </span>
         ) : <span className="project-record-meta">{health.reason}</span>}
       </td>
-      <td><span className={'pill ' + pill.tone} title={health.reason}>{pill.label}</span></td>
-      <td aria-hidden="true"><span className="project-open">›</span></td>
+      <td className="c-health"><span className={'pill ' + pill.tone} title={health.reason}>{pill.label}</span></td>
+      <td className="c-open" aria-hidden="true"><span className="project-open">›</span></td>
     </tr>
   )
 }
@@ -161,17 +162,20 @@ export function ProjectsScreen() {
   }
   const toggleKpi = (kpi: Kpi) => change({ kpi: filters.kpi === kpi ? 'open' : kpi })
   const all = projects.map((item) => buildRow(item, params, data.contracts))
-  const active = all.filter((row) => row.item.state === 'active')
-  const count = (test: (row: Row) => boolean) => all.filter(test).length
+  // KPI cards follow the Account / Khu vực filters (useful for BODs looking at one Account).
+  const base = all.filter((row) => (!filters.owner || row.item.owner === filters.owner) && (!filters.area || row.item.area === filters.area))
+  const active = base.filter((row) => row.item.state === 'active')
+  const count = (test: (row: Row) => boolean) => base.filter(test).length
   const levels = { ok: active.filter((row) => row.health.level === 'ok').length, watch: active.filter((row) => row.health.level === 'watch').length, late: active.filter((row) => row.health.level === 'late').length }
-  const week = all.filter((row) => row.week.length)
+  const week = base.filter((row) => row.week.length)
   const weekLate = week.reduce((sum, row) => sum + row.week.filter((action) => action.state === 'late').length, 0)
   const weekDue = week.reduce((sum, row) => sum + row.week.length, 0) - weekLate
-  const debtRows = all.filter((row) => row.overdue > 0)
+  const debtRows = base.filter((row) => row.overdue > 0)
   const debtSum = debtRows.reduce((sum, row) => sum + row.overdue, 0)
   const renewCount = count((row) => row.renew)
   const moneyCount = count((row) => row.overdue > 0 || row.renew)
   const drafts = count((row) => row.item.state === 'draft')
+  const ready = count((row) => row.item.state === 'draft' && onboardingReady(row.item, params))
   const paused = count((row) => row.item.state === 'pending')
   const list = all
     .filter(
@@ -222,7 +226,7 @@ export function ProjectsScreen() {
               <span className="dot ok" />{levels.ok} đúng tiến độ <span className="dot watch" />{levels.watch} cần theo dõi <span className="dot late" />{levels.late} chậm
             </small>
             <span className="kpi-chips">
-              <button type="button" className={'kpi-delta' + (on('draft') ? ' on' : '')} aria-pressed={on('draft')} onClick={() => toggleKpi('draft')}>{drafts} chờ khởi động</button>
+              <button type="button" className={'kpi-delta' + (on('draft') ? ' on' : '')} aria-pressed={on('draft')} onClick={() => toggleKpi('draft')}>{drafts} chờ khởi động{drafts ? ' · ' + ready + ' sẵn sàng' : ''}</button>
               <button type="button" className={'kpi-delta' + (on('paused') ? ' on' : '')} aria-pressed={on('paused')} onClick={() => toggleKpi('paused')}>{paused} tạm dừng</button>
             </span>
           </div>
@@ -247,7 +251,7 @@ export function ProjectsScreen() {
           <div className="project-toolbar-new">
             <label className="project-search-new">
               <Icon name="search" />
-              <input type="search" value={filters.query} aria-label="Tìm dự án" placeholder="Tìm mã dự án, khách hàng, Account… (không cần dấu)" onChange={(event) => change({ query: event.target.value })} />
+              <input type="search" value={filters.query} aria-label="Tìm dự án" placeholder="Tìm dự án, khách, Account" onChange={(event) => change({ query: event.target.value })} />
             </label>
             <label className="list-sort">
               <span>Sắp xếp</span>
@@ -257,11 +261,11 @@ export function ProjectsScreen() {
               </select>
             </label>
             <div className={'project-filter-control' + (filterOpen ? ' open' : '')} ref={filterRef}>
-              <button className="project-filter-trigger" title="Lọc dự án" onClick={() => setFilterOpen(!filterOpen)}>
+              <button className="project-filter-trigger" type="button" title="Lọc dự án" aria-label={'Lọc dự án' + (activeFilterCount ? ', đang áp dụng ' + activeFilterCount : '')} aria-expanded={filterOpen} aria-controls="projectFilterPanel" onClick={() => setFilterOpen(!filterOpen)}>
                 <Icon name="list-filter" />
                 {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
               </button>
-              <div className="project-filter-popover">
+              <div className="project-filter-popover" id="projectFilterPanel" role="group" aria-label="Bộ lọc dự án">
                 <div className="project-filter-popover-head">
                   <b>Lọc dự án</b>
                   <button onClick={() => change({ status: '', owner: '', area: '' })} disabled={!activeFilterCount}>Xóa lọc</button>
@@ -288,15 +292,7 @@ export function ProjectsScreen() {
             </div>
           </div>
 
-          {chips.length > 0 && (
-            <div className="kpi-filter-bar" role="group" aria-label="Điều kiện đang lọc">
-              Đang lọc:
-              {chips.map(([label, clear]) => (
-                <span className="kpi-filter-tag" key={label}>{label} <button type="button" aria-label={'Bỏ ' + label} onClick={clear}>×</button></span>
-              ))}
-              {chips.length > 1 && <button type="button" className="text-btn" onClick={clearAll}>Xóa tất cả</button>}
-            </div>
-          )}
+          <FilterChips chips={chips} onClearAll={clearAll} />
           <div className="project-table-wrap">
             <table className={'project-table-new' + (showOwner ? ' with-owner' : '')}>
               <thead><tr><th>Dự án</th>{showOwner && <th>Account</th>}<th>Chu kỳ</th><th>Tiến độ</th><th>Việc tiếp theo</th><th>Sức khỏe</th><th><span className="sr-only">Mở</span></th></tr></thead>

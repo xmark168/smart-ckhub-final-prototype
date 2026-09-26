@@ -32,7 +32,7 @@ export function Sidebar() {
       <div className="navcap">MENU ROLE</div>
       <nav className="nav">
         {NAV.filter(([, page]) => page.nav!.roles.includes(role)).map(([id, page]) => (
-          <button key={id} className={id === activeScreen ? 'active' : ''} onClick={() => go(id)}>
+          <button key={id} className={id === activeScreen ? 'active' : ''} aria-label={page.nav!.label} title={page.nav!.label} aria-current={id === activeScreen ? 'page' : undefined} onClick={() => go(id)}>
             <Icon name={page.nav!.icon} className="ico" />
             <label>{page.nav!.label}</label>
             {page.nav!.badge && <b>{page.nav!.badge}</b>}
