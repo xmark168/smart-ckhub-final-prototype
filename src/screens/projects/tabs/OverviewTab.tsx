@@ -80,18 +80,14 @@ export function OverviewTab({ project }: { project: Project }) {
           {project.notes ? <p className="project-note-text">{project.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
         </section>
         <section className="panel project-service-panel">
-          <div className="panel-head"><div><h2>Dịch vụ và định mức</h2><p className="subline">Snapshot tại thời điểm gán gói vào dự án.</p></div></div>
+          <div className="panel-head"><h2>Dịch vụ và định mức</h2></div>
           <div className="project-service-grid">
             <div>
-              <span>Gói dịch vụ</span><b>{project.service}</b><small>{project.serviceScope || 'Chưa có phạm vi dịch vụ.'}</small>
-              {project.pendingPackage && <small className="cpl-reason tone-waiting">Đổi gói từ chu kỳ {project.pendingPackage.fromCycle} theo {project.pendingPackage.source}</small>}
+              <span>Gói</span><b>{project.service}</b>
+              {project.pendingPackage && <small className="cpl-reason tone-waiting">Đổi gói từ chu kỳ {project.pendingPackage.fromCycle}</small>}
             </div>
-            <div><span>Đơn giá</span><b>{project.servicePackageId ? money(project.servicePrice) : 'Chưa xác định'}</b><small>Chưa VAT · không tự đổi theo danh mục</small></div>
-            <div>
-              <span>Định mức / chu kỳ</span>
-              <b>{quota.posts ? quota.posts + ' bài · ' + quota.shoots + ' shoot' : 'Không có đầu ra nội dung'}</b>
-              <small>{quota.posts ? quota.brandPosts + ' thương hiệu / ' + quota.salesPosts + ' bán hàng · ' + quota.plans + ' Content Plan' : 'Không áp dụng mốc nội dung'}</small>
-            </div>
+            <div><span>Đơn giá</span><b>{project.servicePackageId ? money(project.servicePrice) : '—'}</b></div>
+            <div><span>Mỗi chu kỳ</span><b>{quota.posts ? quota.posts + ' bài · ' + quota.shoots + ' shoot' : 'Không có bài đăng'}</b></div>
           </div>
         </section>
       </main>
