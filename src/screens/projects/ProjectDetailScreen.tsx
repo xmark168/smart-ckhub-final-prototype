@@ -57,7 +57,7 @@ export function ProjectDetailScreen() {
     )
   }
 
-  const [, , title, subtitle] = TABS.find(([id]) => id === tab)!
+  const [, , title] = TABS.find(([id]) => id === tab)!
   return (
     <section className="screen active" id="projectWorkspaceDetail">
       <ProjectHeader project={project} readOnly={Boolean(hint)} onTab={(id) => route && navigate(withQuery(route, { tab: id === 'tong-quan' ? undefined : id }))} />
@@ -71,7 +71,7 @@ export function ProjectDetailScreen() {
       </nav>
       <div className="project-tab-content">
         <section className="project-tab-panel is-active">
-          <p className="project-tab-desc"><span className="sr-only">{title}: </span>{subtitle}</p>
+          <h2 className="sr-only">{title}</h2>
           {tab === 'tong-quan' && <OverviewTab project={project} />}
           {tab === 'chu-ky' && <CyclesTab project={project} />}
           {tab === 'noi-dung' && <ContentTab project={project} />}
