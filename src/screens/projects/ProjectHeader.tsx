@@ -60,7 +60,6 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
           </div>
           <p className="project-subtitle">
             {project.service}
-            {project.quota.posts > 0 && ' · ' + project.quota.posts + ' bài · ' + project.quota.shoots + ' shoot / chu kỳ'}
             {project.pendingPackage && <span className="cpl-reason tone-waiting"> Đổi gói từ chu kỳ {project.pendingPackage.fromCycle}</span>}
           </p>
           {showOwner && <p className="project-meta-line"><span>Account {project.owner}</span></p>}
