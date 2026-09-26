@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, displayToInput, inputToDisplay, newId, TODAY } from '../../lib/format'
+import { inputToDisplay, newId, TODAY } from '../../lib/format'
 import { field } from '../../lib/form'
 import { runningCycle } from '../../lib/sop'
-import type { Cycle, CycleTask, PlanStatus, Project, Shooting } from '../../store/types'
+import type { Cycle, PlanStatus, Project, Shooting } from '../../store/types'
 import { FormActions, Modal, Req } from '../../ui/Modal'
 import { MEDIA_PEOPLE, planLabel, updateProject, withCycle } from './projectLogic'
 
@@ -161,70 +161,6 @@ export function DemoModal({ project }: { project: Project }) {
         <StampField label="Ngày khách duyệt" name="approvedAt" value={demo.approvedAt} show={status === 'Đã duyệt'} />
         <label className="field">Link Demo <small>(không bắt buộc)</small><input name="link" type="url" defaultValue={demo.link} placeholder="https://..." /></label>
         <FormActions submit="Lưu Post Demo" />
-      </div>
-    </Modal>
-  )
-}
-
-export function CycleTaskModal({ project, task }: { project: Project; task?: CycleTask }) {
-  const { closeModal } = useApp()
-  const current = task ?? { id: '', name: '', owner: '', deadline: '', status: 'Nháp', type: 'Nội dung' }
-  const owners = Array.from(new Set([project.owner, 'Content nội bộ', ...MEDIA_PEOPLE, ...ACCOUNTS]))
-  return (
-    <Modal
-      title={task ? 'Cập nhật công việc' : 'Tạo công việc'}
-      onSubmit={(form) => {
-        const owner = form.elements.namedItem('owner') as HTMLSelectElement
-        const status = field(form, 'status')
-        if (status !== 'Nháp' && (!owner.value || !field(form, 'deadline'))) {
-          owner.setCustomValidity('Cần Owner và deadline trước khi bắt đầu.')
-          owner.reportValidity()
-          return
-        }
-        const next: CycleTask = { ...current, id: current.id || 'task-' + Date.now(), name: field(form, 'name'), owner: owner.value, deadline: inputToDisplay(field(form, 'deadline')), status }
-        saveCycle(project, (cycle) => {
-          const index = cycle.tasks.findIndex((entry) => entry.id === next.id)
-          if (index >= 0) cycle.tasks[index] = next
-          else cycle.tasks.push(next)
-          return [task ? 'Công việc đã cập nhật' : 'Công việc đã tạo', next.name]
-        })
-        closeModal()
-      }}
-    >
-      <div className="form">
-        <label className="field">Công việc<Req /><input name="name" required defaultValue={current.name} /></label>
-        <label className="field">Owner
-          <select name="owner" defaultValue={current.owner} onChange={(event) => event.target.setCustomValidity('')}>
-            <option value="">Chưa giao</option>
-            {owners.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </label>
-        <label className="field">Deadline<input name="deadline" type="date" defaultValue={displayToInput(current.deadline)} /></label>
-        <label className="field">Trạng thái
-          <select name="status" defaultValue={current.status}>
-            <option>Nháp</option><option>Việc cần làm</option><option>Đang thực hiện</option><option>Đang chờ</option><option>Đã hoàn thành</option>
-          </select>
-        </label>
-        {task ? (
-          <div className="form-actions">
-            <button
-              className="secondary danger-text"
-              type="button"
-              onClick={() => {
-                saveCycle(project, (cycle) => {
-                  cycle.tasks = cycle.tasks.filter((entry) => entry.id !== task.id)
-                  return ['Công việc đã xóa', task.name]
-                })
-                closeModal()
-              }}
-            >
-              Xóa công việc
-            </button>
-            <button className="primary">Lưu công việc</button>
-          </div>
-        ) : (
-          <FormActions submit="Lưu công việc" />
-        )}
       </div>
     </Modal>
   )

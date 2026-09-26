@@ -23,7 +23,7 @@ function monthsBefore(iso: string, months: number): string {
 }
 
 /** Running cycle with realistic SOP progress relative to TODAY. */
-function workCycle(no: number, start: string, quota: PackageQuota, index: number, risk: boolean, owner: string, media: string): Cycle {
+function workCycle(no: number, start: string, quota: PackageQuota, index: number, risk: boolean, media: string): Cycle {
   const plannedEnd = periodEndIso(start, 1)
   const changes = index % 7 === 0
   const sentAt = past(addBusinessDaysIso(start, 3 + (risk ? 2 : 0)))
@@ -83,9 +83,6 @@ function workCycle(no: number, start: string, quota: PackageQuota, index: number
       : [],
     demo: { status: demoApproved ? 'Đã duyệt' : demoSent ? 'Đã gửi' : 'Chưa gửi', link: '', sentAt: demoSent, approvedAt: demoApproved },
     contents,
-    tasks: [
-      { id: 'plan', name: 'Hoàn thiện Content Plan', owner, deadline: addBusinessDaysIso(start, 3).split('-').reverse().join('.'), status: sentAt ? 'Đã hoàn thành' : 'Việc cần làm', type: 'Plan' },
-    ],
     activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: start.split('-').reverse().join('.') }],
   }
 }
@@ -106,7 +103,6 @@ function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
     shootings: [],
     demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
     contents: [],
-    tasks: [],
     activity: [],
   }
 }
@@ -133,7 +129,7 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
     if (!draft) {
       for (let no = 1; no < current; no++) cycles.push(closedCycle(no, monthsBefore(currentStart, current - no), quota))
       if (state === 'stopped') cycles.push(closedCycle(current, currentStart, quota))
-      else cycles.push(workCycle(current, currentStart, quota, index, risk, owner, media))
+      else cycles.push(workCycle(current, currentStart, quota, index, risk, media))
     }
     return {
       id: 'project-' + (index + 1),

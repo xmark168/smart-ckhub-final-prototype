@@ -105,7 +105,6 @@ function closedCycle(no: number, start: string, plannedEnd: string, actualEnd: s
     shootings: [],
     demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
     contents: [],
-    tasks: [],
     activity: [],
   }
 }
@@ -134,10 +133,6 @@ export function comTamTaiProject(): Project {
     ],
     demo: { status: 'Đã duyệt', link: '', sentAt: '2026-08-20', approvedAt: '2026-08-22' },
     contents: t9Contents(),
-    tasks: [
-      { id: 'ctt-edit-56', name: 'Dựng Mini-game chả trứng muối (bài 5, 6)', owner: 'Hải', deadline: '26.09.2026', status: 'Đang thực hiện', type: 'Sản xuất' },
-      { id: 'ctt-script-1012', name: 'Chốt script bài 10–12', owner: 'Content nội bộ', deadline: '26.09.2026', status: 'Việc cần làm', type: 'Nội dung' },
-    ],
     activity: [
       { title: 'Đã đăng bài 9', detail: 'Quán đông vận hành sao? · 23.09', time: '23.09.2026' },
       { title: 'Shooting T9 hoàn thành', detail: '100 Nguyễn Văn Nghi · Hải, Như', time: '19.08.2026' },
@@ -176,7 +171,7 @@ export function comTamTaiProject(): Project {
       { id: 'kn-4', date: '2026-03-03', author: 'Hiền', type: 'Từ khách', content: 'Không nói những topic có vấn đề tiêu cực, không phản hồi comment complain trên nội dung.' },
     ],
     activities: [
-      { icon: 'send', title: 'Đã đăng 7 / 12 bài chu kỳ 4', detail: 'Kèm 2 bài tặng · bài 5, 6, 10, 11, 12 chưa đăng.' },
+      { icon: 'send', title: 'Đã đăng 9 / 14 bài chu kỳ 4', detail: 'Gồm 2 bài tặng · bài 5, 6, 10, 11, 12 chưa đăng.' },
       { icon: 'camera', title: 'Đã quay shooting T9', detail: '19.08.2026 · 100 Nguyễn Văn Nghi · Hải, Như.' },
       { icon: 'list-checks', title: 'Khách duyệt Content Plan T9', detail: '16.08.2026 · định hướng viral TikTok.' },
       { icon: 'badge-check', title: 'Kế toán xác nhận đợt 2', detail: '17.496.000đ · 14.07.2026.' },

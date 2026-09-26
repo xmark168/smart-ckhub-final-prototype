@@ -1,8 +1,10 @@
-import { initials, shortDate } from '../../../lib/format'
+import { useApp } from '../../../app/context'
+import { shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { cycleMilestones, runningCycle } from '../../../lib/sop'
 import { useData } from '../../../store/store'
-import type { Project } from '../../../store/types'
+import type { KeyNote, Project } from '../../../store/types'
+import { KeyNoteModal } from '../ContentModals'
 import { onboardingItems, type OnboardingItem } from '../projectLogic'
 import { useProjectActions } from '../useProjectActions'
 import { CycleTimeline } from './CycleTimeline'
@@ -49,11 +51,10 @@ function OnboardingPanel({ project }: { project: Project }) {
 
 export function OverviewTab({ project }: { project: Project }) {
   const { params } = useData()
-  const actions = useProjectActions(project)
   const cycle = runningCycle(project)
   const quota = project.quota
   return (
-    <div className="project-detail-grid">
+    <div className="project-detail-grid is-single">
       <main>
         {project.state === 'draft' && <OnboardingPanel project={project} />}
         {cycle && (
@@ -62,24 +63,35 @@ export function OverviewTab({ project }: { project: Project }) {
             <CycleTimeline items={cycleMilestones(cycle, quota, params)} />
           </section>
         )}
-        <section className="panel project-notes-panel">
-          <div className="panel-head">
-            <h2>Ghi chú dự án</h2>
-            <button className="text-btn" onClick={actions.notes}>{project.notes ? 'Sửa' : '+ Thêm ghi chú'}</button>
-          </div>
-          {project.notes ? <p className="project-note-text">{project.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
-        </section>
+        <NotesPanel project={project} />
       </main>
-      <aside>
-        <section className="panel">
-          <div className="panel-head"><h2>Account</h2></div>
-          <button className="customer-account-card" onClick={actions.account}>
-            <i>{initials(project.owner)}</i>
-            <span><b>{project.owner}</b></span>
-            <Icon name="chevron-right" />
-          </button>
-        </section>
-      </aside>
     </div>
+  )
+}
+
+const NOTE_TONE: Record<KeyNote['type'], string> = { 'Từ khách': 'info', 'Từ Account': 'waiting', 'Shooting recap': 'ok' }
+
+/** The one place for notes: the pinned operating note, then Key notes (newest first). */
+function NotesPanel({ project }: { project: Project }) {
+  const { showModal } = useApp()
+  const actions = useProjectActions(project)
+  return (
+    <section className="panel project-notes">
+      <div className="panel-head">
+        <h2>Ghi chú</h2>
+        <span className="notes-actions">
+          <button className="text-btn" onClick={actions.notes}>{project.notes ? 'Sửa lưu ý' : '+ Lưu ý'}</button>
+          <button className="text-btn" onClick={() => showModal(<KeyNoteModal project={project} />)}>+ Key note</button>
+        </span>
+      </div>
+      {project.notes && <p className="project-note-text pinned">{project.notes}</p>}
+      {project.keyNotes.map((note) => (
+        <div className="project-note-row" key={note.id}>
+          <span className={'pill ' + NOTE_TONE[note.type]}>{note.type}</span>
+          <div><b>{note.content}</b><small>{note.author} · {shortDate(note.date)}</small></div>
+        </div>
+      ))}
+      {!project.notes && !project.keyNotes.length && <p className="empty-copy">Chưa có ghi chú.</p>}
+    </section>
   )
 }

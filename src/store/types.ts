@@ -66,16 +66,6 @@ export interface PackageQuota {
 
 export type PlanStatus = 'draft' | 'sent' | 'changes' | 'approved'
 
-export interface CycleTask {
-  id: string
-  name: string
-  owner: string
-  /** dd.mm.yyyy */
-  deadline: string
-  status: string
-  type: string
-}
-
 export type ContentStage = 'Ý tưởng' | 'Script' | 'Dựng' | 'Chờ khách duyệt' | 'Lên lịch' | 'Đã đăng'
 export type Platform = 'Facebook' | 'TikTok'
 
@@ -180,7 +170,6 @@ export interface Cycle {
   shootings: Shooting[]
   demo: { status: 'Chưa gửi' | 'Đã gửi' | 'Cần chỉnh sửa' | 'Đã duyệt'; link: string; sentAt: string; approvedAt: string }
   contents: ContentItem[]
-  tasks: CycleTask[]
   activity: Array<{ title: string; detail: string; time: string }>
 }
 

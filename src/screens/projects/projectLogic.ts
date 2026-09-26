@@ -58,9 +58,7 @@ export function onboardingItems(item: Project, params: SopParams): OnboardingIte
   return [
     { key: 'contract', icon: 'file-text', title: 'Hợp đồng chính', required: true, ready: Boolean(item.contractCode), detail: item.contractCode ? 'Đã liên kết ' + item.contractCode : 'Cần hợp đồng chính hiệu lực.' },
     { key: 'finance', icon: 'badge-check', title: 'Xác nhận cọc', required: true, ready: Boolean(data?.financeVerified), detail: data?.financeVerified ? 'Kế toán đã xác nhận: ' + (data.financeRef || 'Đã xác nhận') : 'Chờ Kế toán xác nhận cọc hoặc thanh toán đợt 1.' },
-    { key: 'handover', icon: 'handshake', title: 'Bàn giao từ Sale', required: true, ready: Boolean(data?.handoverReady), detail: data?.handoverReady ? 'Đã có Sales Brief.' : 'Cần Sales Brief và phạm vi đã chốt.' },
     { key: 'brief', icon: 'clipboard-check', title: 'Brief khách hàng', required: params.requireBriefBeforeT0, ready: Boolean(data?.briefReady), detail: data?.briefReady ? 'Brief form và tài liệu nguồn đã đủ.' : 'Cần brief form (Thông tin dự án) và tài liệu nguồn.' },
-    { key: 'setup', icon: 'settings-2', title: 'Thiết lập triển khai', required: false, ready: Boolean(data?.setupReady), detail: data?.setupReady ? 'Đã chuẩn bị workspace và quyền truy cập cần thiết.' : 'Thiết lập theo gói dịch vụ chưa hoàn tất.' },
   ]
 }
 

@@ -318,7 +318,6 @@ export function OnboardingModal({ project }: { project: Project }) {
   const { params } = useData()
   const data = project.onboarding
   const [financeChecked, setFinanceChecked] = useState(Boolean(data?.financeVerified))
-  const [handoverChecked, setHandoverChecked] = useState(Boolean(data?.handoverReady))
   const [briefChecked, setBriefChecked] = useState(Boolean(data?.briefReady))
   const required = onboardingItems(project, params).filter((entry) => entry.required)
   const completed = required.filter((entry) => entry.ready).length
@@ -344,23 +343,21 @@ export function OnboardingModal({ project }: { project: Project }) {
       className="onboarding-modal onboarding-lean-modal"
       onSubmit={(form) => {
         if (checked(form, 'financeVerified') && !field(form, 'financeRef')) { toast('Cần mã chứng từ trước khi xác nhận thanh toán.'); return }
-        if (checked(form, 'handoverReady') && !field(form, 'handoverLink')) { toast('Cần link Sales Brief trước khi xác nhận bàn giao.'); return }
         if (briefRequired && checked(form, 'briefReady') && !field(form, 'briefLink')) { toast('Cần link brief form trước khi xác nhận brief.'); return }
         const onboarding: Onboarding = {
           financeVerified: checked(form, 'financeVerified'),
           financeRef: field(form, 'financeRef'),
-          handoverReady: checked(form, 'handoverReady'),
-          handoverLink: field(form, 'handoverLink'),
+          handoverReady: data?.handoverReady ?? false,
+          handoverLink: data?.handoverLink ?? '',
           briefReady: checked(form, 'briefReady'),
           briefLink: field(form, 'briefLink'),
-          setupReady: checked(form, 'setupReady'),
-          workspaceLink: field(form, 'workspaceLink'),
-          setupNote: field(form, 'setupNote'),
+          setupReady: data?.setupReady ?? false,
+          workspaceLink: data?.workspaceLink ?? '',
+          setupNote: data?.setupNote ?? '',
         }
         const ready = onboardingReady({ ...project, onboarding }, params)
         updateProject(project.id, (item) => {
           item.onboarding = onboarding
-          if (onboarding.workspaceLink && !item.links.folder) item.links.folder = onboarding.workspaceLink
           addProjectActivity(item, 'list-checks', 'Đã cập nhật cổng khởi động', ready ? 'Đủ điều kiện bắt đầu triển khai.' : 'Đã lưu phần đã có; còn điều kiện bắt buộc.')
         })
         closeModal()
@@ -371,7 +368,7 @@ export function OnboardingModal({ project }: { project: Project }) {
         <div className="onboarding-modal-intro">
           <div>
             <b>{required.length} việc trước T0</b>
-            <p>SOP: T0 là khi khách đã cọc{briefRequired ? ' và cung cấp đủ brief' : ''}. Folder và quyền truy cập bổ sung sau.</p>
+            <p>SOP: T0 là khi khách đã cọc{briefRequired ? ' và cung cấp đủ brief' : ''}.</p>
           </div>
           <strong>{completed} / {required.length}</strong>
         </div>
@@ -401,38 +398,18 @@ export function OnboardingModal({ project }: { project: Project }) {
           <label className="field onboarding-field"><span>Mã chứng từ</span><input name="financeRef" defaultValue={data?.financeRef} placeholder="Ví dụ: UNC-0926-018" autoComplete="off" disabled={!financeChecked} /></label>
         </section>
 
-        <section className="onboarding-form-section onboarding-gate">
-          <div className="onboarding-section-head">
-            <div><span className="onboarding-owner">3. Sale</span><b>Bàn giao Sales Brief</b><p>Phạm vi đã chốt, cam kết khách hàng và lưu ý thương mại.</p></div>
-            <GateStatus ready={Boolean(data?.handoverReady)} />
-          </div>
-          <label className="onboarding-check"><input name="handoverReady" type="checkbox" checked={handoverChecked} onChange={(event) => setHandoverChecked(event.target.checked)} /><span>Sale đã bàn giao</span></label>
-          <label className="field onboarding-field"><span>Link Sales Brief</span><input name="handoverLink" type="url" defaultValue={data?.handoverLink} placeholder="https://drive.google.com/..." disabled={!handoverChecked} /></label>
-        </section>
 
         {briefRequired && (
           <section className="onboarding-form-section onboarding-gate">
             <div className="onboarding-section-head">
-              <div><span className="onboarding-owner">4. Khách hàng</span><b>Brief đầy đủ</b><p>Brief form: loại hình, cách bán, quy mô, đối tượng, điểm mạnh/hạn chế, món chủ lực, khuyến mãi, menu, logo.</p></div>
+              <div><span className="onboarding-owner">3. Khách hàng</span><b>Brief đầy đủ</b><p>Brief form: loại hình, cách bán, quy mô, đối tượng, điểm mạnh/hạn chế, món chủ lực, khuyến mãi, menu, logo.</p></div>
               <GateStatus ready={Boolean(data?.briefReady)} />
             </div>
             {briefFields}
           </section>
         )}
 
-        <details className="onboarding-later onboarding-later-form">
-          <summary>Việc làm sau khi bắt đầu</summary>
-          <p>Không chặn khởi động. Account điều phối; Content cập nhật khi có đầu vào.</p>
-          <div className="onboarding-later-grid">
-            {!briefRequired && <section><b>Brief và tài liệu</b>{briefFields}</section>}
-            <section>
-              <b>Workspace và quyền</b>
-              <label className="onboarding-check"><input name="setupReady" type="checkbox" defaultChecked={data?.setupReady} /><span>Đã thiết lập workspace</span></label>
-              <label className="field onboarding-field"><span>Folder vận hành</span><input name="workspaceLink" type="url" defaultValue={data?.workspaceLink} placeholder="https://drive.google.com/drive/folders/..." /></label>
-              <label className="field onboarding-field"><span>Ghi chú</span><input name="setupNote" defaultValue={data?.setupNote} placeholder="Ví dụ: Chờ cấp Meta Business Suite" /></label>
-            </section>
-          </div>
-        </details>
+        {!briefRequired && <section className="onboarding-form-section"><b>Brief (bổ sung sau)</b>{briefFields}</section>}
 
         <p className="onboarding-remain">{completed === required.length ? 'Đủ điều kiện khởi động dự án.' : 'Còn ' + (required.length - completed) + ' điều kiện bắt buộc.'}</p>
         <FormActions submit="Lưu cập nhật" />

@@ -5,7 +5,7 @@ import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runnin
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
-import { CycleTaskModal, DemoModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
+import { DemoModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
 import { statusTone } from '../projectLogic'
 
 /** "Gửi 14.08 · Duyệt 16.08", or the due date while the step is open. */
@@ -114,28 +114,6 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
   )
 }
 
-function Tasks({ project, cycle }: { project: Project; cycle: Cycle }) {
-  const { showModal } = useApp()
-  const completed = cycle.tasks.filter((task) => task.status === 'Đã hoàn thành').length
-  return (
-      <section className="panel cycle-panel cw-tasks">
-        <div className="panel-head">
-          <h2>Công việc {cycle.tasks.length > 0 && <small className="cw-count">{completed}/{cycle.tasks.length}</small>}</h2>
-          <button className="text-btn" onClick={() => showModal(<CycleTaskModal project={project} />)}>+ Công việc</button>
-        </div>
-        <div className="cycle-task-list">
-          {cycle.tasks.map((task) => (
-            <button className="cycle-task" key={task.id} onClick={() => showModal(<CycleTaskModal project={project} task={task} />)}>
-              <span><b>{task.name}</b><small>{task.owner || 'Chưa giao'} · {task.deadline || 'Chưa có hạn'}</small></span>
-              <em className={'cycle-status ' + statusTone(task.status)}>{task.status}</em>
-            </button>
-          ))}
-          {!cycle.tasks.length && <p className="empty-copy">Chưa có công việc.</p>}
-        </div>
-      </section>
-  )
-}
-
 /** Past and running cycles. Posts read "published / target" the same way as the header. */
 function History({ project }: { project: Project }) {
   const { params } = useData()
@@ -176,7 +154,6 @@ export function CyclesTab({ project }: { project: Project }) {
       {active && (
         <div className="cw-flow">
           <Steps project={project} cycle={cycle} />
-          <Tasks project={project} cycle={cycle} />
         </div>
       )}
       {!project.cycles.length && <p className="empty-copy">Chưa có chu kỳ. Chu kỳ 1 được tạo khi bắt đầu triển khai.</p>}

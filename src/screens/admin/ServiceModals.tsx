@@ -59,17 +59,15 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
           toast('Tổng bài thương hiệu và bán hàng phải bằng số bài mỗi chu kỳ.')
           return
         }
-        // A timeline never edited by hand follows the quota; an edited one is kept and flagged.
-        const quotaChanged = item && (item.quota.posts !== values.quota.posts || item.quota.shoots !== values.quota.shoots || item.quota.plans !== values.quota.plans)
-        const untouched = !item || JSON.stringify(item.timeline) === JSON.stringify(defaultTimeline(item.quota, DEFAULT_PARAMS))
-        const timeline = !item || (quotaChanged && untouched) ? defaultTimeline(values.quota, DEFAULT_PARAMS) : item.timeline
+        // The SOP milestones follow the quota (Content Plan, shoot, posts).
+        const timeline = defaultTimeline(values.quota, DEFAULT_PARAMS)
         update((draft) => {
           const existing = item && draft.packages.find((entry) => entry.id === item.id)
           if (existing) Object.assign(existing, values, { timeline })
           else draft.packages.push({ id: 'svc-' + Date.now(), ...values, timeline })
         })
         closeModal()
-        toast((item ? 'Đã cập nhật' : 'Đã tạo') + ' gói dịch vụ.' + (quotaChanged && !untouched ? ' Định mức đổi: kiểm tra lại Timeline mẫu của gói.' : ''))
+        toast((item ? 'Đã cập nhật' : 'Đã tạo') + ' gói dịch vụ.')
       }}
     >
       <div className="form">

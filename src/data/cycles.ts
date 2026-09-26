@@ -16,7 +16,6 @@ export function newCycle(no: number, start: string, params: SopParams, template:
     shootings: [],
     demo: { status: 'Chưa gửi', link: '', sentAt: '', approvedAt: '' },
     contents: [],
-    tasks: [],
     activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: 'Vừa xong' }],
   }
 }

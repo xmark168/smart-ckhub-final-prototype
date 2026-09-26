@@ -5,7 +5,6 @@ import { useScreenState } from '../../lib/useScreenState'
 import { update, useData } from '../../store/store'
 import type { ServicePackage } from '../../store/types'
 import { CategoryModal, PackageModal } from './ServiceModals'
-import { TimelineEditorModal } from './TimelineEditor'
 
 export function ServicesScreen() {
   const { showModal, toast } = useApp()
@@ -59,12 +58,7 @@ export function ServicesScreen() {
             ? list.map((item) => (
                 <div className="service-summary" key={item.id}>
                   <div><span className="service-category">{categoryName(item.category)}</span><b className="service-package">{item.group}</b></div>
-                  <div>
-                    <span className="service-tier">{item.name}</span><small>{item.scope}</small>
-                    <button type="button" className="text-btn service-timeline" onClick={() => showModal(<TimelineEditorModal pkg={item} />)}>
-                      Timeline mẫu · {item.timeline?.length ? item.timeline.length + ' bước' : 'chưa có'}
-                    </button>
-                  </div>
+                  <div><span className="service-tier">{item.name}</span><small>{item.scope}</small></div>
                   <div><b>{servicePrice(item)}</b><small>{item.unit}</small></div>
                   <div><span className={'pill ' + (item.status === 'Đang áp dụng' ? 'ok' : 'muted')}>{item.status}</span></div>
                   <div className="row-actions">
@@ -82,7 +76,6 @@ export function ServicesScreen() {
           <div className="check done"><i>✓</i>Khách hàng tạo nhanh; chưa cần chọn gói dịch vụ.</div>
           <div className="check done"><i>✓</i>Hợp đồng và dự án chọn Nhóm dịch vụ rồi chọn Gói dịch vụ.</div>
           <div className="check done"><i>✓</i>Giá và phạm vi được chụp theo hợp đồng; đổi danh mục không làm sai lịch sử.</div>
-          <div className="check done"><i>✓</i>Mỗi gói có Timeline mẫu riêng; chu kỳ mới của dự án sao chép timeline này, chu kỳ đang chạy giữ bản cũ.</div>
           <div className="check"><i />Không xóa gói đã được dùng. Chỉ chuyển sang Ngừng áp dụng.</div>
         </div>
       </section>

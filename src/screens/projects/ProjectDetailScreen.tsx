@@ -17,8 +17,8 @@ const TABS: Array<[ProjectTab, string, string, string]> = [
   ['tong-quan', 'Tổng quan', 'Tổng quan triển khai', 'Mốc SOP của chu kỳ hiện tại, việc cần làm tiếp và định mức gói.'],
   ['chu-ky', 'Chu kỳ', 'Chu kỳ', 'Lịch sử chu kỳ và vùng làm việc của chu kỳ đang chạy.'],
   ['noi-dung', 'Nội dung', 'Nội dung chu kỳ', 'Mỗi dòng là một nội dung trong Content Plan; Facebook và TikTok là kênh xuất bản.'],
-  ['hop-dong', 'Hợp đồng & thanh toán', 'Hợp đồng & thanh toán', 'Đọc trực tiếp từ Hợp đồng & công nợ.'],
-  ['tai-lieu', 'Tài liệu & ghi chú', 'Tài liệu & ghi chú', 'Liên kết Drive và Key notes. Nội dung làm việc nằm trên Drive.'],
+  ['hop-dong', 'Hợp đồng', 'Hợp đồng & thanh toán', 'Đọc trực tiếp từ Hợp đồng & công nợ.'],
+  ['tai-lieu', 'Tài liệu', 'Tài liệu', 'Liên kết Drive và Key notes. Nội dung làm việc nằm trên Drive.'],
   ['nhat-ky', 'Nhật ký', 'Nhật ký dự án', 'Sự kiện vận hành quan trọng được lưu trên dự án.'],
 ]
 

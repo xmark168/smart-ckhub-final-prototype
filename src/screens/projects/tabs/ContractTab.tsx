@@ -64,7 +64,6 @@ export function ContractTab({ project }: { project: Project }) {
           ))}
         </div>
       )}
-      <p className="project-tab-note">Lịch thanh toán theo điều khoản hợp đồng, không suy ra từ chu kỳ. Ghi nhận thu tiền trong chi tiết hợp đồng; tab này cập nhật theo.</p>
     </>
   )
 }

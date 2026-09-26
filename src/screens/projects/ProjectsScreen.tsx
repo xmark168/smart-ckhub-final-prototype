@@ -76,12 +76,11 @@ const URGENCY: Record<string, number> = { late: 0, watch: 1, ok: 2, paused: 3, d
 
 
 
-/** Partners on the running cycle's shootings and tasks (Account excluded). */
+/** Media on the running cycle's shootings. */
 function partnersOf(item: Project): string {
   const cycle = runningCycle(item)
   const names = new Set<string>()
   cycle?.shootings.forEach((shoot) => shoot.media.forEach((name) => names.add(name)))
-  cycle?.tasks.forEach((task) => task.owner && task.owner !== item.owner && task.owner !== 'Content nội bộ' && names.add(task.owner))
   return [...names].join(', ') || '—'
 }
 
