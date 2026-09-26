@@ -1,4 +1,4 @@
-import { paymentMetrics } from '../../data/contracts'
+import { coversProject, paymentMetrics } from '../../data/contracts'
 import { diffDays, displayToInput, foldText, TODAY } from '../../lib/format'
 import { projectHealth, runningCycle } from '../../lib/sop'
 import type { Contract, Customer, Period, Project, Role, SopParams } from '../../store/types'
@@ -52,13 +52,15 @@ export function attentionItems(customer: Customer, projects: Project[], contract
   if (customer.ended) return []
   const items: AttentionItem[] = []
   if (customer.attention) items.push({ kind: 'flag', label: 'Gắn cờ · ' + (customer.attentionReason || 'cần chú ý'), detail: 'Cờ tay trên khách hàng', targetId: '' })
+  const seen = new Set<string>()
   customerProjects(customer, projects).forEach((project) => {
     const health = projectHealth(project, params)
     if (health.level === 'late') items.push({ kind: 'late', label: project.code + ' · chậm tiến độ', detail: health.reason, targetId: project.id })
     else if (project.risk) items.push({ kind: 'risk', label: project.code + ' · gắn cờ', detail: project.riskReason || 'Account gắn cờ trên dự án', targetId: project.id })
     contracts
-      .filter((row) => row.projectId === project.id && row.status === 'Hiệu lực')
+      .filter((row) => coversProject(row, project.id) && row.status === 'Hiệu lực' && !seen.has(row.id))
       .forEach((row) => {
+        seen.add(row.id)
         const overdue = paymentMetrics(row).overdue
         if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', targetId: row.id })
         if (row.isPrimary && project.state === 'active' && renewalDue(project, row)) {
@@ -128,7 +130,7 @@ export interface Blocker {
 export function endBlockerItems(customer: Customer, projects: Project[], contracts: Contract[]): Blocker[] {
   const own = customerProjects(customer, projects)
   const running = own.filter((item) => item.state !== 'stopped')
-  const open = contracts.filter((row) => own.some((item) => item.id === row.projectId) && (row.status === 'Hiệu lực' || row.status === 'Nháp'))
+  const open = contracts.filter((row) => own.some((item) => coversProject(row, item.id)) && (row.status === 'Hiệu lực' || row.status === 'Nháp'))
   return [
     ...running.map((item): Blocker => ({ kind: 'project', id: item.id, label: item.code + ' chưa dừng' })),
     ...open.map((row): Blocker => ({ kind: 'contract', id: row.id, label: row.code + ' còn ' + row.status.toLocaleLowerCase('vi') })),

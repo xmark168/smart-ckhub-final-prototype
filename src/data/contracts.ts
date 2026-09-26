@@ -41,8 +41,13 @@ export function totalPaid(payments: Payment[]): number {
   return payments.reduce((sum, payment) => sum + Math.min(payment.amount, payment.paid), 0)
 }
 
+/** The contract bills this project, as main project or as an extra package line. */
+export function coversProject(row: Contract, projectId: string): boolean {
+  return row.projectId === projectId || Boolean(row.extraProjectIds?.includes(projectId))
+}
+
 export function primaryContract(contracts: Contract[], projectId: string): Contract | undefined {
-  return contracts.find((row) => row.projectId === projectId && row.isPrimary && row.status !== 'Đã hủy')
+  return contracts.find((row) => coversProject(row, projectId) && row.isPrimary && row.status !== 'Đã hủy')
 }
 
 /** Project's contract code and cycle total always come from its primary contract. */
@@ -55,7 +60,7 @@ export function syncProjectContract(project: Project, contracts: Contract[]): vo
 export function seedContracts(projects: Project[]): Contract[] {
   const records: Contract[] = []
   projects.forEach((project, index) => {
-    if (project.state === 'draft') return
+    if (project.state === 'draft' || SHARED_CONTRACT[project.id]) return
     const cycles = project.total || (index % 4 === 0 ? 3 : 6)
     const comTamTai = project.id === COM_TAM_TAI_ID
     const value = comTamTai ? COM_TAM_TAI_CONTRACT.value : project.servicePrice || (index % 3 === 0 ? 9000000 : 2000000)
@@ -109,5 +114,20 @@ export function seedContracts(projects: Project[]): Contract[] {
     }
     syncProjectContract(project, records)
   })
+  // One contract, several packages: the extra project is a second line of its sibling's contract.
+  Object.entries(SHARED_CONTRACT).forEach(([extraId, mainId]) => {
+    const extra = projects.find((item) => item.id === extraId)
+    const contract = records.find((row) => row.projectId === mainId && row.isPrimary)
+    if (!extra || !contract) return
+    contract.extraProjectIds = [...(contract.extraProjectIds ?? []), extraId]
+    contract.service += ' + ' + extra.service
+    contract.value += extra.servicePrice
+    contract.payments = contract.payments.map((payment) => ({ ...payment, amount: Math.round((contract.value * payment.percent) / 100) }))
+    contract.activity.unshift('Hợp đồng gồm 2 gói: ' + contract.service)
+    syncProjectContract(extra, records)
+  })
   return records
 }
+
+/** Demo: A Mẹt Quán's Ads project is billed inside the Website contract (HĐ-2026-006). */
+export const SHARED_CONTRACT: Record<string, string> = { 'project-amet-ads': 'project-6' }

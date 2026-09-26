@@ -166,6 +166,25 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
           ],
     }
   })
+  // Demo of one contract with two packages: A Mẹt Quán adds Ads Management to its Website contract.
+  const base = records.find((item) => item.id === 'project-6')
+  const ads = active.find((item) => item.id === 'ads-management')
+  if (base && ads) {
+    records.push({
+      ...structuredClone(base),
+      id: 'project-amet-ads',
+      code: 'DA-2026-059',
+      service: ads.group + ' · ' + ads.name,
+      servicePackageId: ads.id,
+      serviceScope: ads.scope,
+      servicePrice: ads.price,
+      quota: { ...ads.quota },
+      risk: false,
+      riskReason: undefined,
+      team: { ...base.team, ads: 'Team Ads' },
+      activities: [{ icon: 'package-check', title: 'Gói dịch vụ đã áp dụng', detail: ads.group + ' · ' + ads.name + ' · cùng ' + base.contractCode }],
+    })
+  }
   records.unshift(comTamTaiProject())
   return records
 }

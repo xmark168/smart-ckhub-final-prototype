@@ -57,8 +57,10 @@ export function stateOf(due: string, done: string, today: string): MilestoneStat
 }
 
 export function cycleProgress(cycle: Cycle, quota: PackageQuota) {
-  if (cycle.result && !cycle.contents.length) {
-    return { published: cycle.result.published, planned: cycle.result.planned, bonus: 0, missing: Math.max(0, cycle.result.planned - cycle.result.published) }
+  // A closed cycle keeps the numbers recorded when it was closed, even if the package changed later.
+  if (cycle.result) {
+    const bonus = cycle.contents.filter((item) => item.bonus && isPublished(item)).length
+    return { published: cycle.result.published, planned: cycle.result.planned, bonus, missing: Math.max(0, cycle.result.planned - cycle.result.published) }
   }
   const core = cycle.contents.filter((item) => !item.bonus)
   const published = core.filter(isPublished).length

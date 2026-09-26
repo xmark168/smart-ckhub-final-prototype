@@ -1,5 +1,5 @@
 import { useApp } from '../../app/context'
-import { contractTone, paymentMetrics } from '../../data/contracts'
+import { contractTone, coversProject, paymentMetrics } from '../../data/contracts'
 import { formatDate, initials, money, parseInput, shortDate } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
@@ -38,7 +38,7 @@ export function CustomerDetailScreen() {
   const canManage = canManageCustomer(role, account, item)
   const outOfScope = !inScope(role, account, item)
   const readOnlyHint = role === 'account' ? 'Chỉ Account ' + item.owner + (item.createdBy && item.createdBy !== item.owner ? ' hoặc ' + item.createdBy : '') + ' được thao tác' : 'BODs và Administrator chỉ xem'
-  const ownContracts = contracts.filter((row) => own.some((project) => project.id === row.projectId) && row.status !== 'Đã hủy')
+  const ownContracts = contracts.filter((row) => own.some((project) => coversProject(row, project.id)) && row.status !== 'Đã hủy')
   const debt = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).remaining, 0)
   const overdue = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
   const totalValue = ownContracts.reduce((sum, row) => sum + row.value, 0)

@@ -1,5 +1,5 @@
 import { useApp } from '../../../app/context'
-import { contractTone, paymentMetrics, paymentState, paymentTone } from '../../../data/contracts'
+import { contractTone, coversProject, paymentMetrics, paymentState, paymentTone } from '../../../data/contracts'
 import { formatDate, money, parseInput } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { useData } from '../../../store/store'
@@ -8,7 +8,8 @@ import { ContractDetailModal, ContractFormModal } from '../../contracts/Contract
 
 export function ContractTab({ project }: { project: Project }) {
   const { showModal } = useApp()
-  const contracts = useData().contracts.filter((row) => row.projectId === project.id && row.status !== 'Đã hủy')
+  const { contracts: all, projects } = useData()
+  const contracts = all.filter((row) => coversProject(row, project.id) && row.status !== 'Đã hủy')
   const primary = contracts.find((row) => row.isPrimary)
 
   if (!primary) {
@@ -21,6 +22,7 @@ export function ContractTab({ project }: { project: Project }) {
   }
 
   const metrics = paymentMetrics(primary)
+  const sharedWith = projects.filter((item) => item.id !== project.id && coversProject(primary, item.id))
   return (
     <>
       <div className="project-contract-summary">
@@ -28,6 +30,7 @@ export function ContractTab({ project }: { project: Project }) {
           <span>Hợp đồng chính</span>
           <b>{primary.code} <span className={'pill ' + contractTone(primary.status)}>{primary.status}</span></b>
           <small>{formatDate(parseInput(primary.start))} – {primary.end} · {primary.cycles} chu kỳ · đã chạy {project.cycles.length}</small>
+          {sharedWith.length > 0 && <small>Cùng hợp đồng: {sharedWith.map((item) => item.code + ' · ' + item.service).join('; ')}</small>}
         </section>
         <section>
           <span>Giá trị / đã thu</span>

@@ -130,7 +130,10 @@ export function OverviewTab({ project }: { project: Project }) {
         <section className="panel project-service-panel">
           <div className="panel-head"><div><h2>Dịch vụ và định mức</h2><p className="subline">Snapshot tại thời điểm gán gói vào dự án.</p></div></div>
           <div className="project-service-grid">
-            <div><span>Gói dịch vụ</span><b>{project.service}</b><small>{project.serviceScope || 'Chưa có phạm vi dịch vụ.'}</small></div>
+            <div>
+              <span>Gói dịch vụ</span><b>{project.service}</b><small>{project.serviceScope || 'Chưa có phạm vi dịch vụ.'}</small>
+              {project.pendingPackage && <small className="cpl-reason tone-waiting">Đổi gói từ chu kỳ {project.pendingPackage.fromCycle} theo {project.pendingPackage.source}</small>}
+            </div>
             <div><span>Đơn giá</span><b>{project.servicePackageId ? money(project.servicePrice) : 'Chưa xác định'}</b><small>Chưa VAT · không tự đổi theo danh mục</small></div>
             <div>
               <span>Định mức / chu kỳ</span>

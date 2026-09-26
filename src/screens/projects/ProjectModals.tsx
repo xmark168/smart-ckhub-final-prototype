@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
+import { primaryContract } from '../../data/contracts'
 import { newCycle } from '../../data/cycles'
 import { ACCOUNTS, addBusinessDaysIso, formatDate, newId, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
@@ -341,7 +342,7 @@ export function OnboardingModal({ project }: { project: Project }) {
 
   const openContract = () => {
     go('contracts')
-    const primary = getData().contracts.find((row) => row.projectId === project.id && row.isPrimary && row.status !== 'Đã hủy')
+    const primary = primaryContract(getData().contracts, project.id)
     showModal(hasContract && primary ? <ContractDetailModal contractId={primary.id} /> : <ContractFormModal preferredProjectId={project.id} />)
   }
 

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
-import { paymentMetrics, paymentState, paymentTone, syncProjectContract, totalPaid } from '../../data/contracts'
+import { packageLabel } from '../../data/catalog'
+import { coversProject, paymentMetrics, paymentState, paymentTone, syncProjectContract, totalPaid } from '../../data/contracts'
+import { runningCycle } from '../../lib/sop'
 import { contractEnd, formatDate, money, parseInput, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { update, useData } from '../../store/store'
@@ -20,10 +22,17 @@ let rowKey = 0
 /** `appendix` opens a new Phụ lục (e.g. to change the package) for `preferredProjectId`. */
 export function ContractFormModal({ contractId, preferredProjectId, appendix = false }: { contractId?: string; preferredProjectId?: string; appendix?: boolean }) {
   const { closeModal, toast } = useApp()
-  const { projects, contracts } = useData()
+  const { projects, contracts, packages } = useData()
   const row = contracts.find((item) => item.id === contractId)
   const [projectId, setProjectId] = useState(preferredProjectId ?? row?.projectId ?? projects[0]?.id ?? '')
   const project = projects.find((item) => item.id === projectId)
+  const [type, setType] = useState<Contract['type']>(row ? row.type : appendix ? 'Phụ lục' : 'Hợp đồng chính')
+  const [extraIds, setExtraIds] = useState<string[]>(row?.extraProjectIds ?? [])
+  const siblings = projects.filter((item) => project && item.customerId === project.customerId && item.id !== project.id && item.state !== 'stopped')
+  const running = project ? runningCycle(project) : undefined
+  const [newPackage, setNewPackage] = useState(row?.packageChange?.packageId ?? '')
+  const [fromCycle, setFromCycle] = useState(row?.packageChange?.fromCycle ?? (running ? running.no + 1 : 1))
+  const activePackages = packages.filter((item) => item.status === 'Đang áp dụng')
   const [value, setValue] = useState<number>(row ? row.value : project?.servicePrice ?? 0)
   const [plan, setPlan] = useState<PlanRow[]>(() =>
     (row?.payments.length ? row.payments : [{ percent: 100, due: '' }]).map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due })),
@@ -68,15 +77,31 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         status: field(form, 'status') as ContractStatus,
         evidence: field(form, 'evidence'),
         folderUrl: field(form, 'folderUrl'),
-        service: target.service,
+        service: [target, ...projects.filter((item) => extraIds.includes(item.id))].map((item) => item.service).join(' + '),
         scope: target.serviceScope,
+        extraProjectIds: type === 'Hợp đồng chính' && extraIds.length ? extraIds : undefined,
+        packageChange: type === 'Phụ lục' && newPackage ? { projectId: target.id, packageId: newPackage, fromCycle } : undefined,
       })
+      // Phụ lục đổi gói: apply now if it starts with the running cycle, otherwise when that cycle opens.
+      const pkg = type === 'Phụ lục' && newPackage ? draft.packages.find((item) => item.id === newPackage) : undefined
+      const project = draft.projects.find((item) => item.id === target.id)
+      if (pkg && project) {
+        const current = runningCycle(project)
+        const label = packageLabel(pkg)
+        if (!current || fromCycle <= current.no) {
+          Object.assign(project, { servicePackageId: pkg.id, service: label, serviceScope: pkg.scope, servicePrice: pkg.price, quota: { ...pkg.quota }, pendingPackage: undefined })
+          project.activities = [{ icon: 'package-check', title: 'Đổi gói theo ' + (field(form, 'code').toUpperCase() || 'phụ lục'), detail: label + ' · áp dụng ngay' }, ...project.activities].slice(0, 12)
+        } else {
+          project.pendingPackage = { packageId: pkg.id, fromCycle, source: field(form, 'code').toUpperCase() || 'phụ lục' }
+          project.activities = [{ icon: 'package-check', title: 'Đã ký phụ lục đổi gói', detail: label + ' · áp dụng từ chu kỳ ' + fromCycle }, ...project.activities].slice(0, 12)
+        }
+      }
       if (current.isPrimary && current.status === 'Hiệu lực') {
-        draft.contracts.forEach((item) => { if (item.projectId === target.id && item.id !== current.id && item.isPrimary) item.isPrimary = false })
+        draft.contracts.forEach((item) => { if (coversProject(item, target.id) && item.id !== current.id && item.isPrimary) item.isPrimary = false })
       }
       current.activity.unshift('Đã cập nhật thông tin hợp đồng')
       if (!existing) draft.contracts.unshift(current)
-      draft.projects.forEach((item) => { if (item.id === target.id || item.id === previousProjectId) syncProjectContract(item, draft.contracts) })
+      draft.projects.forEach((item) => { if (item.id === target.id || item.id === previousProjectId || extraIds.includes(item.id) || row?.extraProjectIds?.includes(item.id)) syncProjectContract(item, draft.contracts) })
     })
     closeModal()
     toast('Đã lưu hợp đồng.')
@@ -104,8 +129,44 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </select>
         </label>
         <label className="field">Loại liên kết
-          <select name="type" defaultValue={row ? row.type : appendix ? 'Phụ lục' : 'Hợp đồng chính'}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
+          <select name="type" value={type} onChange={(event) => setType(event.target.value as Contract['type'])}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
         </label>
+        {type === 'Hợp đồng chính' && siblings.length > 0 && (
+          <fieldset className="field">
+            <legend>Gói khác trong cùng hợp đồng</legend>
+            {siblings.map((item) => (
+              <label className="filter-check" key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={extraIds.includes(item.id)}
+                  onChange={(event) => setExtraIds((ids) => (event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id)))}
+                />{' '}
+                {item.code} · {item.service}
+              </label>
+            ))}
+            <small className="field-hint">Một hợp đồng có thể gồm nhiều gói; mỗi gói theo dõi triển khai ở dự án riêng.</small>
+          </fieldset>
+        )}
+        {type === 'Phụ lục' && (
+          <fieldset className="field">
+            <legend>Đổi gói dịch vụ (tuỳ chọn)</legend>
+            <label className="field">Gói mới
+              <select value={newPackage} onChange={(event) => setNewPackage(event.target.value)}>
+                <option value="">Không đổi gói</option>
+                {activePackages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}{item.id === project?.servicePackageId ? ' (đang dùng)' : ''}</option>)}
+              </select>
+            </label>
+            {newPackage && (
+              <label className="field">Áp dụng từ
+                <select value={fromCycle} onChange={(event) => setFromCycle(Number(event.target.value))}>
+                  {running && <option value={running.no}>Chu kỳ {running.no} (đang chạy)</option>}
+                  <option value={running ? running.no + 1 : 1}>Chu kỳ {running ? running.no + 1 : 1} (chu kỳ tiếp theo)</option>
+                </select>
+              </label>
+            )}
+            <small className="field-hint">Chu kỳ đã chạy giữ nguyên định mức cũ. Định mức mới lấy theo gói trong danh mục.</small>
+          </fieldset>
+        )}
         <label className="field">Mã hợp đồng<input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
         <label className="field">Số chu kỳ theo hợp đồng<input name="cycles" type="number" min="1" required defaultValue={row ? row.cycles : 1} /></label>
         <label className="field">Ngày bắt đầu hợp đồng<input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>

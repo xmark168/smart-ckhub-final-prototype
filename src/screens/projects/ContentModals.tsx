@@ -4,7 +4,7 @@ import { newCycle } from '../../data/cycles'
 import { addDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
 import { cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
-import { useData } from '../../store/store'
+import { getData, useData } from '../../store/store'
 import type { ContentChannel, ContentItem, ContentStage, KeyNote, Platform, Project } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
 import { addProjectActivity, updateProject } from './projectLogic'
@@ -208,6 +208,17 @@ export function CloseCycleModal({ project }: { project: Project }) {
               running.contents = running.contents.filter((entry) => !missing.includes(entry))
             }
             item.cycles.push(next)
+            const pending = item.pendingPackage
+            const pkg = pending && next.no >= pending.fromCycle ? getData().packages.find((entry) => entry.id === pending.packageId) : undefined
+            if (pending && pkg) {
+              item.servicePackageId = pkg.id
+              item.service = pkg.group + ' · ' + pkg.name
+              item.serviceScope = pkg.scope
+              item.servicePrice = pkg.price
+              item.quota = { ...pkg.quota }
+              item.pendingPackage = undefined
+              addProjectActivity(item, 'package-check', 'Áp dụng gói mới từ chu kỳ ' + next.no, item.service + ' · theo ' + pending.source)
+            }
             addProjectActivity(item, 'calendar-plus', 'Mở chu kỳ ' + next.no, 'T0 ' + formatDate(parseInput(start)) + (carry && missing.length ? ' · nhận ' + missing.length + ' bài bù' : ''))
           } else {
             addProjectActivity(item, 'flag', 'Hết chu kỳ hợp đồng', 'Đã chạy ' + running.no + ' / ' + item.total + ' chu kỳ. Cần tái ký để tiếp tục.')

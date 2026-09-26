@@ -180,6 +180,8 @@ export interface Project {
   risk: boolean
   /** Why the project was flagged (required when flagging). */
   riskReason?: string
+  /** Package change signed in a Phụ lục, applied when cycle `fromCycle` opens. */
+  pendingPackage?: { packageId: string; fromCycle: number; source: string }
   pause?: { reason: string; returnDate: string }
   stop?: { reason: string; date: string }
   cycles: Cycle[]
@@ -227,6 +229,10 @@ export interface Contract {
   evidence: string
   folderUrl: string
   activity: string[]
+  /** Other projects of the same customer billed in this contract (one contract, several packages). */
+  extraProjectIds?: string[]
+  /** Phụ lục only: the package it switches to and the first cycle it applies to. */
+  packageChange?: { projectId: string; packageId: string; fromCycle: number }
 }
 
 export interface ServiceCategory {
