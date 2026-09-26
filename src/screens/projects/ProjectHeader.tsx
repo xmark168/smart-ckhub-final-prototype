@@ -24,7 +24,9 @@ function closeIn(project: Project): number | null {
 }
 
 export function ProjectHeader({ project, readOnly, onTab }: { project: Project; readOnly: boolean; onTab: (tab: ProjectTab) => void }) {
-  const { go, openCustomer } = useApp()
+  const { go, openCustomer, role, account } = useApp()
+  // Account shown only when it is not the signed-in Account's own project.
+  const showOwner = role !== 'account' || project.owner !== account
   const { params, contracts } = useData()
   const actions = useProjectActions(project)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -50,14 +52,15 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
       <div className="project-head-grid">
         <div className="project-head-text">
           <div className="project-title-line">
-            <h1>{project.customer}</h1>
+            <h1>
+              <button type="button" className="title-link" onClick={() => openCustomer(project.customerId)} title="Mở hồ sơ khách hàng">
+                {project.customer} <Icon name="chevron-right" />
+              </button>
+            </h1>
             <span className={'state-badge ' + badge.cls}>{badge.label}</span>
           </div>
           <p className="project-subtitle">{project.service}</p>
-          <p className="project-meta-line">
-            <span>Account {project.owner}</span>
-            <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>Hồ sơ khách hàng ›</button>
-          </p>
+          {showOwner && <p className="project-meta-line"><span>Account {project.owner}</span></p>}
         </div>
         <div className="project-head-actions" hidden={readOnly}>
           <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa</button>

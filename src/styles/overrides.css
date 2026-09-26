@@ -742,3 +742,8 @@ em.pill { font-style: normal; }
   .project-detail-grid > aside { order: 0; display: block; }
 }
 .pill.waiting, span.waiting.pill { color: #7a4200; }
+.title-link { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.title-link svg { width: 22px; height: 22px; color: #c4b5a8; transition: transform 0.15s, color 0.15s; }
+.title-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.title-link:hover svg { color: #9a3412; transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .title-link:hover svg { transform: none; } }
