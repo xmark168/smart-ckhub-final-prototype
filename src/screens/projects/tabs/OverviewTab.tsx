@@ -52,29 +52,19 @@ export function OverviewTab({ project }: { project: Project }) {
   const actions = useProjectActions(project)
   const cycle = runningCycle(project)
   const quota = project.quota
-  // People working this cycle, gathered from shootings (Media) and cycle tasks (Owner).
-  const roles = new Map<string, string[]>()
-  const addRole = (name: string, role: string) => {
-    if (!name || name === project.owner || name === 'Content nội bộ') return
-    const list = roles.get(name) ?? []
-    if (!list.includes(role)) roles.set(name, [...list, role])
-  }
-  cycle?.shootings.forEach((shoot) => shoot.media.forEach((name) => addRole(name, 'Shoot ' + shortDate(shoot.date))))
-  cycle?.tasks.forEach((task) => addRole(task.owner, task.name))
-  const participants = [...roles.entries()]
   return (
     <div className="project-detail-grid">
       <main>
         {project.state === 'draft' && <OnboardingPanel project={project} />}
         {cycle && (
           <section className="panel">
-            <div className="panel-head"><div><h2>Tiến trình chu kỳ {cycle.no}</h2><p className="subline">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)} · rê chuột vào từng bước để xem chi tiết.</p></div></div>
+            <div className="panel-head"><div><h2>Tiến trình chu kỳ {cycle.no}</h2><p className="subline">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}</p></div></div>
             <CycleTimeline items={cycleMilestones(cycle, quota, params)} />
           </section>
         )}
         <section className="panel project-notes-panel">
           <div className="panel-head">
-            <div><h2>Ghi chú dự án</h2><p className="subline">Điều cả team cần nhớ khi làm dự án này.</p></div>
+            <h2>Ghi chú dự án</h2>
             <button className="text-btn" onClick={actions.notes}>{project.notes ? 'Sửa' : '+ Thêm ghi chú'}</button>
           </div>
           {project.notes ? <p className="project-note-text">{project.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
@@ -93,18 +83,12 @@ export function OverviewTab({ project }: { project: Project }) {
       </main>
       <aside>
         <section className="panel">
-          <div className="panel-head"><div><h2>Người tham gia</h2><p className="subline">Account cố định; partner gán theo từng buổi shoot và công việc.</p></div></div>
+          <div className="panel-head"><h2>Account</h2></div>
           <button className="customer-account-card" onClick={actions.account}>
             <i>{initials(project.owner)}</i>
-            <span><b>{project.owner}</b><small>Account · điều phối khách và partner</small></span>
+            <span><b>{project.owner}</b></span>
             <Icon name="chevron-right" />
           </button>
-          <div className="cycle-compact-list team-list">
-            {quota.plans > 0 && <div><b>Content nội bộ</b><small>Content Plan, script</small></div>}
-            {participants.length > 0
-              ? participants.map(([name, roles]) => <div key={name}><b>{name}</b><small>{roles.join(' · ')}</small></div>)
-              : <p className="empty-copy">{cycle ? 'Chưa gán partner cho buổi shoot hay công việc nào trong chu kỳ ' + cycle.no + '.' : 'Gán partner khi tạo lịch shoot và công việc sau khi bắt đầu triển khai.'}</p>}
-          </div>
         </section>
       </aside>
     </div>
