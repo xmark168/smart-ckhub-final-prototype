@@ -181,7 +181,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
                 : !cadenceStart
                   ? 'Nhịp đăng bắt đầu sau khi khách duyệt Post Demo.'
                   : behind
-                    ? 'Chậm ' + behind + ' bài · theo nhịp ' + cadence + ' nên đạt ' + expected + ' (vạch trắng)'
+                    ? 'Chậm ' + behind + ' bài · theo nhịp ' + cadence + ' nên đạt ' + expected + ' (vạch đỏ)'
                     : 'Đúng nhịp ' + cadence}
             </small>
           </>
