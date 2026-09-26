@@ -10,7 +10,7 @@ export function newCycle(no: number, start: string, params: SopParams, template:
     plannedEnd: periodEndIso(start, params.cycleMonths),
     actualEnd: '',
     status: 'running',
-    timeline: instantiateTimeline(template),
+    timeline: instantiateTimeline(template, no),
     plan: { status: 'draft', link: '', sentAt: '', approvedAt: '', feedback: '' },
     shootingPlan: { sentAt: '', link: '' },
     shootings: [],

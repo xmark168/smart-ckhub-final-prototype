@@ -149,6 +149,8 @@ export interface TimelineStepTemplate {
   shootNo?: number
   /** publish: posts per week [min, max]. */
   perWeek?: [number, number]
+  /** Only in the project's first cycle (e.g. Post Demo agrees mood & tone once). */
+  firstCycleOnly?: boolean
 }
 
 /** A template step copied into a cycle; Account adjustments are kept with their reasons. */

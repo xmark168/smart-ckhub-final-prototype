@@ -191,7 +191,7 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
   // Every cycle carries its own copy of the package timeline.
   for (const project of records) {
     const template = timelineFor(packages.find((item) => item.id === project.servicePackageId), project.quota, DEFAULT_PARAMS)
-    for (const cycle of project.cycles) cycle.timeline = instantiateTimeline(template)
+    for (const cycle of project.cycles) cycle.timeline = instantiateTimeline(template, cycle.no)
   }
   return records
 }

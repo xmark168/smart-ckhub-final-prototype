@@ -158,6 +158,7 @@ export function TimelineEditorModal({ pkg }: { pkg: ServicePackage }) {
                     <option value="bd">ngày làm việc</option>
                     <option value="d">ngày</option>
                   </select>
+                  <label className="tle-first"><input type="checkbox" checked={Boolean(step.firstCycleOnly)} disabled={!editable} onChange={(event) => set(index, { firstCycleOnly: event.target.checked || undefined })} /> Chỉ chu kỳ đầu</label>
                   {STEP_KINDS[step.kind].posts && (
                     <>
                       <span className="tle-sep">Bài</span>

@@ -47,7 +47,7 @@ export function defaultTimeline(quota: PackageQuota, params: SopParams): Timelin
   if (quota.plans) steps.push({ id: 'plan', kind: 'plan', name: 'Gửi Content Plan', owner: 'Planner/Content', anchor: { after: 't0', event: 'done', offset: params.planLeadBusinessDays, unit: 'bd' } })
   if (quota.shoots) {
     steps.push({ id: 'shootingPlan', kind: 'shootingPlan', name: 'Gửi Shooting Plan', owner: 'Planner/Content', anchor: { ...approved, offset: params.shootingPlanAfterApprovalDays, unit: 'd' } })
-    if (quota.posts) steps.push({ id: 'demo', kind: 'demo', name: 'Gửi Post Demo', owner: 'Media', anchor: { after: 'shoot', event: 'done', offset: params.postDemoAfterShootBusinessDays, unit: 'bd' } })
+    if (quota.posts) steps.push({ id: 'demo', kind: 'demo', name: 'Gửi Post Demo', owner: 'Media', firstCycleOnly: true, anchor: { after: 'shoot', event: 'done', offset: params.postDemoAfterShootBusinessDays, unit: 'bd' } })
   }
   if (quota.posts) {
     steps.push({
@@ -67,9 +67,20 @@ export function timelineFor(pkg: ServicePackage | undefined, quota: PackageQuota
   return pkg?.timeline?.length ? pkg.timeline : defaultTimeline(quota, params)
 }
 
-/** Copy a template into a cycle. */
-export function instantiateTimeline(template: TimelineStepTemplate[]): TimelineStep[] {
-  return template.map((step) => ({ ...structuredClone(step), log: [] }))
+/**
+ * Copy a template into cycle `no`. First-cycle-only steps are dropped from later cycles and
+ * the steps that waited for them wait for what the dropped step waited for.
+ */
+export function instantiateTimeline(template: TimelineStepTemplate[], no = 1): TimelineStep[] {
+  const steps = structuredClone(template)
+  const dropped = new Map(steps.filter((step) => step.firstCycleOnly && no > 1).map((step) => [step.id, step.anchor]))
+  return steps
+    .filter((step) => !dropped.has(step.id))
+    .map((step) => {
+      const inherited = dropped.get(step.anchor.after)
+      // A dropped step's approval no longer exists: wait for its own anchor to be done instead.
+      return { ...step, anchor: inherited ? { ...step.anchor, after: inherited.after, event: inherited.event } : step.anchor, log: [] }
+    })
 }
 
 /** "bài 1–6", "bài 7 → hết". */

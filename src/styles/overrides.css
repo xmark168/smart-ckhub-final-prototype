@@ -949,3 +949,27 @@ em.pill { font-style: normal; }
   .tle-top > select:nth-of-type(2) { grid-column: 2; }
   .tle-rule { padding-left: 0; }
 }
+
+/* ---- Cycles tab v2: steps list, compact history ---- */
+.cw-steps { display: grid; gap: 0; padding-top: 6px; padding-bottom: 6px; }
+.cw-step { display: grid; gap: 4px; padding: 14px 0; border-top: 1px solid rgb(240, 233, 226); }
+.cw-step:first-child { border-top: 0; }
+.cw-step-head { display: flex; align-items: center; gap: 10px; }
+.cw-step-head b { font-size: 14px; color: var(--ink); }
+.cw-step-action { display: flex; gap: 12px; margin-left: auto; }
+.cw-step-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+.cw-step .cycle-note { margin: 6px 0 0; }
+.cw-shoot { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 4px; border-radius: 10px; background: rgb(250, 246, 242); }
+.cw-shoot span:first-child { display: grid; gap: 2px; min-width: 0; }
+.cw-shoot b { font-size: 13px; }
+.cw-shoot small { color: var(--muted); font-size: 12px; }
+.cw-count { margin-left: 6px; color: var(--muted); font: 700 12px var(--font-body); }
+.cycle-history { margin-top: 16px; }
+.cycle-work-heading h2 { margin: 0; }
+.tle-first { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding-left: 10px; border-left: 1px solid rgb(230, 221, 212); }
+@media (max-width: 520px) {
+  .cw-shoot { grid-template-columns: minmax(0, 1fr) auto; }
+  .cw-shoot .row-actions { grid-column: 1 / -1; }
+}
+.cycle-history > .panel-head { padding: 16px 18px 10px; margin: 0; }
+.cw-step-action a.text-btn { text-decoration: none; }
