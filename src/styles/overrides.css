@@ -429,3 +429,50 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 .req { margin-left: 2px; color: #b42318; font-weight: 800; text-decoration: none; border: 0; cursor: help; }
 .modal .form:has(.req)::before { content: "* là trường bắt buộc"; display: block; color: var(--muted); font-size: 11px; }
 .rules-list { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; } .rules-list li + li { margin-top: 4px; }
+
+
+/* ---- Projects dashboard: 3 cards ---- */
+.project-dashboard-3 { grid-template-columns: 1.3fr 1fr 1fr; }
+.project-kpi .kpi-main { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.project-kpi .kpi-label { display: block; color: rgb(128, 108, 93); font-size: 11px; font-weight: 700; }
+.project-kpi.hero .kpi-label, .project-kpi.hero .kpi-line { color: rgba(255, 255, 255, 0.78); }
+div.project-kpi { cursor: default; }
+.project-kpi .kpi-line { display: block; font-size: 11px; }
+.project-kpi .kpi-chips { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.kpi-chip { min-height: 24px; padding: 3px 9px; border: 1px solid rgb(227, 216, 206); border-radius: 99px; background: #fff; color: #6b5646; font: 700 11px var(--font-body); cursor: pointer; }
+.kpi-chip:hover, .kpi-chip.on { border-color: #c43d0c; background: var(--orange-pale); color: #9a3412; }
+.project-kpi .kpi-delta { color: #fff; }
+@media (max-width: 900px) {
+  .project-dashboard-3 { grid-template-columns: 1fr 1fr; }
+  .project-dashboard-3 .hero { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .project-dashboard-3 { grid-template-columns: 1fr; }
+}
+.kpi-filter-tag { display: inline-flex; align-items: center; flex-wrap: nowrap; }
+.kpi-filter-tag button { flex: 0 0 auto; }
+
+/* ---- Projects list responsive (mirrors Khách hàng) ---- */
+#projects .project-table-new { min-width: 0; }
+#projects .project-table-new td:nth-child(1) { min-width: 180px; }
+#projects .project-table-new .pill { white-space: nowrap; }
+@media (max-width: 1280px) {
+  #projects .project-table-new th:nth-child(6), #projects .project-table-new td:nth-child(6) { display: none; }
+}
+@media (max-width: 1100px) {
+  #projects .project-table-new th:nth-child(2), #projects .project-table-new td:nth-child(2) { display: none; }
+}
+@media (max-width: 900px) {
+  #projects .project-table-new thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  #projects .project-table-new, #projects .project-table-new tbody { display: block; }
+  #projects .project-table-new tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; padding: 12px 14px; border-top: 1px solid rgb(238, 231, 223); }
+  #projects .project-table-new td { display: block !important; padding: 0 !important; border: 0; min-width: 0 !important; }
+  #projects .project-table-new td:nth-child(1) { grid-column: 1 / -1; }
+  #projects .project-table-new td:nth-child(2), #projects .project-table-new td:nth-child(6), #projects .project-table-new td:last-child { display: none !important; }
+  #projects .project-table-new td:nth-child(7) { display: flex !important; flex-wrap: wrap; gap: 4px; }
+  #projects .project-table-wrap { overflow: visible; }
+}
+@media (max-width: 480px) {
+  #projects .project-table-new tbody tr { grid-template-columns: 1fr 1fr; }
+  #projects .project-table-new td:nth-child(5), #projects .project-table-new td:nth-child(7) { grid-column: 1 / -1; }
+}

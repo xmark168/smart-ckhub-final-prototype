@@ -1,20 +1,23 @@
 import type { CSSProperties } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, includesText, shortDate, TODAY } from '../../lib/format'
+import { ACCOUNTS, addDaysIso, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { inScope } from '../../lib/scope'
-import { MILESTONE_TONE, nextActions, projectHealth, runningCycle } from '../../lib/sop'
+import { MILESTONE_TONE, nextActions, projectHealth, runningCycle, type Health, type NextAction } from '../../lib/sop'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
-import { projectOverdue } from '../../data/contracts'
+import { primaryContract, projectOverdue } from '../../data/contracts'
+import { Pager } from '../../ui/Pager'
+import { renewalDue, shortMoney } from '../customers/customerLogic'
 import { CreateProjectModal } from './ProjectModals'
 import { ProjectRulesModal } from './ProjectRulesModal'
 import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone } from './projectLogic'
 
-type Kpi = 'all' | 'active' | 'risk' | 'paused' | 'draft'
+/** 'open' = default view (everything except stopped projects). */
+type Kpi = 'open' | 'active' | 'week' | 'money' | 'draft' | 'paused' | 'debt' | 'renew'
 
 interface Filters {
   kpi: Kpi
@@ -22,24 +25,55 @@ interface Filters {
   status: '' | ProjectState
   owner: string
   area: string
-  risk: boolean
+  sort: 'urgent' | 'name'
 }
 
-const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '', risk: false }
+const INITIAL: Filters = { kpi: 'open', query: '', status: '', owner: '', area: '', sort: 'urgent' }
 const PAGE_SIZE = 20
-
-
-function atRisk(item: Project, params: SopParams, contracts: Contract[]): boolean {
-  return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late' || projectOverdue(contracts, item.id) > 0)
+const STATUS_LABEL: Record<ProjectState, string> = { active: 'Đang triển khai', pending: 'Tạm dừng', stopped: 'Đã dừng', draft: 'Dự án nháp' }
+const KPI_LABEL: Record<Kpi, string> = {
+  open: '', active: 'Đang triển khai', week: 'Cần xử lý trong 7 ngày', money: 'Công nợ & tái ký',
+  draft: 'Chờ khởi động', paused: 'Tạm dừng', debt: 'Công nợ quá hạn', renew: 'Sắp hết hợp đồng',
 }
 
-function matchesKpi(item: Project, kpi: Kpi, params: SopParams, contracts: Contract[]): boolean {
-  if (kpi === 'active') return item.state === 'active'
-  if (kpi === 'risk') return atRisk(item, params, contracts)
-  if (kpi === 'paused') return item.state === 'pending' || item.state === 'stopped'
-  if (kpi === 'draft') return item.state === 'draft'
-  return true
+/** Everything the dashboard and the list need about one project, computed once. */
+interface Row {
+  item: Project
+  health: Health
+  week: NextAction[]
+  overdue: number
+  renew: boolean
 }
+
+function buildRow(item: Project, params: SopParams, contracts: Contract[]): Row {
+  const overdue = projectOverdue(contracts, item.id)
+  const limit = addDaysIso(TODAY, 7)
+  const week = item.state === 'active' ? nextActions(item, params).filter((action) => action.state === 'late' || (action.due && action.due <= limit)) : []
+  const contract = primaryContract(contracts, item.id)
+  return {
+    item,
+    health: projectHealth(item, params, TODAY, overdue),
+    week,
+    overdue,
+    renew: item.state === 'active' && Boolean(contract && contract.status === 'Hiệu lực' && renewalDue(item, contract)),
+  }
+}
+
+function matchesKpi(row: Row, kpi: Kpi): boolean {
+  const state = row.item.state
+  if (kpi === 'active') return state === 'active'
+  if (kpi === 'week') return row.week.length > 0
+  if (kpi === 'money') return row.overdue > 0 || row.renew
+  if (kpi === 'debt') return row.overdue > 0
+  if (kpi === 'renew') return row.renew
+  if (kpi === 'draft') return state === 'draft'
+  if (kpi === 'paused') return state === 'pending'
+  return state !== 'stopped'
+}
+
+const URGENCY: Record<string, number> = { late: 0, watch: 1, ok: 2, paused: 3, draft: 4, finished: 5, stopped: 6 }
+
+
 
 /** Partners on the running cycle's shootings and tasks (Account excluded). */
 function partnersOf(item: Project): string {
@@ -50,10 +84,10 @@ function partnersOf(item: Project): string {
   return [...names].join(', ') || '—'
 }
 
-function ProjectRow({ item, params, contracts, onOpen }: { item: Project; params: SopParams; contracts: Contract[]; onOpen: () => void }) {
+function ProjectRow({ row, params, onOpen }: { row: Row; params: SopParams; onOpen: () => void }) {
+  const { item, health } = row
   const posts = postProgress(item)
   const next = nextActions(item, params)[0]
-  const health = projectHealth(item, params, TODAY, projectOverdue(contracts, item.id))
   return (
     <tr onClick={onOpen}>
       <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
@@ -98,23 +132,46 @@ export function ProjectsScreen() {
     setFilters((current) => ({ ...current, ...patch }))
     resetPage()
   }
-  const active = projects.filter((item) => item.state === 'active')
-  const risk = active.filter((item) => atRisk(item, params, data.contracts))
-  const paused = projects.filter((item) => item.state === 'pending' || item.state === 'stopped')
-  const drafts = projects.filter((item) => item.state === 'draft')
-  const list = projects.filter(
-    (item) =>
-      includesText([item.code, item.customer, item.owner, item.area, item.service], filters.query) &&
-      (!filters.status || item.state === filters.status) &&
-      (!filters.owner || item.owner === filters.owner) &&
-      (!filters.area || item.area === filters.area) &&
-      (!filters.risk || atRisk(item, params, data.contracts)) &&
-      matchesKpi(item, filters.kpi, params, data.contracts),
-  )
+  const toggleKpi = (kpi: Kpi) => change({ kpi: filters.kpi === kpi ? 'open' : kpi })
+  const all = projects.map((item) => buildRow(item, params, data.contracts))
+  const active = all.filter((row) => row.item.state === 'active')
+  const count = (test: (row: Row) => boolean) => all.filter(test).length
+  const levels = { ok: active.filter((row) => row.health.level === 'ok').length, watch: active.filter((row) => row.health.level === 'watch').length, late: active.filter((row) => row.health.level === 'late').length }
+  const week = all.filter((row) => row.week.length)
+  const weekLate = week.reduce((sum, row) => sum + row.week.filter((action) => action.state === 'late').length, 0)
+  const weekDue = week.reduce((sum, row) => sum + row.week.length, 0) - weekLate
+  const debtRows = all.filter((row) => row.overdue > 0)
+  const debtSum = debtRows.reduce((sum, row) => sum + row.overdue, 0)
+  const renewCount = count((row) => row.renew)
+  const moneyCount = count((row) => row.overdue > 0 || row.renew)
+  const drafts = count((row) => row.item.state === 'draft')
+  const paused = count((row) => row.item.state === 'pending')
+  const list = all
+    .filter(
+      ({ item, ...row }) =>
+        includesText([item.code, item.customer, item.owner, item.area, item.service], filters.query) &&
+        (!filters.status || item.state === filters.status) &&
+        (!filters.owner || item.owner === filters.owner) &&
+        (!filters.area || item.area === filters.area) &&
+        (filters.status === 'stopped' ? true : matchesKpi({ item, ...row }, filters.kpi)),
+    )
+    .sort((a, b) =>
+      filters.sort === 'name'
+        ? a.item.customer.localeCompare(b.item.customer, 'vi')
+        : (URGENCY[a.health.level] ?? 9) - (URGENCY[b.health.level] ?? 9) || (a.week[0]?.due || '9999').localeCompare(b.week[0]?.due || '9999'),
+    )
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
   const areas = Array.from(new Set(projects.map((item) => item.area)))
-  const activeFilterCount = [filters.status, filters.owner, filters.area, filters.risk].filter(Boolean).length
-  const kpiClass = (kpi: Kpi, extra = '') => ('project-kpi ' + extra + (filters.kpi === kpi ? ' selected' : '')).replace(/\s+/g, ' ').trim()
+  const activeFilterCount = [filters.status, filters.owner, filters.area].filter(Boolean).length
+  const chips: Array<[string, () => void]> = [
+    ...(filters.kpi !== 'open' ? [[KPI_LABEL[filters.kpi], () => toggleKpi(filters.kpi)] as [string, () => void]] : []),
+    ...(filters.query.trim() ? [['“' + filters.query.trim() + '”', () => change({ query: '' })] as [string, () => void]] : []),
+    ...(filters.status ? [[STATUS_LABEL[filters.status], () => change({ status: '' })] as [string, () => void]] : []),
+    ...(filters.owner ? [['Account ' + filters.owner, () => change({ owner: '' })] as [string, () => void]] : []),
+    ...(filters.area ? [['Khu vực ' + filters.area, () => change({ area: '' })] as [string, () => void]] : []),
+  ]
+  const clearAll = () => change({ kpi: 'open', query: '', status: '', owner: '', area: '' })
+  const on = (kpi: Kpi) => filters.kpi === kpi
 
   return (
     <section className="screen active" id="projects">
@@ -124,18 +181,47 @@ export function ProjectsScreen() {
           <button className="primary" onClick={() => showModal(<CreateProjectModal onCreated={(id) => openProject(id)} />)}><Icon name="plus" /> Tạo dự án</button>
         </div>
 
-        <section className="project-dashboard">
-          <button className={kpiClass('active', 'hero')} onClick={() => change({ kpi: 'active' })}><label>Đang triển khai</label><strong>{active.length}</strong><small>{risk.length} dự án cần theo dõi</small></button>
-          <button className={kpiClass('risk', 'risk')} onClick={() => change({ kpi: 'risk' })}><label>Có rủi ro</label><strong>{risk.length}</strong><small>Mốc SOP trễ, công nợ quá hạn hoặc gắn cờ</small></button>
-          <button className={kpiClass('paused')} onClick={() => change({ kpi: 'paused' })}><label>Tạm dừng / đã dừng</label><strong>{paused.length}</strong><small>Không tự đổi tiến độ hợp đồng</small></button>
-          <button className={kpiClass('draft')} onClick={() => change({ kpi: 'draft' })}><label>Dự án nháp</label><strong>{drafts.length}</strong><small>Cần hoàn tất Cổng khởi động</small></button>
+        <section className="project-dashboard project-dashboard-3" aria-label="Tổng quan dự án">
+          <div className={'project-kpi hero' + (on('active') ? ' selected' : '')}>
+            <button type="button" className="kpi-main" aria-pressed={on('active')} onClick={() => toggleKpi('active')}>
+              <span className="kpi-label">Đang triển khai</span>
+              <strong>{active.length}</strong>
+            </button>
+            <small className="kpi-line">{levels.ok} đúng tiến độ · {levels.watch} cần theo dõi · {levels.late} chậm</small>
+            <span className="kpi-chips">
+              <button type="button" className={'kpi-delta' + (on('draft') ? ' on' : '')} aria-pressed={on('draft')} onClick={() => toggleKpi('draft')}>{drafts} chờ khởi động</button>
+              <button type="button" className={'kpi-delta' + (on('paused') ? ' on' : '')} aria-pressed={on('paused')} onClick={() => toggleKpi('paused')}>{paused} tạm dừng</button>
+            </span>
+          </div>
+          <button type="button" className={'project-kpi risk' + (on('week') ? ' selected' : '')} aria-pressed={on('week')} onClick={() => toggleKpi('week')}>
+            <span className="kpi-label">Cần xử lý trong 7 ngày</span>
+            <strong>{week.length}</strong>
+            <small>{week.length ? weekLate + ' mốc trễ · ' + weekDue + ' mốc sắp đến hạn' : 'Không có mốc trễ hay đến hạn'}</small>
+          </button>
+          <div className={'project-kpi' + (on('money') || on('debt') || on('renew') ? ' selected' : '')}>
+            <button type="button" className="kpi-main" aria-pressed={on('money')} onClick={() => toggleKpi('money')}>
+              <span className="kpi-label">Công nợ &amp; tái ký</span>
+              <strong>{moneyCount}</strong>
+            </button>
+            <span className="kpi-chips">
+              <button type="button" className={'kpi-chip' + (on('debt') ? ' on' : '')} aria-pressed={on('debt')} onClick={() => toggleKpi('debt')}>{debtRows.length} quá hạn{debtSum ? ' · ' + shortMoney(debtSum) : ''}</button>
+              <button type="button" className={'kpi-chip' + (on('renew') ? ' on' : '')} aria-pressed={on('renew')} onClick={() => toggleKpi('renew')}>{renewCount} sắp hết HĐ</button>
+            </span>
+          </div>
         </section>
 
         <section className="project-list-shell">
           <div className="project-toolbar-new">
             <label className="project-search-new">
               <Icon name="search" />
-              <input type="search" value={filters.query} placeholder="Tìm mã dự án, khách hàng, Account…" onChange={(event) => change({ query: event.target.value })} />
+              <input type="search" value={filters.query} aria-label="Tìm dự án" placeholder="Tìm mã dự án, khách hàng, Account… (không cần dấu)" onChange={(event) => change({ query: event.target.value })} />
+            </label>
+            <label className="list-sort">
+              <span>Sắp xếp</span>
+              <select value={filters.sort ?? 'urgent'} onChange={(event) => change({ sort: event.target.value as Filters['sort'] })}>
+                <option value="urgent">Gấp nhất trước</option>
+                <option value="name">Tên khách A–Z</option>
+              </select>
             </label>
             <div className={'project-filter-control' + (filterOpen ? ' open' : '')} ref={filterRef}>
               <button className="project-filter-trigger" title="Lọc dự án" onClick={() => setFilterOpen(!filterOpen)}>
@@ -145,7 +231,7 @@ export function ProjectsScreen() {
               <div className="project-filter-popover">
                 <div className="project-filter-popover-head">
                   <b>Lọc dự án</b>
-                  <button onClick={() => change({ status: '', owner: '', area: '', risk: false })}>Xóa lọc</button>
+                  <button onClick={() => change({ status: '', owner: '', area: '' })} disabled={!activeFilterCount}>Xóa lọc</button>
                 </div>
                 <label>Trạng thái
                   <select value={filters.status} onChange={(event) => change({ status: event.target.value as Filters['status'] })}>
@@ -164,30 +250,43 @@ export function ProjectsScreen() {
                     {areas.map((area) => <option key={area} value={area}>{area}</option>)}
                   </select>
                 </label>
-                <label className="filter-check"><input type="checkbox" checked={filters.risk} onChange={(event) => change({ risk: event.target.checked })} /> Chỉ dự án có rủi ro</label>
+                <p className="filter-note">Dự án đã dừng chỉ hiện khi chọn Trạng thái = Đã dừng.</p>
               </div>
             </div>
           </div>
 
+          {chips.length > 0 && (
+            <div className="kpi-filter-bar" role="group" aria-label="Điều kiện đang lọc">
+              Đang lọc:
+              {chips.map(([label, clear]) => (
+                <span className="kpi-filter-tag" key={label}>{label} <button type="button" aria-label={'Bỏ ' + label} onClick={clear}>×</button></span>
+              ))}
+              {chips.length > 1 && <button type="button" className="text-btn" onClick={clearAll}>Xóa tất cả</button>}
+            </div>
+          )}
           <div className="project-table-wrap">
             <table className="project-table-new">
               <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Partner</th><th>Trạng thái</th><th /></tr></thead>
               <tbody>
-                {rows.map((item) => (
-                  <ProjectRow key={item.id} item={item} params={params} contracts={data.contracts} onOpen={() => openProject(item.id)} />
+                {rows.map((row) => (
+                  <ProjectRow key={row.item.id} row={row} params={params} onOpen={() => openProject(row.item.id)} />
                 ))}
-                {!list.length && <tr><td colSpan={8}>Không tìm thấy dự án phù hợp.</td></tr>}
+                {!list.length && (
+                  <tr>
+                    <td colSpan={8} className="list-empty">
+                      <b>Không có dự án phù hợp</b>
+                      <span>{chips.length ? 'Thử bỏ bớt điều kiện lọc hoặc đổi từ khóa.' : 'Chưa có dự án trong phạm vi của bạn.'}</span>
+                      {chips.length > 0 && <button type="button" className="secondary" onClick={clearAll}>Xóa bộ lọc</button>}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <footer className="project-footer-new">
-            <span>Hiển thị <b>{list.length ? from + '–' + to : 0}</b> trong <b>{list.length}</b> dự án</span>
-            <div className="project-pager">
-              <button disabled={page === 1} onClick={() => goTo(page - 1)}>‹</button>
-              <button disabled>{page} / {pages}</button>
-              <button disabled={page === pages} onClick={() => goTo(page + 1)}>›</button>
-            </div>
+            <span role="status" aria-live="polite">Hiển thị <b>{list.length ? from + '–' + to : 0}</b> trong <b>{list.length}</b> dự án</span>
+            <Pager page={page} pages={pages} goTo={goTo} className="project-pager" />
           </footer>
         </section>
       </div>

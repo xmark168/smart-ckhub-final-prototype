@@ -123,7 +123,8 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
     const service = active[index % active.length]
     const quota = { ...service.quota }
     const media = MEDIA[index % MEDIA.length]
-    const plannedEnd = ['2026-09-23', '2026-09-29', '2026-09-30', '2026-10-01'][index % 4]
+    // Spread cycle ends over the coming month so 'this week' is a subset, with a few already overdue.
+    const plannedEnd = addDaysIso(TODAY, [-2, 4, 10, 15, 19, 24, 27][index % 7])
     const endDate = parseInput(plannedEnd)
     const currentStart = toIso(new Date(endDate.getFullYear(), endDate.getMonth() - 1, endDate.getDate() + 1))
     const cycles: Cycle[] = []
