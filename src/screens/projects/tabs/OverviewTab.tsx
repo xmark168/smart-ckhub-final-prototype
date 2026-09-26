@@ -47,45 +47,6 @@ function OnboardingPanel({ project }: { project: Project }) {
   )
 }
 
-function Controls({ project }: { project: Project }) {
-  const actions = useProjectActions(project)
-  const draft = project.state === 'draft'
-  if (draft) return null
-  return (
-    <section className="panel">
-      <div className="panel-head"><h2>Kiểm soát dự án</h2></div>
-      <button className={'customer-control' + (project.risk ? ' is-attention' : '')} onClick={actions.toggleRisk}>
-        <Icon name="flag" />
-        <span><b>{project.risk ? 'Gỡ cờ cần chú ý' : 'Đánh dấu cần chú ý'}</b><small>{project.risk ? 'Lý do: ' + (project.riskReason || '—') : 'Cần ghi lý do; hiển thị cùng sức khỏe tự tính'}</small></span>
-      </button>
-      {project.state === 'active' && (
-        <button className="customer-control" onClick={actions.pause}>
-          <Icon name="circle-pause" />
-          <span><b>Tạm dừng</b><small>Giữ chu kỳ và hợp đồng, ghi lý do và ngày quay lại</small></span>
-        </button>
-      )}
-      {project.state === 'pending' && (
-        <button className="customer-control" onClick={actions.resume}>
-          <Icon name="play" />
-          <span><b>Tiếp tục triển khai</b><small>{project.pause?.reason}{project.pause?.returnDate ? ' · dự kiến ' + shortDate(project.pause.returnDate) : ''}</small></span>
-        </button>
-      )}
-      {project.state !== 'stopped' && (
-        <button className="customer-control" onClick={actions.stop} disabled={!actions.canStop} title={actions.canStop ? undefined : 'Chỉ Account phụ trách hoặc Account tạo dự án'}>
-          <Icon name="circle-stop" />
-          <span><b>Dừng dự án</b><small>{actions.canStop ? 'Chốt chu kỳ đang chạy tại ngày hiệu lực' : 'Chỉ Account phụ trách hoặc Account tạo dự án'}</small></span>
-        </button>
-      )}
-      {project.state === 'stopped' && (
-        <button className="customer-control" onClick={actions.resume}>
-          <Icon name="rotate-ccw" />
-          <span><b>Mở lại dự án</b><small>{project.stop?.reason} · dừng từ {shortDate(project.stop?.date ?? '')}</small></span>
-        </button>
-      )}
-    </section>
-  )
-}
-
 export function OverviewTab({ project }: { project: Project }) {
   const { params } = useData()
   const actions = useProjectActions(project)
@@ -174,7 +135,6 @@ export function OverviewTab({ project }: { project: Project }) {
               : <p className="empty-copy">{cycle ? 'Chưa gán partner cho buổi shoot hay công việc nào trong chu kỳ ' + cycle.no + '.' : 'Gán partner khi tạo lịch shoot và công việc sau khi bắt đầu triển khai.'}</p>}
           </div>
         </section>
-        <Controls project={project} />
       </aside>
     </div>
   )

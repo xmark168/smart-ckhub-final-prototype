@@ -209,6 +209,7 @@ export function projectHealth(project: Project, params: SopParams, today = TODAY
 }
 
 export interface NextAction {
+  key: string
   label: string
   due: string
   state: MilestoneState

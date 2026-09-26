@@ -2,21 +2,16 @@ import { useEffect } from 'react'
 import { useApp, type ProjectTab } from '../../app/context'
 import { navigate, pathFor, useLocation, withQuery } from '../../app/router'
 import { Icon } from '../../lib/icons'
-import { currentCycle, projectHealth, runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
-import { projectOverdue } from '../../data/contracts'
-import type { Project } from '../../store/types'
-import { cycleCounter, cycleRange, postProgress, projectLabel, relativeDay } from './projectLogic'
 import { ProjectActivityRows } from './ProjectActivityRows'
 import { ContentTab } from './tabs/ContentTab'
 import { ContractTab } from './tabs/ContractTab'
 import { CyclesTab } from './tabs/CyclesTab'
 import { DocsTab } from './tabs/DocsTab'
 import { OverviewTab } from './tabs/OverviewTab'
-import { useProjectActions } from './useProjectActions'
+import { ProjectHeader } from './ProjectHeader'
 import { canStopProject } from './projectLogic'
 import { setViewOnly } from '../../ui/viewOnly'
-import { TODAY } from '../../lib/format'
 
 const TABS: Array<[ProjectTab, string, string, string]> = [
   ['tong-quan', 'Tổng quan', 'Tổng quan triển khai', 'Mốc SOP của chu kỳ hiện tại, việc cần làm tiếp và định mức gói.'],
@@ -29,64 +24,6 @@ const TABS: Array<[ProjectTab, string, string, string]> = [
 
 function isTab(value: string | null): value is ProjectTab {
   return TABS.some(([id]) => id === value)
-}
-
-function Header({ project, readOnly }: { project: Project; readOnly: boolean }) {
-  const { go, openCustomer } = useApp()
-  const actions = useProjectActions(project)
-  const draft = project.state === 'draft'
-  return (
-    <div className="project-detail-head">
-      <button className="project-detail-back" onClick={() => go('projects')}><Icon name="arrow-left" /> Dự án</button>
-      <div className="project-detail-title">
-        <div>
-          <div className="project-title-line">
-            <h1>{project.customer}</h1>
-            <span className={'state-badge state-' + project.state}>{projectLabel(project)}</span>
-          </div>
-          <p className="project-subtitle">{project.service}</p>
-          <p className="project-meta-line">
-            <span className="mono">{project.code}</span>
-            <span>Account <b>{project.owner}</b></span>
-            <button type="button" className="meta-chip" onClick={() => openCustomer(project.customerId)} aria-label={'Mở hồ sơ khách hàng ' + project.customer}>
-              <Icon name="users-round" /> Hồ sơ khách hàng <Icon name="chevron-right" />
-            </button>
-          </p>
-        </div>
-        <div className="project-detail-actions" hidden={readOnly}>
-          <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa dự án</button>
-          {draft && <button className="primary" onClick={actions.start}><Icon name="play" /> Bắt đầu triển khai</button>}
-          {project.state === 'active' && runningCycle(project) && <button className="primary" onClick={actions.closeCycle}><Icon name="calendar-check-2" /> Chốt chu kỳ</button>}
-          {(project.state === 'pending' || project.state === 'stopped') && <button className="primary" onClick={actions.resume}><Icon name="play" /> {project.state === 'pending' ? 'Tiếp tục' : 'Mở lại'}</button>}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Summary({ project }: { project: Project }) {
-  const { params } = useData()
-  const { contracts } = useData()
-  const health = projectHealth(project, params, TODAY, projectOverdue(contracts, project.id))
-  const cycle = currentCycle(project)
-  const posts = postProgress(project)
-  const endNote = cycle && cycle.status === 'running' ? 'chốt ' + relativeDay(cycle.plannedEnd, TODAY) : cycle ? 'đã chốt' : 'tạo khi bắt đầu triển khai'
-  return (
-    <section className="project-overview project-overview-rich">
-      <div className="project-overview-main">
-        <span>Sức khỏe triển khai (tự tính theo mốc SOP)</span>
-        <strong>{health.label}{project.risk && health.level !== 'watch' ? ' · có cờ' : ''}</strong>
-        <p>{health.reason}</p>
-      </div>
-      <div className="project-overview-stat"><span>Chu kỳ</span><strong>{cycleCounter(project)}</strong><small>{cycleRange(project)}</small></div>
-      <div className="project-overview-stat">
-        <span>Bài đã đăng</span>
-        <strong>{posts ? posts.published + ' / ' + posts.planned : '—'}</strong>
-        <small>{posts ? (posts.bonus ? '+' + posts.bonus + ' bài tặng · ' : '') + 'chu kỳ ' + cycle?.no : 'gói không có bài đăng'}</small>
-      </div>
-      <div className="project-overview-stat"><span>Hạn chu kỳ</span><strong>{cycle ? cycle.plannedEnd.split('-').reverse().join('.') : '—'}</strong><small>{endNote}</small></div>
-    </section>
-  )
 }
 
 export function ProjectDetailScreen() {
@@ -123,9 +60,8 @@ export function ProjectDetailScreen() {
   const [, , title, subtitle] = TABS.find(([id]) => id === tab)!
   return (
     <section className="screen active" id="projectWorkspaceDetail">
-      <Header project={project} readOnly={Boolean(hint)} />
+      <ProjectHeader project={project} readOnly={Boolean(hint)} onTab={(id) => route && navigate(withQuery(route, { tab: id === 'tong-quan' ? undefined : id }))} />
       {hint && <div className="scope-banner"><Icon name="shield-check" /> {hint}. Chế độ xem: mở được các form để xem nhưng không lưu thay đổi.</div>}
-      <Summary project={project} />
       <nav className="project-detail-tabs" aria-label="Chi tiết dự án">
         {TABS.map(([id, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => route && navigate(withQuery(route, { tab: id === 'tong-quan' ? undefined : id }))}>
