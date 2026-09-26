@@ -6,7 +6,7 @@ import { currentCycle, projectHealth, runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
 import { projectOverdue } from '../../data/contracts'
 import type { Project } from '../../store/types'
-import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone, relativeDay } from './projectLogic'
+import { cycleCounter, cycleRange, postProgress, projectLabel, relativeDay } from './projectLogic'
 import { ProjectActivityRows } from './ProjectActivityRows'
 import { ContentTab } from './tabs/ContentTab'
 import { ContractTab } from './tabs/ContractTab'
@@ -40,8 +40,16 @@ function Header({ project, readOnly }: { project: Project; readOnly: boolean }) 
       <button className="project-detail-back" onClick={() => go('projects')}><Icon name="arrow-left" /> Dự án</button>
       <div className="project-detail-title">
         <div>
-          <h1>{project.customer} <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></h1>
-          <p>{project.code} · Khách <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>{project.customer}</button> · {project.service} · Account {project.owner}</p>
+          <div className="project-title-line">
+            <h1>{project.customer}</h1>
+            <span className={'state-badge state-' + project.state}>{projectLabel(project)}</span>
+          </div>
+          <p className="project-subtitle">{project.service}</p>
+          <p className="project-meta-line">
+            <span className="mono">{project.code}</span>
+            <span>Account <b>{project.owner}</b></span>
+            <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>Xem khách hàng ›</button>
+          </p>
         </div>
         <div className="project-detail-actions" hidden={readOnly}>
           <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa dự án</button>
