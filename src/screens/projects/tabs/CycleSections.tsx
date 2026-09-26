@@ -5,9 +5,7 @@ import { shortDate } from '../../../lib/format'
 import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, type Milestone } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
-import { KeyNoteModal } from '../ContentModals'
-import { DemoModal, PlanModal, ShootingModal } from '../CycleModals'
-import { statusTone } from '../projectLogic'
+import { DemoModal, PlanModal } from '../CycleModals'
 import { CycleTimeline } from './CycleTimeline'
 
 /** "Gửi 14.08 · Duyệt 16.08", or the due date while the step is open. */
@@ -33,15 +31,15 @@ function StepRow({ title, step, meta, action, children }: { title: string; step?
 }
 
 export function CycleSteps({ project, cycle }: { project: Project; cycle: Cycle }) {
-  const { showModal, toast } = useApp()
+  const { showModal, openProject } = useApp()
   const { params } = useData()
   const quota = project.quota
   const steps = cycleMilestones(cycle, quota, params)
   const stepOf = (kind: string) => steps.find((item) => item.kind === kind)
-  const shootingLocked = quota.plans > 0 && cycle.plan.status !== 'approved'
   const demo = stepOf('demo')
   const shoots = sortShoots(cycle.shootings)
   const planSteps = steps.filter((item) => item.kind === 'shootingPlan')
+  const nextShoot = shoots.find((item) => item.date && item.status !== 'Đã hoàn thành')
 
   return (
     <section className="panel cw-steps">
@@ -66,46 +64,11 @@ export function CycleSteps({ project, cycle }: { project: Project; cycle: Cycle 
 
       {quota.shoots > 0 && (
         <StepRow
-          title={'Shooting · ' + cycle.shootings.length + ' / ' + quota.shoots + ' buổi' + (cycle.shootings.length > quota.shoots ? ' · vượt gói' : '')}
-          meta={shootingLocked ? 'Lên lịch sau khi khách duyệt Content Plan' : ''}
-          action={
-            <button
-              className="text-btn"
-              aria-disabled={shootingLocked}
-              onClick={() => (shootingLocked ? toast('Cần khách duyệt Content Plan trước khi tạo lịch shooting.') : showModal(<ShootingModal project={project} />))}
-            >
-              + Lịch
-            </button>
-          }
-        >
-          {Array.from({ length: Math.max(quota.shoots, shoots.length) }, (_, index) => {
-            const shooting = shoots[index]
-            const plan = planSteps[index]
-            const planText = shooting?.plan.sentAt
-              ? 'Shooting Plan gửi ' + shortDate(shooting.plan.sentAt) + (plan?.detail.startsWith('Gửi trước') ? ' · ' + plan.detail.toLowerCase() : '')
-              : plan ? 'Shooting Plan hạn ' + (plan.projected ? '~' : '') + shortDate(plan.due) : ''
-            return (
-              <div className={'cw-shoot' + (shooting ? '' : ' is-empty')} key={shooting?.id ?? 'slot-' + index}>
-                <span>
-                  <b>Buổi {index + 1} · {shooting?.date ? shortDate(shooting.date) + (shooting.time ? ' · ' + shooting.time : '') : 'chưa chốt ngày'}</b>
-                  {shooting && <small>{[shooting.location, shooting.media.join(', ')].filter(Boolean).join(' · ') || 'Chưa có địa điểm, Media'}</small>}
-                  {planText && <small className={plan && plan.state === 'late' ? 'is-late' : ''}>{planText}</small>}
-                </span>
-                {shooting ? <span className={'pill ' + statusTone(shooting.status)}>{shooting.status}</span> : <span />}
-                <span className="row-actions">
-                  {shooting ? (
-                    <>
-                      <button className="text-btn" onClick={() => showModal(<ShootingModal project={project} shooting={shooting} />)}>Sửa</button>
-                      {shooting.status === 'Đã hoàn thành' && (
-                        <button className="text-btn" onClick={() => showModal(<KeyNoteModal project={project} type="Shooting recap" preset={'Recap shoot ' + shortDate(shooting.date) + ': '} />)}>Recap</button>
-                      )}
-                    </>
-                  ) : !shootingLocked && <button className="text-btn" onClick={() => showModal(<ShootingModal project={project} />)}>Lên lịch</button>}
-                </span>
-              </div>
-            )
-          })}
-        </StepRow>
+          title={'Quay chụp · ' + cycle.shootings.length + ' / ' + quota.shoots + ' buổi'}
+          step={planSteps.find((item) => item.state === 'late') ?? planSteps.find((item) => !item.done) ?? planSteps[planSteps.length - 1]}
+          meta={nextShoot ? 'Buổi tới ' + shortDate(nextShoot.date) + (nextShoot.media.length ? ' · ' + nextShoot.media.join(', ') : '') : cycle.shootings.length ? 'Đã quay ' + shoots.filter((item) => item.status === 'Đã hoàn thành').length + ' buổi' : 'Chưa lên lịch'}
+          action={<button className="text-btn" onClick={() => openProject(project.id, 'quay-chup')}>Xem</button>}
+        />
       )}
 
       {demo && (

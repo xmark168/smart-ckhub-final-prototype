@@ -54,8 +54,7 @@ export function ContentTab({ project }: { project: Project }) {
           <option value="">Mọi giai đoạn</option>
           {STAGES.map((name) => <option key={name}>{name}</option>)}
         </select>
-        {editable && <button className="primary" onClick={() => showModal(<ContentItemModal project={project} />)}><Icon name="plus" /> Nội dung</button>}
-        {project.links.contentPlan && <a className="project-drive-link" href={project.links.contentPlan} target="_blank" rel="noreferrer"><Icon name="external-link" /> Content Plan trên Drive</a>}
+        {editable && <button className="primary" onClick={() => showModal(<ContentItemModal project={project} />)}><Icon name="plus" /> Bài đăng</button>}
       </div>
       <section className="panel project-table-wrap content-table-panel">
         <table className="project-table-new content-table">

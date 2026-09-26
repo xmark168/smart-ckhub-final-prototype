@@ -299,21 +299,18 @@ export function LinksModal({ project }: { project: Project }) {
   const links = project.links
   return (
     <Modal
-      title="Liên kết Drive"
+      title="Folder dự án"
       onSubmit={(form) => {
         updateProject(project.id, (item) => {
-          item.links = { folder: field(form, 'folder'), contentPlan: field(form, 'contentPlan'), contentPost: field(form, 'contentPost'), keyNotes: field(form, 'keyNotes') }
-          addProjectActivity(item, 'link', 'Đã cập nhật liên kết Drive', 'Folder, Content Plan, Content Post, Key Notes')
+          item.links = { ...item.links, folder: field(form, 'folder') }
+          addProjectActivity(item, 'link', 'Đã cập nhật folder dự án', field(form, 'folder') || 'Đã xóa link')
         })
         closeModal()
       }}
     >
       <div className="form">
-        <label className="field">Folder dự án<input name="folder" type="url" defaultValue={links.folder} placeholder="https://drive.google.com/drive/folders/..." /></label>
-        <label className="field">Content Plan<input name="contentPlan" type="url" defaultValue={links.contentPlan} placeholder="https://docs.google.com/spreadsheets/..." /></label>
-        <label className="field">Content Post<input name="contentPost" type="url" defaultValue={links.contentPost} placeholder="https://docs.google.com/spreadsheets/..." /></label>
-        <label className="field">Key Notes<input name="keyNotes" type="url" defaultValue={links.keyNotes} placeholder="https://docs.google.com/..." /></label>
-        <FormActions submit="Lưu liên kết" />
+        <label className="field">Link folder Drive<input name="folder" type="url" defaultValue={links.folder} placeholder="https://drive.google.com/drive/folders/..." /></label>
+        <FormActions submit="Lưu" />
       </div>
     </Modal>
   )

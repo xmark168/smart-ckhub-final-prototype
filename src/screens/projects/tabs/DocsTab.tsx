@@ -3,30 +3,19 @@ import { Icon } from '../../../lib/icons'
 import type { Project } from '../../../store/types'
 import { LinksModal } from '../ContentModals'
 
-/** Drive links; the working documents live on Drive. */
+/** The project's Drive folder; working documents live there. */
 export function DocsTab({ project }: { project: Project }) {
   const { showModal } = useApp()
-  const links: Array<[string, string]> = [
-    ['Folder dự án', project.links.folder],
-    ['Content Plan', project.links.contentPlan],
-    ['Content Post', project.links.contentPost],
-    ['Key Notes', project.links.keyNotes],
-  ]
+  const folder = project.links.folder
   return (
     <section className="panel doc-links">
       <div className="panel-head">
-        <h2>Tài liệu trên Drive</h2>
-        <button className="text-btn" onClick={() => showModal(<LinksModal project={project} />)}>Sửa liên kết</button>
+        <h2>Folder dự án</h2>
+        <button className="text-btn" onClick={() => showModal(<LinksModal project={project} />)}>{folder ? 'Sửa link' : '+ Thêm link'}</button>
       </div>
-      <div className="doc-link-row">
-        {links.map(([title, href]) =>
-          href ? (
-            <a key={title} className="doc-link" href={href} target="_blank" rel="noreferrer"><Icon name="folder-open" /> {title} <Icon name="external-link" /></a>
-          ) : (
-            <button key={title} type="button" className="doc-link is-empty" onClick={() => showModal(<LinksModal project={project} />)}><Icon name="link" /> {title} · thêm link</button>
-          ),
-        )}
-      </div>
+      {folder
+        ? <a className="doc-link" href={folder} target="_blank" rel="noreferrer"><Icon name="folder-open" /> Mở folder trên Drive <Icon name="external-link" /></a>
+        : <p className="empty-copy">Chưa có link folder.</p>}
     </section>
   )
 }

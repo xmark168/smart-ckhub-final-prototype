@@ -12,7 +12,7 @@ import { postProgress, projectLabel } from './projectLogic'
 import { useProjectActions } from './useProjectActions'
 
 /** Content steps are worked on in the Nội dung tab, the rest in Chu kỳ. */
-const tabOf = (kind: string): ProjectTab => (kind === 'script' || kind === 'edit' || kind === 'publish' ? 'noi-dung' : 'tong-quan')
+const tabOf = (kind: string): ProjectTab => (kind === 'script' || kind === 'edit' || kind === 'publish' ? 'noi-dung' : kind === 'shootingPlan' || kind === 'shoot' ? 'quay-chup' : 'tong-quan')
 
 const HEALTH_CLASS: Record<string, string> = { late: 'late', watch: 'watch', ok: 'ok' }
 
