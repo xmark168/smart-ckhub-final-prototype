@@ -412,3 +412,6 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
   #customers .customer-dashboard .customer-kpi:not(.hero) { min-height: 0; padding: 12px; }
   #customers .customer-dashboard .customer-kpi:not(.hero) strong { font-size: 24px; }
 }
+/* The legacy ≤850px rule gives <aside> a 3-column grid; our aside holds one panel, so it must span full width. */
+#customerDetail .customer-detail-layout > aside { grid-template-columns: 1fr !important; width: 100%; }
+#customerDetail .customer-account-panel { width: 100%; box-sizing: border-box; }
