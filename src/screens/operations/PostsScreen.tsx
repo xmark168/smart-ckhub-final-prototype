@@ -1,5 +1,5 @@
 import { useApp } from '../../app/context'
-import { includesText, shortDate, TODAY } from '../../lib/format'
+import { includesText, shortDate, shortText, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { runningCycle, scriptDone, STAGES } from '../../lib/sop'
@@ -87,8 +87,8 @@ export function PostsScreen() {
                 {rows.map(({ project, cycleNo, item, late: rowLate }) => (
                   <tr key={project.id + item.id} onClick={() => (role === 'account' ? showModal(<ContentItemModal project={project} item={item} />) : openProject(project.id, 'noi-dung'))}>
                     <td>
-                      <b className="project-record-name">{item.title}</b>
-                      <span className="project-record-meta">{project.customer} · chu kỳ {cycleNo} · #{item.stt}{item.bonus ? ' · Tặng' : ''}</span>
+                      <span className="content-name"><b title={item.title}>{shortText(item.title)}</b>{item.bonus && <em className="tag-bonus">Tặng</em>}</span>
+                      <span className="content-sub">{project.customer} · chu kỳ {cycleNo} · #{item.stt}</span>
                     </td>
                     <td><span className={'pill ' + (item.mission === 'Bán hàng' ? 'waiting' : 'info')}>{item.mission}</span></td>
                     <td><span className="operation-channels">{item.channels.map((channel) => <i key={channel.platform} title={channel.status}>{channel.platform}</i>)}</span></td>

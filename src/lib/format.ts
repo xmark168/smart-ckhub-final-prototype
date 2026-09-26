@@ -3,6 +3,14 @@ export const TODAY = '2026-09-25'
 
 export const ACCOUNTS = ['Tuyền', 'Nguyên', 'Hiền', 'Minh Anh', 'Hải']
 
+/** Cut long text at a word boundary: "MINI GAME: ĂN THỬ CHẢ TRỨNG MUỐI…". */
+export function shortText(text: string, max = 40): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max)
+  const space = cut.lastIndexOf(' ')
+  return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.:;–-]+$/, '') + '…'
+}
+
 export function money(value: number | string | undefined): string {
   return Number(value || 0).toLocaleString('vi-VN') + ' đ'
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../../../app/context'
-import { shortDate, TODAY } from '../../../lib/format'
+import { shortDate, shortText, TODAY } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { currentCycle, isPublished, runningCycle, scriptDone, STAGES } from '../../../lib/sop'
 import type { ContentStage, Project } from '../../../store/types'
@@ -58,7 +58,7 @@ export function ContentTab({ project }: { project: Project }) {
       </div>
       <section className="panel project-table-wrap content-table-panel">
         <table className="project-table-new content-table">
-          <thead><tr><th className="c-stt">#</th><th className="c-title">Tiêu đề</th><th className="c-post">Ngày đăng</th><th className="c-due">Script / dựng</th><th className="c-stage">Giai đoạn</th></tr></thead>
+          <thead><tr><th className="c-stt">#</th><th className="c-title">Bài</th><th className="c-post">Ngày đăng</th><th className="c-due">Script / dựng</th><th className="c-stage">Giai đoạn</th></tr></thead>
           <tbody>
             {rows.map((item) => {
               const scriptLate = item.deadlineScript && item.deadlineScript < TODAY && !scriptDone(item)
@@ -67,8 +67,11 @@ export function ContentTab({ project }: { project: Project }) {
                 <tr key={item.id} onClick={() => editable && showModal(<ContentItemModal project={project} item={item} />)} className={editable ? '' : 'readonly'}>
                   <td className="c-stt">{item.stt}</td>
                   <td className="c-title">
-                    <span className="project-record-name content-title" title={item.title}>{item.title}</span>
-                    {(item.bonus || item.carried) && <span className="content-tags">{item.bonus && <em className="tag-bonus">Tặng</em>}{item.carried && <em className="tag-carry">Bù</em>}</span>}
+                    <span className="content-name">
+                      <b title={item.title}>{shortText(item.title)}</b>
+                      {item.bonus && <em className="tag-bonus">Tặng</em>}{item.carried && <em className="tag-carry">Bù</em>}
+                    </span>
+                    <span className="content-sub">{[item.topic, item.format].filter(Boolean).join(' · ')}</span>
                   </td>
                   <td className="c-post">{shortDate(item.postDate) || '—'}</td>
                   <td className="c-due">
