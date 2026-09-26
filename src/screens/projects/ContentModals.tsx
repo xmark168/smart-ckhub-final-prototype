@@ -7,7 +7,7 @@ import { checked, field } from '../../lib/form'
 import { cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
 import { getData, useData } from '../../store/store'
 import type { ContentChannel, ContentItem, ContentStage, KeyNote, Platform, Project } from '../../store/types'
-import { FormActions, Modal } from '../../ui/Modal'
+import { FormActions, Modal, Req } from '../../ui/Modal'
 import { addProjectActivity, updateProject } from './projectLogic'
 
 const CATEGORIES = ['Chia sẻ', 'Thông báo', 'Review', 'Mini-game', 'Tiểu phẩm', 'Challenge', 'Khuyến mãi']
@@ -106,7 +106,7 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
             </select>
           </label>
         )}
-        <label className="field">Tiêu đề<input name="title" required defaultValue={current.title} placeholder="Tiêu đề bài như trong Content Plan" /></label>
+        <label className="field">Tiêu đề<Req /><input name="title" required defaultValue={current.title} placeholder="Tiêu đề bài như trong Content Plan" /></label>
         <label className="field">Nhiệm vụ
           <select name="mission" defaultValue={current.mission}><option>Thương hiệu</option><option>Bán hàng</option></select>
         </label>
@@ -130,7 +130,7 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
             <label className="filter-check" key={platform}><input name={'ch-' + platform} type="checkbox" defaultChecked={current.channels.some((entry) => entry.platform === platform)} /> {platform}</label>
           ))}
         </fieldset>
-        <label className="field">Link media / bài đăng<input name="mediaLink" type="url" defaultValue={current.mediaLink} placeholder="https://..." /></label>
+        <label className="field">Link media / bài đăng <small>(không bắt buộc)</small><input name="mediaLink" type="url" defaultValue={current.mediaLink} placeholder="https://..." /></label>
         <label className="filter-check"><input name="bonus" type="checkbox" defaultChecked={current.bonus} /> Bài tặng (không tính vào định mức)</label>
         <div className="customer-data-rules">
           <p>
@@ -238,7 +238,7 @@ export function CloseCycleModal({ project }: { project: Project }) {
         </div>
         {overdue > 0 && <div className="customer-data-rules warn"><b>Công nợ quá hạn {overdue.toLocaleString('vi-VN')}đ</b><p>Nhắc khách thanh toán trước khi mở chu kỳ tiếp theo. Việc chốt chu kỳ không bị chặn.</p></div>}
         {daysLeft > params.cycleEndWarningDays && <div className="customer-data-rules warn"><b>Chốt sớm {daysLeft} ngày</b><p>Chu kỳ dự kiến kết thúc {formatDate(parseInput(cycle.plannedEnd))}. Chỉ chốt sớm khi đã thống nhất với khách.</p></div>}
-        <label className="field">Ngày kết thúc thực tế<input name="actualEnd" type="date" required defaultValue={TODAY} min={cycle.start} /></label>
+        <label className="field">Ngày kết thúc thực tế<Req /><input name="actualEnd" type="date" required defaultValue={TODAY} min={cycle.start} /></label>
         {progress.missing > 0 && (
           <>
             <label className="field">Xử lý bài còn thiếu
@@ -280,7 +280,7 @@ export function KeyNoteModal({ project, type = 'Từ Account', preset = '' }: { 
           <select name="type" defaultValue={type}><option>Từ khách</option><option>Từ Account</option><option>Shooting recap</option></select>
         </label>
         <label className="field">Ngày<input name="date" type="date" required defaultValue={TODAY} /></label>
-        <label className="field">Nội dung<textarea name="content" required defaultValue={preset} placeholder="Điều cần nhớ khi làm nội dung cho khách này" /></label>
+        <label className="field">Nội dung<Req /><textarea name="content" required defaultValue={preset} placeholder="Điều cần nhớ khi làm nội dung cho khách này" /></label>
         <FormActions submit="Lưu Key note" />
       </div>
     </Modal>

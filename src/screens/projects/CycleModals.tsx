@@ -4,7 +4,7 @@ import { ACCOUNTS, displayToInput, inputToDisplay, newId, TODAY } from '../../li
 import { field } from '../../lib/form'
 import { runningCycle } from '../../lib/sop'
 import type { Cycle, CycleTask, PlanStatus, Project, Shooting } from '../../store/types'
-import { FormActions, Modal } from '../../ui/Modal'
+import { FormActions, Modal, Req } from '../../ui/Modal'
 import { MEDIA_PEOPLE, planLabel, updateProject, withCycle } from './projectLogic'
 
 function saveCycle(project: Project, change: Parameters<typeof withCycle>[1]) {
@@ -32,6 +32,7 @@ export function PlanModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Content Plan"
+      help={<><p>Ngày gửi dùng để chấm mốc Content Plan. Ngày duyệt là mốc tính hạn Shooting Plan.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.plan.status = status
@@ -52,9 +53,8 @@ export function PlanModal({ project }: { project: Project }) {
         </label>
         <StampField label="Ngày gửi khách" name="sentAt" value={plan.sentAt} show={sent} />
         <StampField label="Ngày khách duyệt" name="approvedAt" value={plan.approvedAt} show={status === 'approved'} />
-        <label className="field">Link Content Plan<input name="link" type="url" defaultValue={plan.link || project.links.contentPlan} placeholder="https://docs.google.com/spreadsheets/..." /></label>
+        <label className="field">Link Content Plan <small>(không bắt buộc)</small><input name="link" type="url" defaultValue={plan.link || project.links.contentPlan} placeholder="https://docs.google.com/spreadsheets/..." /></label>
         <label className="field">Feedback khách<textarea name="feedback" defaultValue={plan.feedback} placeholder="Phản hồi hoặc phạm vi cần chỉnh" /></label>
-        <div className="customer-data-rules"><p>Ngày gửi dùng để chấm mốc Content Plan. Ngày duyệt là mốc tính hạn Shooting Plan.</p></div>
         <FormActions submit="Lưu Content Plan" />
       </div>
     </Modal>
@@ -67,6 +67,7 @@ export function ShootingPlanModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Shooting Plan"
+      help={<><p>Shooting Plan gồm giờ, địa điểm, Media, danh sách món và cảnh cần chuẩn bị. Khách cần xác nhận trước ngày shoot.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.shootingPlan = { sentAt: field(form, 'sentAt'), link: field(form, 'link') }
@@ -76,9 +77,8 @@ export function ShootingPlanModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <label className="field">Ngày gửi khách<input name="sentAt" type="date" required defaultValue={plan.sentAt || TODAY} max={TODAY} /></label>
-        <label className="field">Link Shooting Plan<input name="link" type="url" defaultValue={plan.link} placeholder="https://docs.google.com/..." /></label>
-        <div className="customer-data-rules"><p>Shooting Plan gồm giờ, địa điểm, Media, danh sách món và cảnh cần chuẩn bị. Khách cần xác nhận trước ngày shoot.</p></div>
+        <label className="field">Ngày gửi khách<Req /><input name="sentAt" type="date" required defaultValue={plan.sentAt || TODAY} max={TODAY} /></label>
+        <label className="field">Link Shooting Plan <small>(không bắt buộc)</small><input name="link" type="url" defaultValue={plan.link} placeholder="https://docs.google.com/..." /></label>
         <FormActions submit="Lưu Shooting Plan" />
       </div>
     </Modal>
@@ -92,6 +92,7 @@ export function ShootingModal({ project, shooting }: { project: Project; shootin
   return (
     <Modal
       title={shooting ? 'Cập nhật lịch shooting' : 'Tạo lịch shooting'}
+      help={<><p>Khi đánh dấu Đã hoàn thành, mốc Post Demo tự tính từ ngày shoot. Ghi Shooting recap vào Key notes ngay sau buổi quay.</p></>}
       onSubmit={(form) => {
         const media = people.filter((name) => (form.elements.namedItem('media-' + name) as HTMLInputElement | null)?.checked)
         const next: Shooting = {
@@ -113,7 +114,7 @@ export function ShootingModal({ project, shooting }: { project: Project; shootin
       }}
     >
       <div className="form">
-        <label className="field">Ngày shoot<input name="date" type="date" required defaultValue={current.date} /></label>
+        <label className="field">Ngày shoot<Req /><input name="date" type="date" required defaultValue={current.date} /></label>
         <label className="field">Khung giờ<input name="time" defaultValue={current.time} placeholder="Ví dụ: 11:00–15:00" /></label>
         <label className="field">Địa điểm<input name="location" defaultValue={current.location} placeholder="Địa chỉ quán hoặc studio" /></label>
         <fieldset className="field">
@@ -126,7 +127,6 @@ export function ShootingModal({ project, shooting }: { project: Project; shootin
           <select name="status" defaultValue={current.status}><option>Chờ xác nhận</option><option>Đã xác nhận</option><option>Đã hoàn thành</option></select>
         </label>
         <label className="field">Checklist khách chuẩn bị<textarea name="checklist" defaultValue={current.checklist} placeholder="Món cần làm, props, người xuất hiện, khung giờ vắng khách…" /></label>
-        <div className="customer-data-rules"><p>Khi đánh dấu Đã hoàn thành, mốc Post Demo tự tính từ ngày shoot. Ghi Shooting recap vào Key notes ngay sau buổi quay.</p></div>
         <FormActions submit="Lưu lịch shooting" />
       </div>
     </Modal>
@@ -141,6 +141,7 @@ export function DemoModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Post Demo"
+      help={<><p>Ngày khách duyệt Demo là mốc bắt đầu nhịp đăng bài.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.demo = {
@@ -162,8 +163,7 @@ export function DemoModal({ project }: { project: Project }) {
         </label>
         <StampField label="Ngày gửi khách" name="sentAt" value={demo.sentAt} show={sent} />
         <StampField label="Ngày khách duyệt" name="approvedAt" value={demo.approvedAt} show={status === 'Đã duyệt'} />
-        <label className="field">Link Demo<input name="link" type="url" defaultValue={demo.link} placeholder="https://..." /></label>
-        <div className="customer-data-rules"><p>Ngày khách duyệt Demo là mốc bắt đầu nhịp đăng bài.</p></div>
+        <label className="field">Link Demo <small>(không bắt buộc)</small><input name="link" type="url" defaultValue={demo.link} placeholder="https://..." /></label>
         <FormActions submit="Lưu Post Demo" />
       </div>
     </Modal>
@@ -177,6 +177,7 @@ export function CycleTaskModal({ project, task }: { project: Project; task?: Cyc
   return (
     <Modal
       title={task ? 'Cập nhật công việc' : 'Tạo công việc'}
+      help={<><p>Công việc thiếu Owner hoặc deadline chỉ được lưu ở trạng thái Nháp.</p></>}
       onSubmit={(form) => {
         const owner = form.elements.namedItem('owner') as HTMLSelectElement
         const status = field(form, 'status')
@@ -196,7 +197,7 @@ export function CycleTaskModal({ project, task }: { project: Project; task?: Cyc
       }}
     >
       <div className="form">
-        <label className="field">Công việc<input name="name" required defaultValue={current.name} /></label>
+        <label className="field">Công việc<Req /><input name="name" required defaultValue={current.name} /></label>
         <label className="field">Owner
           <select name="owner" defaultValue={current.owner} onChange={(event) => event.target.setCustomValidity('')}>
             <option value="">Chưa giao</option>
@@ -209,7 +210,6 @@ export function CycleTaskModal({ project, task }: { project: Project; task?: Cyc
             <option>Nháp</option><option>Việc cần làm</option><option>Đang thực hiện</option><option>Đang chờ</option><option>Đã hoàn thành</option>
           </select>
         </label>
-        <div className="customer-data-rules"><p>Công việc thiếu Owner hoặc deadline chỉ được lưu ở trạng thái Nháp.</p></div>
         {task ? (
           <div className="form-actions">
             <button
@@ -253,7 +253,7 @@ export function ExceptionModal({ project }: { project: Project }) {
         <label className="field">Loại ngoại lệ
           <select name="type"><option>Chờ khách duyệt</option><option>Khách chậm cung cấp brief</option><option>Có nguy cơ trễ</option><option>Đổi lịch shoot</option><option>Media quá tải</option></select>
         </label>
-        <label className="field">Lý do và hành động tiếp theo<textarea name="reason" required placeholder="Nguyên nhân, người xử lý và mốc theo dõi" /></label>
+        <label className="field">Lý do và hành động tiếp theo<Req /><textarea name="reason" required placeholder="Nguyên nhân, người xử lý và mốc theo dõi" /></label>
         <FormActions submit="Lưu ngoại lệ" />
       </div>
     </Modal>

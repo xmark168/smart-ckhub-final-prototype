@@ -9,7 +9,7 @@ import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { getData, update, useData } from '../../store/store'
 import type { Onboarding, Project } from '../../store/types'
-import { FormActions, Modal } from '../../ui/Modal'
+import { FormActions, Modal, Req } from '../../ui/Modal'
 import { ContractDetailModal, ContractFormModal } from '../contracts/ContractModals'
 import { addProjectActivity, onboardingItems, onboardingReady, updateProject } from './projectLogic'
 
@@ -54,6 +54,7 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
   return (
     <Modal
       title="Tạo dự án"
+      help={<><p>Dự án được tạo ở trạng thái nháp. Partner gán theo từng buổi shoot và công việc; Content nội bộ dùng chung. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></>}
       onSubmit={(form) => {
         const customer = findCustomer(customerText)
         if (!customer) {
@@ -82,7 +83,6 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
             state: 'draft',
             risk: false,
             cycles: [],
-            team: { account: owner, planner: '', media: [], ads: '' },
             links: { folder: field(form, 'folder'), contentPlan: '', contentPost: '', keyNotes: '' },
             notes: '',
             keyNotes: [],
@@ -94,7 +94,7 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
       }}
     >
       <div className="form">
-        <label className="field">Khách hàng
+        <label className="field">Khách hàng<Req />
           <input
             ref={customerRef}
             name="customer"
@@ -114,12 +114,12 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
           />
           <datalist id="projectCustomerOptions">{choices.map((item) => <option key={item.id} value={item.name} />)}</datalist>
         </label>
-        <label className="field">Account phụ trách
+        <label className="field">Account phụ trách<Req />
           <select name="owner" value={owner} onChange={(event) => setOwner(event.target.value)}>
             {ACCOUNTS.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
-        <label className="field">Nhóm dịch vụ
+        <label className="field">Nhóm dịch vụ<Req />
           <select
             name="serviceCategory"
             value={category}
@@ -131,14 +131,13 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
             {usableCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
-        <label className="field">Gói dịch vụ
+        <label className="field">Gói dịch vụ<Req />
           <select name="servicePackage" required value={packageId} onChange={(event) => setPackageId(event.target.value)}>
             {categoryPackages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
           </select>
         </label>
         {selectedPackage && <QuotaNote quota={selectedPackage.quota} />}
-        <label className="field">Folder dự án trên Drive<input name="folder" type="url" placeholder="https://drive.google.com/drive/folders/..." /></label>
-        <div className="customer-data-rules"><p>Dự án được tạo ở trạng thái nháp. Partner gán theo từng buổi shoot và công việc; Content nội bộ dùng chung. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></div>
+        <label className="field">Folder dự án trên Drive <small>(không bắt buộc)</small><input name="folder" type="url" placeholder="https://drive.google.com/drive/folders/..." /></label>
         <FormActions submit="Tạo dự án nháp" />
       </div>
     </Modal>
@@ -165,7 +164,6 @@ export function EditProjectModal({ project }: { project: Project }) {
             item.servicePrice = service.price
             item.quota = { ...service.quota }
           }
-          item.team = { ...item.team, account: item.owner }
           item.notes = field(form, 'notes')
           addProjectActivity(item, 'pencil', 'Thông tin dự án đã cập nhật', changedPackage ? 'Đổi gói dự kiến: ' + item.service + '.' : 'Account, đội dự án hoặc ghi chú vận hành được điều chỉnh.')
         })
@@ -174,7 +172,7 @@ export function EditProjectModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <label className="field">Account phụ trách
+        <label className="field">Account phụ trách<Req />
           <select name="owner" defaultValue={project.owner}>{ACCOUNTS.map((name) => <option key={name} value={name}>{name}</option>)}</select>
         </label>
         {locked ? (
@@ -184,7 +182,7 @@ export function EditProjectModal({ project }: { project: Project }) {
             <button type="button" className="text-btn" onClick={() => showModal(<ContractFormModal preferredProjectId={project.id} appendix />)}>Đổi gói bằng phụ lục / hợp đồng mới ›</button>
           </div>
         ) : (
-          <label className="field">Gói dịch vụ dự kiến
+          <label className="field">Gói dịch vụ dự kiến<Req />
             <select name="servicePackage" required defaultValue={project.servicePackageId}>
               {packages.map((item) => <option key={item.id} value={item.id}>{packageLabel(item)}</option>)}
             </select>
@@ -206,6 +204,7 @@ export function StopProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Dừng dự án"
+      help={<><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Chu kỳ đang chạy được chốt tại ngày hiệu lực; số chu kỳ đã triển khai giữ nguyên.</p></>}
       onSubmit={(form) => {
         const date = field(form, 'effectiveDate')
         const reason = field(form, 'reason')
@@ -235,9 +234,8 @@ export function StopProjectModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Chu kỳ đang chạy được chốt tại ngày hiệu lực; số chu kỳ đã triển khai giữ nguyên.</p></div>
-        <label className="field">Lý do dừng<textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
-        <label className="field">Ngày hiệu lực<input name="effectiveDate" type="date" required defaultValue={TODAY} /></label>
+        <label className="field">Lý do dừng<Req /><textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
+        <label className="field">Ngày hiệu lực<Req /><input name="effectiveDate" type="date" required defaultValue={TODAY} /></label>
         {contract && contract.status === 'Hiệu lực' && (
           others.length ? (
             <div className="customer-data-rules"><p>{contract.code} còn gồm {others.map((item) => item.code).join(', ')} đang chạy nên giữ Hiệu lực. Đổi phạm vi hợp đồng bằng phụ lục.</p></div>
@@ -257,6 +255,7 @@ export function PauseProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Tạm dừng dự án"
+      help={<><p>Tạm dừng giữ nguyên chu kỳ đang chạy và hợp đồng. Mốc SOP không bị tính trễ trong thời gian tạm dừng.</p></>}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         const returnDate = field(form, 'returnDate')
@@ -269,8 +268,7 @@ export function PauseProjectModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><p>Tạm dừng giữ nguyên chu kỳ đang chạy và hợp đồng. Mốc SOP không bị tính trễ trong thời gian tạm dừng.</p></div>
-        <label className="field">Lý do tạm dừng<textarea name="reason" required placeholder="Ví dụ: khách sửa quán, chờ ngân sách" /></label>
+        <label className="field">Lý do tạm dừng<Req /><textarea name="reason" required placeholder="Ví dụ: khách sửa quán, chờ ngân sách" /></label>
         <label className="field">Ngày dự kiến quay lại<input name="returnDate" type="date" /></label>
         <FormActions submit="Tạm dừng" />
       </div>
@@ -284,6 +282,7 @@ export function StartProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Bắt đầu triển khai"
+      help={<><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></>}
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
         updateProject(project.id, (item) => {
@@ -300,8 +299,7 @@ export function StartProjectModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></div>
-        <label className="field">Ngày bắt đầu chu kỳ (T0)<input name="cycleStart" type="date" required defaultValue={TODAY} /></label>
+        <label className="field">Ngày bắt đầu chu kỳ (T0)<Req /><input name="cycleStart" type="date" required defaultValue={TODAY} /></label>
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận bắt đầu triển khai theo điều kiện đã kiểm tra.</label>
         <FormActions submit="Bắt đầu triển khai" />
       </div>
@@ -453,6 +451,7 @@ export function CancelDraftModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Hủy dự án nháp"
+      help={<><p>Dùng khi khách không chốt. Dự án chuyển sang Đã dừng, không tạo chu kỳ; hợp đồng nháp (nếu có) cần hủy tại Hợp đồng &amp; công nợ.</p></>}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         updateProject(project.id, (item) => {
@@ -465,8 +464,7 @@ export function CancelDraftModal({ project }: { project: Project }) {
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><p>Dùng khi khách không chốt. Dự án chuyển sang Đã dừng, không tạo chu kỳ; hợp đồng nháp (nếu có) cần hủy tại Hợp đồng &amp; công nợ.</p></div>
-        <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chưa đủ ngân sách" /></label>
+        <label className="field">Lý do<Req /><textarea name="reason" required placeholder="Ví dụ: khách chưa đủ ngân sách" /></label>
         <FormActions submit="Hủy dự án nháp" cancel="Giữ dự án" />
       </div>
     </Modal>
@@ -479,6 +477,7 @@ export function NotesModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Ghi chú dự án"
+      help={<><p>Ghi chú hiện ở trang dự án và trang khách hàng. Kiến thức lâu dài về khách (feedback, recap) ghi vào Key notes ở tab Tài liệu.</p></>}
       onSubmit={(form) => {
         const notes = field(form, 'notes')
         updateProject(project.id, (item) => {
@@ -492,7 +491,6 @@ export function NotesModal({ project }: { project: Project }) {
         <label className="field">Ghi chú
           <textarea name="notes" rows={6} autoFocus defaultValue={project.notes} placeholder="Điều cả team cần nhớ khi làm dự án này: yêu cầu riêng của khách, lưu ý sản xuất, thỏa thuận ngoài hợp đồng…" />
         </label>
-        <div className="customer-data-rules"><p>Ghi chú hiện ở trang dự án và trang khách hàng. Kiến thức lâu dài về khách (feedback, recap) ghi vào Key notes ở tab Tài liệu.</p></div>
         <FormActions submit="Lưu ghi chú" />
       </div>
     </Modal>

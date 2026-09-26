@@ -5,7 +5,7 @@ import { checked, field } from '../../lib/form'
 import { projectHealth } from '../../lib/sop'
 import { getData, update, useData } from '../../store/store'
 import type { Customer } from '../../store/types'
-import { FormActions, Modal } from '../../ui/Modal'
+import { FormActions, Modal, Req } from '../../ui/Modal'
 import { addCustomerActivity, customerStatus, endBlockerItems, sameName } from './customerLogic'
 import { ContractDetailModal } from '../contracts/ContractModals'
 
@@ -13,7 +13,7 @@ const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'
 
 function AreaSelect({ value = 'HCM' }: { value?: string }) {
   return (
-    <label className="field">Khu vực
+    <label className="field">Khu vực<Req />
       <select name="area" defaultValue={value}><option>HCM</option><option>HN</option><option>Tỉnh</option></select>
     </label>
   )
@@ -29,7 +29,7 @@ function NotesField({ value }: { value?: string }) {
 
 function OwnerSelect({ value }: { value: string }) {
   return (
-    <label className="field">Account phụ trách
+    <label className="field">Account phụ trách<Req />
       <select name="owner" defaultValue={value}>{ACCOUNTS.map((name) => <option key={name}>{name}</option>)}</select>
     </label>
   )
@@ -45,7 +45,7 @@ function duplicateError(form: HTMLFormElement, exceptId = ''): string {
 /** Name input with an error message tied to it (aria-invalid + aria-describedby). */
 function NameField({ value, error, onEdit }: { value?: string; error: string; onEdit: () => void }) {
   return (
-    <label className="field">Tên thương hiệu
+    <label className="field">Tên thương hiệu<Req />
       <input name="name" required autoFocus defaultValue={value} aria-invalid={Boolean(error)} aria-describedby={error ? 'customerNameError' : undefined} onInput={onEdit} />
       {error && <span id="customerNameError" className="field-error" role="alert">{error}</span>}
     </label>
@@ -58,6 +58,7 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
   return (
     <Modal
       title="Tạo khách hàng"
+      help={<><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></>}
       onSubmit={(form) => {
         const duplicate = duplicateError(form)
         setError(duplicate)
@@ -89,7 +90,6 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
         <OwnerSelect value={account} />
         <AreaSelect />
         <NotesField />
-        <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></div>
         <FormActions submit="Tạo khách hàng" />
       </div>
     </Modal>
@@ -127,7 +127,6 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
             project.area = target.area
             if (moveProjects && project.owner === previous && project.state !== 'stopped') {
               project.owner = owner
-              project.team.account = owner
             }
           })
           if (previous !== owner) addCustomerActivity(target, 'Đổi Account phụ trách', previous + ' → ' + owner + (moveProjects ? ' · chuyển cả dự án đang mở' : ''), 'user-round')
@@ -189,8 +188,8 @@ export function EndCooperationModal({ customer }: { customer: Customer }) {
       }}
     >
       <div className="form">
-        <label className="field">Lý do<textarea name="reason" required placeholder="Ví dụ: khách chuyển sang tự vận hành kênh" /></label>
-        <label className="field">Ngày kết thúc
+        <label className="field">Lý do<Req /><textarea name="reason" required placeholder="Ví dụ: khách chuyển sang tự vận hành kênh" /></label>
+        <label className="field">Ngày kết thúc<Req />
           <input name="date" type="date" required value={date} onChange={(event) => setDate(event.target.value)} aria-describedby="endDateHint" />
           <span id="endDateHint" className="field-hint">{date ? 'Ngày ' + formatDate(parseInput(date)) : 'Chọn ngày'}</span>
         </label>
@@ -289,6 +288,7 @@ export function PeriodModal() {
   return (
     <Modal
       title="Kỳ xem"
+      help={<><p>Kỳ xem áp dụng cho số khách mới và khách kết thúc hợp tác. Khách hiện hữu và khách cần chú ý luôn tính tại hôm nay. Bản prototype lưu kỳ xem chung cho mọi người dùng trên trình duyệt này.</p></>}
       onSubmit={(form) => {
         update((draft) => {
           draft.period = { mode, month: field(form, 'month') || period.month, year: field(form, 'year') }
@@ -300,7 +300,6 @@ export function PeriodModal() {
         <label className="field">Xem theo<select name="mode" value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option value="month">Tháng</option><option value="year">Năm</option></select></label>
         {mode === 'month' && <label className="field">Tháng<select name="month" defaultValue={period.month}>{MONTHS.map((month) => <option key={month} value={month}>Tháng {month}</option>)}</select></label>}
         <label className="field">Năm<select name="year" defaultValue={period.year}>{['2025', '2026'].map((year) => <option key={year}>{year}</option>)}</select></label>
-        <div className="customer-data-rules"><p>Kỳ xem áp dụng cho số khách mới và khách kết thúc hợp tác. Khách hiện hữu và khách cần chú ý luôn tính tại hôm nay. Bản prototype lưu kỳ xem chung cho mọi người dùng trên trình duyệt này.</p></div>
         <FormActions submit="Áp dụng" />
       </div>
     </Modal>

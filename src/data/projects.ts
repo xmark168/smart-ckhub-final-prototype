@@ -8,7 +8,6 @@ export { COM_TAM_TAI_ID } from './comTamTai'
 
 /** Media, Planner/Content names used across the 2026 progress sheet. */
 const MEDIA = ['Hải', 'Hân', 'Bình', 'Phước', 'Anh Thư']
-const PLANNERS = ['Thương', 'Minh', 'Linh']
 const CATEGORIES = ['Chia sẻ', 'Review', 'Thông báo', 'Mini-game']
 
 /** yyyy-mm-dd only if it is not in the future — seeds never record events after TODAY. */
@@ -154,7 +153,6 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
       pause: state === 'pending' ? { reason: 'Khách tạm ngưng vận hành để sửa quán.', returnDate: '2026-10-15' } : undefined,
       stop: state === 'stopped' ? { reason: 'Khách dừng hợp tác sau chu kỳ tháng 8.', date: '2026-08-31' } : undefined,
       cycles,
-      team: { account: owner, planner: quota.plans ? PLANNERS[index % PLANNERS.length] : '', media: quota.shoots ? [media] : [], ads: quota.posts ? 'Team Ads' : '' },
       links: { folder: '', contentPlan: '', contentPost: '', keyNotes: '' },
       notes: '',
       keyNotes: [],
@@ -181,7 +179,6 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
       quota: { ...ads.quota },
       risk: false,
       riskReason: undefined,
-      team: { ...base.team, ads: 'Team Ads' },
       activities: [{ icon: 'package-check', title: 'Gói dịch vụ đã áp dụng', detail: ads.group + ' · ' + ads.name + ' · cùng ' + base.contractCode }],
     })
   }

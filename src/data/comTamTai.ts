@@ -167,7 +167,6 @@ export function comTamTaiProject(): Project {
       closedCycle(3, '2026-07-23', '2026-08-22', '2026-08-22', 10, 'Nghiệm thu 10 bài (AGI tháng 8), bù 2 bài sang chu kỳ 4.'),
       cycle4,
     ],
-    team: { account: 'Hiền', planner: 'Thương', media: ['Hải', 'Như'], ads: 'Team Ads' },
     links: { ...COM_TAM_TAI_LINKS },
     notes: 'Khách muốn viral TikTok; đang chạy Ads TikTok đều. Đăng TikTok cho khách luôn.',
     keyNotes: [

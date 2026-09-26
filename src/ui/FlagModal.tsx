@@ -1,6 +1,6 @@
 import { useApp } from '../app/context'
 import { field } from '../lib/form'
-import { FormActions, Modal } from './Modal'
+import { FormActions, Modal, Req } from './Modal'
 
 const QUICK = ['Khách phản hồi chậm', 'Khách không hài lòng nội dung', 'Rủi ro thanh toán', 'Thiếu nguồn lực Media', 'Khách có ý định dừng']
 
@@ -10,14 +10,14 @@ export function FlagModal({ subject, onConfirm }: { subject: string; onConfirm: 
   return (
     <Modal
       title="Đánh dấu cần chú ý"
+      help={<p>{subject}. Lý do hiển thị cùng cờ để người xem biết cần theo dõi điều gì; gỡ cờ khi đã xử lý xong.</p>}
       onSubmit={(form) => {
         onConfirm(field(form, 'reason'))
         closeModal()
       }}
     >
       <div className="form">
-        <div className="customer-data-rules"><p>{subject}. Lý do hiển thị cùng cờ để người xem biết cần theo dõi điều gì; gỡ cờ khi đã xử lý xong.</p></div>
-        <label className="field">Lý do
+        <label className="field">Lý do<Req />
           <textarea name="reason" required autoFocus placeholder="Ví dụ: khách chê tone video tuần 2, cần họp lại trước 30.09" />
         </label>
         <div className="flag-quick">

@@ -418,3 +418,13 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 
 .customer-data-rules.warn { border-left-color: #b45309; background: #fff7ed; }
 .project-readonly .project-tab-content fieldset.readonly-fence { all: unset; display: contents; }
+
+/* ---- Dialog help (?) and required markers ---- */
+.modal-top { gap: 8px; }
+.modal-top h2 { margin-right: auto; }
+.modal-top .modal-help { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 1px solid rgb(223, 207, 194); border-radius: 50%; background: #fff; color: rgb(158, 79, 44); font: 800 11px/1 var(--font-body); cursor: pointer; }
+.modal-top .modal-help[aria-expanded="true"] { border-color: #c43d0c; background: var(--orange-pale); }
+.modal-help-panel { margin: 0 0 12px; }
+.modal-help-panel p + p, .modal-help-panel b + p { margin-top: 4px; }
+.req { margin-left: 2px; color: #b42318; font-weight: 800; text-decoration: none; border: 0; cursor: help; }
+.modal .form:has(.req)::before { content: "* là trường bắt buộc"; display: block; color: var(--muted); font-size: 11px; }

@@ -8,7 +8,7 @@ import { Icon } from '../../lib/icons'
 import { update, useData } from '../../store/store'
 import type { Contract, ContractStatus, Payment } from '../../store/types'
 import { field } from '../../lib/form'
-import { Modal } from '../../ui/Modal'
+import { Modal, Req } from '../../ui/Modal'
 
 interface PlanRow {
   key: number
@@ -45,7 +45,6 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   const save = (form: HTMLFormElement) => {
     const target = projects.find((item) => item.id === field(form, 'project'))
     if (!target) return
-    if (fromOnboarding && !field(form, 'evidence')) { toast('Bổ sung link file hợp đồng đã ký trên Drive trước khi lưu.'); return }
     if (!(value > 0) || !complete || total !== 100) { toast('Kiểm tra lịch thanh toán: đủ hạn và tổng tỷ lệ phải là 100%.'); return }
     update((draft) => {
       const existing = row && draft.contracts.find((item) => item.id === row.id)
@@ -108,7 +107,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   }
 
   return (
-    <Modal title={row ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} className="contract-modal" onSubmit={save}>
+    <Modal title={row ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} className="contract-modal" onSubmit={save} help={<><p>Ngày kết thúc dự kiến tự tính từ ngày bắt đầu và số chu kỳ. Chỉ một hợp đồng chính hiệu lực trên mỗi dự án.</p><p>Link file và folder Drive không bắt buộc; bổ sung khi có.</p></>}>
       <div className="form">
         {project && (
           <div className="customer-data-rules">
@@ -116,7 +115,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
             <p>Gói dịch vụ: {project.service || 'Chưa có dịch vụ áp dụng'}. Giá trị được điền theo snapshot dự án; kiểm tra lại theo HĐ đã ký.</p>
           </div>
         )}
-        <label className="field">Dự án
+        <label className="field">Dự án<Req />
           <select
             name="project"
             value={projectId}
@@ -128,7 +127,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
             {projects.map((item) => <option key={item.id} value={item.id}>{item.customer} · {item.service}</option>)}
           </select>
         </label>
-        <label className="field">Loại liên kết
+        <label className="field">Loại liên kết<Req />
           <select name="type" value={type} onChange={(event) => setType(event.target.value as Contract['type'])}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
         </label>
         {type === 'Hợp đồng chính' && siblings.length > 0 && (
@@ -167,15 +166,15 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
             <small className="field-hint">Chu kỳ đã chạy giữ nguyên định mức cũ. Định mức mới lấy theo gói trong danh mục.</small>
           </fieldset>
         )}
-        <label className="field">Mã hợp đồng<input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
-        <label className="field">Số chu kỳ theo hợp đồng<input name="cycles" type="number" min="1" required defaultValue={row ? row.cycles : 1} /></label>
-        <label className="field">Ngày bắt đầu hợp đồng<input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>
-        <label className="field">Giá trị hợp đồng<input name="value" type="number" min="0" required value={value} onChange={(event) => setValue(Number(event.target.value))} /></label>
-        <label className="field">Trạng thái
+        <label className="field">Mã hợp đồng<Req /><input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
+        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required defaultValue={row ? row.cycles : 1} /></label>
+        <label className="field">Ngày bắt đầu hợp đồng<Req /><input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>
+        <label className="field">Giá trị hợp đồng<Req /><input name="value" type="number" min="0" required value={value} onChange={(event) => setValue(Number(event.target.value))} /></label>
+        <label className="field">Trạng thái<Req />
           <select name="status" defaultValue={row ? row.status : fromOnboarding ? 'Hiệu lực' : 'Nháp'}><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option></select>
         </label>
-        <label className="field">Link file HĐ đã ký trên Drive<input name="evidence" type="url" required placeholder="https://drive.google.com/..." defaultValue={row?.evidence} /></label>
-        <label className="field">Folder hợp đồng trên Drive <small>(khuyến nghị)</small><input name="folderUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." defaultValue={row?.folderUrl} /></label>
+        <label className="field">Link file HĐ đã ký trên Drive <small>(không bắt buộc)</small><input name="evidence" type="url" placeholder="https://drive.google.com/..." defaultValue={row?.evidence} /></label>
+        <label className="field">Folder hợp đồng trên Drive <small>(không bắt buộc)</small><input name="folderUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." defaultValue={row?.folderUrl} /></label>
 
         <section className="onboarding-payment-plan">
           <div className="onboarding-payment-plan-head">
@@ -211,7 +210,6 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </button>
         </section>
 
-        <div className="customer-data-rules"><p>Ngày kết thúc dự kiến tự tính từ ngày bắt đầu và số chu kỳ. Chỉ một hợp đồng chính hiệu lực trên mỗi dự án.</p></div>
         <div className="form-actions">
           <button className="secondary" type="button" onClick={closeModal}>Hủy</button>
           <button className="primary">Lưu hợp đồng</button>

@@ -138,13 +138,6 @@ export interface Cycle {
   activity: Array<{ title: string; detail: string; time: string }>
 }
 
-export interface ProjectTeam {
-  account: string
-  planner: string
-  media: string[]
-  ads: string
-}
-
 export interface ProjectLinks {
   folder: string
   contentPlan: string
@@ -187,7 +180,6 @@ export interface Project {
   pause?: { reason: string; returnDate: string }
   stop?: { reason: string; date: string }
   cycles: Cycle[]
-  team: ProjectTeam
   links: ProjectLinks
   notes: string
   keyNotes: KeyNote[]
