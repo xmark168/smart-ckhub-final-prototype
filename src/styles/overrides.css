@@ -810,3 +810,45 @@ em.pill { font-style: normal; }
 .health-band .pace-mark { background: #fff; }
 .health-band .hb-link:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); }
 .health-band .hb-next:hover b { color: #ffb48f; }
+
+
+/* ---- Project dashboard v4: to-do list · pace · money ---- */
+.health-band.v4 { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.1fr) minmax(0, 0.75fr); align-items: stretch; }
+.health-band.v4 > * { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.health-band.v4 .hb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.health-band.v4 .hb-head svg { width: 16px; height: 16px; color: rgba(255, 255, 255, 0.5); }
+.health-band.v4 .hb-label { font-size: 12px; letter-spacing: 0.01em; }
+.hb-count { padding: 2px 8px; border-radius: 99px; background: rgba(248, 113, 113, 0.18); color: #fecaca; font-size: 11px; font-weight: 800; }
+.tone-watch .hb-count { background: rgba(251, 191, 36, 0.16); color: #fde68a; }
+.hb-todo { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.hb-todo button { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 14px; align-items: center; gap: 10px; width: 100%; padding: 8px 8px 8px 6px; border: 0; border-radius: 8px; background: transparent; color: #fff; font: 600 13px var(--font-body); text-align: left; cursor: pointer; }
+.hb-todo button:hover { background: rgba(255, 255, 255, 0.07); }
+.hb-todo button i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); }
+.hb-todo button.is-late i { background: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.2); }
+.hb-todo button.is-due i { background: #fbbf24; }
+.hb-todo .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-todo .d { color: rgba(255, 255, 255, 0.7); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.hb-todo button.is-late .d { color: #fca5a5; }
+.hb-todo button.is-due .d { color: #fde68a; }
+.hb-todo svg { width: 14px; height: 14px; color: rgba(255, 255, 255, 0.45); }
+.pace-item { display: grid; gap: 6px; }
+.pace-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pace-top span { color: rgba(255, 255, 255, 0.66); font-size: 12px; font-weight: 600; }
+.pace-top b { color: #fff; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.pace-top b.is-late { color: #fca5a5; }
+.pace-top b.is-due { color: #fde68a; }
+.health-band.v4 .pace-bar { height: 6px; }
+.health-band.v4 .pace-mark { top: -4px; height: 14px; width: 3px; box-shadow: 0 0 0 2px rgba(29, 22, 17, 0.8); }
+.health-band.v4 .pace-note { margin-top: auto; font-size: 12px; }
+.health-band.v4 .hb-contract { gap: 4px; }
+.health-band.v4 .hb-contract strong { margin: 2px 0 0; font: 700 26px/1.1 var(--font-display); }
+.health-band.v4 .hb-contract strong.is-late { color: #fca5a5; }
+.hb-money-note { font-size: 12px !important; }
+.hb-cycles { margin-top: auto; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.78); font-size: 12px; font-weight: 600; }
+@media (max-width: 900px) {
+  .health-band.v4 { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .health-band.v4 .hb-main { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .health-band.v4 { grid-template-columns: 1fr; }
+}

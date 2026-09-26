@@ -122,45 +122,57 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
   const cyclesLeft = project.total ? Math.max(0, project.total - project.cycles.length) : 0
   const cadence = params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần'
 
+  const lateCount = urgent.filter((item) => item.state === 'late').length
+
   return (
-    <section className={'health-band tone-' + tone} aria-label="Tình trạng dự án">
+    <section className={'health-band v4 tone-' + tone} aria-label="Tình trạng dự án">
       <div className="hb-main">
-        <span className="hb-label">{urgent.length ? 'Cần xử lý ngay' : project.state === 'active' ? 'Việc tiếp theo' : 'Trạng thái'}</span>
+        <div className="hb-head">
+          <span className="hb-label">{urgent.length ? 'Cần xử lý ngay' : project.state === 'active' ? 'Việc tiếp theo' : 'Trạng thái'}</span>
+          {urgent.length > 0 && <span className="hb-count">{lateCount ? lateCount + ' quá hạn' : urgent.length + ' đến hạn'}</span>}
+        </div>
         {urgent.length ? (
-          <ul className="hb-chips">
+          <ul className="hb-todo">
             {urgent.map((item) => (
               <li key={item.key}>
-                <button type="button" className={'hb-chip is-' + item.state} onClick={() => onTab(tabOf(item.key))}>
-                  {item.label}{item.due ? ' · ' + dayText(diffDays(TODAY, item.due)) : ''} ›
+                <button type="button" className={'is-' + item.state} onClick={() => onTab(tabOf(item.key))}>
+                  <i aria-hidden="true" />
+                  <span className="t">{item.label}</span>
+                  <span className="d">{item.due ? dayText(diffDays(TODAY, item.due)) : ''}</span>
+                  <Icon name="chevron-right" />
                 </button>
               </li>
             ))}
           </ul>
         ) : project.state === 'active' && upcoming ? (
-          <button type="button" className="hb-next" onClick={() => onTab(tabOf(upcoming.key))}>
-            <b>{upcoming.label}</b>
-            <small>{upcoming.due ? dayText(diffDays(TODAY, upcoming.due)) + ' · ' + shortDate(upcoming.due) : upcoming.detail} ›</small>
-          </button>
+          <ul className="hb-todo">
+            <li>
+              <button type="button" className="is-upcoming" onClick={() => onTab(tabOf(upcoming.key))}>
+                <i aria-hidden="true" />
+                <span className="t">{upcoming.label}</span>
+                <span className="d">{upcoming.due ? dayText(diffDays(TODAY, upcoming.due)) : ''}</span>
+                <Icon name="chevron-right" />
+              </button>
+            </li>
+          </ul>
         ) : <p className="hb-note">{health.reason}</p>}
       </div>
 
       <div className="hb-pace">
-        <span className="hb-label">Tiến độ chu kỳ {cycle ? cycle.no : ''}</span>
+        <div className="hb-head"><span className="hb-label">Tiến độ chu kỳ {cycle ? cycle.no : ''}</span></div>
         {running ? (
           <>
-            <div className="pace-row">
-              <span className="pace-name">Thời gian</span>
+            <div className="pace-item">
+              <div className="pace-top"><span>Thời gian</span><b className={elapsed > length ? 'is-late' : ''}>{elapsed > length ? 'quá ' + (elapsed - length) + ' ngày' : 'ngày ' + elapsed + ' / ' + length}</b></div>
               <span className="pace-bar" aria-hidden="true"><i className={elapsed > length ? 'over' : ''} style={{ width: timePct + '%' }} /></span>
-              <span className="pace-val">{elapsed > length ? 'quá ' + (elapsed - length) + ' ngày' : 'ngày ' + elapsed + '/' + length}</span>
             </div>
             {posts && (
-              <div className="pace-row">
-                <span className="pace-name">Bài đăng</span>
+              <div className="pace-item">
+                <div className="pace-top"><span>Bài đăng</span><b className={behind ? 'is-due' : ''}>{posts.published} / {posts.planned}{posts.bonus ? ' (+' + posts.bonus + ' tặng)' : ''}</b></div>
                 <span className="pace-bar" aria-hidden="true">
                   <i className={behind ? 'behind' : 'ahead'} style={{ width: postPct + '%' }} />
-                  {expected > 0 && <b className="pace-mark" style={{ left: expectedPct + '%' }} title={'Theo nhịp nên đạt ' + expected + ' bài'} />}
+                  {expected > 0 && <b className="pace-mark" style={{ left: expectedPct + '%' }} />}
                 </span>
-                <span className="pace-val">{posts.published}/{posts.planned}{posts.bonus ? ' +' + posts.bonus : ''}</span>
               </div>
             )}
             <small className={behind ? 'pace-note is-late' : 'pace-note'}>
@@ -169,24 +181,22 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
                 : !cadenceStart
                   ? 'Nhịp đăng bắt đầu sau khi khách duyệt Post Demo.'
                   : behind
-                    ? 'Chậm ' + behind + ' bài so với nhịp ' + cadence + ' (vạch = nên đạt ' + expected + ').'
-                    : 'Đúng nhịp ' + cadence + '.'}
+                    ? 'Chậm ' + behind + ' bài · theo nhịp ' + cadence + ' nên đạt ' + expected + ' (vạch trắng)'
+                    : 'Đúng nhịp ' + cadence}
             </small>
           </>
-        ) : <small className="pace-note">{cycle ? 'Chu kỳ ' + cycle.no + ' đã chốt.' : 'Chưa bắt đầu triển khai.'}</small>}
+        ) : <p className="hb-note">{cycle ? 'Chu kỳ ' + cycle.no + ' đã chốt.' : 'Chưa bắt đầu triển khai.'}</p>}
       </div>
 
       <button type="button" className="hb-contract hb-link" onClick={() => onTab('hop-dong')} disabled={!contract}>
-        <span className="hb-label">Hợp đồng</span>
+        <div className="hb-head"><span className="hb-label">Hợp đồng</span>{contract && <Icon name="chevron-right" />}</div>
         {contract && metrics ? (
           <>
-            <strong>{cycle ? cycle.no : 0}/{project.total || '–'} <small className="inline">chu kỳ{cyclesLeft ? ' · còn ' + cyclesLeft : ' · chu kỳ cuối'}</small></strong>
-            <span className={'hb-money' + (overdue ? ' is-late' : '')}>
-              {overdue ? 'Quá hạn ' + shortMoney(overdue) : metrics.remaining ? 'Còn thu ' + shortMoney(metrics.remaining) : 'Đã thu đủ'}
-            </span>
-            <small>{metrics.next ? 'Đợt ' + metrics.next.installment + ' · ' + shortDate(metrics.next.due) : 'Không còn đợt thanh toán'}{!cyclesLeft && project.state === 'active' ? ' · cần trao đổi tái ký' : ''} ›</small>
+            <strong className={overdue ? 'is-late' : ''}>{overdue ? shortMoney(overdue) : metrics.remaining ? shortMoney(metrics.remaining) : 'Đã thu đủ'}</strong>
+            <small className="hb-money-note">{overdue ? 'quá hạn · đợt ' + (metrics.next?.installment ?? '') + ' · ' + shortDate(metrics.next?.due ?? '') : metrics.remaining ? 'còn thu' + (metrics.next ? ' · đợt tới ' + shortDate(metrics.next.due) : '') : 'không còn đợt thanh toán'}</small>
+            <span className="hb-cycles">Chu kỳ {cycle ? cycle.no : 0}/{project.total || '–'}{cyclesLeft ? ' · còn ' + cyclesLeft : ' · cuối, cần tái ký'}</span>
           </>
-        ) : <small>Chưa có hợp đồng chính.</small>}
+        ) : <p className="hb-note">Chưa có hợp đồng chính.</p>}
       </button>
     </section>
   )
