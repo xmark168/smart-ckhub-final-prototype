@@ -1,11 +1,11 @@
 import type { CSSProperties } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, addDaysIso, includesText, shortDate, TODAY } from '../../lib/format'
+import { ACCOUNTS, addDaysIso, diffDays, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { inScope } from '../../lib/scope'
-import { MILESTONE_TONE, nextActions, projectHealth, runningCycle, type Health, type NextAction } from '../../lib/sop'
+import { currentCycle, nextActions, projectHealth, runningCycle, type Health, type NextAction } from '../../lib/sop'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
@@ -14,7 +14,7 @@ import { Pager } from '../../ui/Pager'
 import { renewalDue, shortMoney } from '../customers/customerLogic'
 import { CreateProjectModal } from './ProjectModals'
 import { ProjectRulesModal } from './ProjectRulesModal'
-import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone } from './projectLogic'
+import { onboardingItems, postProgress, projectLabel, projectTone } from './projectLogic'
 
 /** 'open' = default view (everything except stopped projects). */
 type Kpi = 'open' | 'active' | 'week' | 'money' | 'draft' | 'paused' | 'debt' | 'renew'
@@ -84,37 +84,64 @@ function partnersOf(item: Project): string {
   return [...names].join(', ') || '—'
 }
 
-function ProjectRow({ row, params, onOpen }: { row: Row; params: SopParams; onOpen: () => void }) {
+/** "trễ 16 ngày" / "hôm nay" / "còn 3 ngày" for a yyyy-mm-dd due date. */
+function dueText(due: string): string {
+  const days = diffDays(TODAY, due)
+  return days < 0 ? 'trễ ' + -days + ' ngày' : days === 0 ? 'hôm nay' : 'còn ' + days + ' ngày'
+}
+
+function ProjectRow({ row, params, showOwner, onOpen }: { row: Row; params: SopParams; showOwner: boolean; onOpen: () => void }) {
   const { item, health } = row
   const posts = postProgress(item)
   const next = nextActions(item, params)[0]
+  const cycle = currentCycle(item)
+  const partners = partnersOf(item)
+  const gate = item.state === 'draft' ? onboardingItems(item, params).filter((entry) => entry.required) : []
+  // When health is driven by a flag or debt (not by a milestone), say so instead of the next milestone.
+  const reasonFirst = item.state === 'active' && health.level === 'watch' && (!next || next.state === 'upcoming' || next.state === 'waiting')
+  const pill = item.state === 'active' ? { label: health.label, tone: health.tone } : { label: projectLabel(item), tone: projectTone(item) }
   return (
     <tr onClick={onOpen} className={'health-' + health.level}>
-      <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
-      <td>{item.owner}</td>
-      <td><b>{cycleCounter(item)}</b><span className="project-record-meta">{cycleRange(item)}</span></td>
+      <td>
+        <button type="button" className="row-link project-row-title" onClick={(event) => { event.stopPropagation(); onOpen() }}>
+          {item.customer} <span className="project-row-service">· {item.service}</span>
+        </button>
+        <span className="project-record-meta">{item.code}</span>
+      </td>
+      {showOwner && <td>{item.owner}</td>}
+      <td>
+        {cycle && item.total ? (
+          <span className="project-cycle-cell">
+            <b>{cycle.no}/{item.total}</b>
+            <i className="project-cell-bar" aria-hidden="true"><em style={{ width: Math.min(100, (cycle.no / item.total) * 100) + '%' }} /></i>
+            <span className="project-record-meta">{cycle.status === 'running' ? 'chốt ' + shortDate(cycle.plannedEnd) : 'đã chốt'}</span>
+          </span>
+        ) : <span className="project-record-meta">Chưa bắt đầu</span>}
+      </td>
       <td>
         {posts ? (
           <div className="project-progress">
             <i style={{ '--progress': Math.min(100, posts.percent) + '%' } as CSSProperties} />
-            <span>{posts.published}/{posts.planned}</span>
+            <span>{posts.published}/{posts.planned} bài</span>
           </div>
-        ) : '—'}
+        ) : partners !== '—' ? <span className="project-record-meta">Partner: {partners}</span> : <span className="project-record-meta">—</span>}
       </td>
       <td>
-        {next ? (
+        {item.state === 'draft' ? (
+          <span className="project-next is-due"><b>Cổng khởi động {gate.filter((entry) => entry.ready).length}/{gate.length}</b><span className="project-record-meta">{gate.find((entry) => !entry.ready)?.title ?? 'Đủ điều kiện · bấm Bắt đầu'}</span></span>
+        ) : item.state !== 'active' ? (
+          <span className="project-record-meta">{health.reason}</span>
+        ) : reasonFirst ? (
+          <span className="project-next is-due"><b>{health.reason}</b>{next && <span className="project-record-meta">Tiếp theo: {next.label}{next.due ? ' · ' + dueText(next.due) : ''}</span>}</span>
+        ) : next ? (
           <span className={'project-next is-' + next.state}>
             <b>{next.label}</b>
-            <span className="project-record-meta">{next.due ? 'hạn ' + shortDate(next.due) : 'chờ bước trước'}</span>
+            <span className="project-record-meta">{next.due ? dueText(next.due) + ' · ' + shortDate(next.due) : 'chờ bước trước'}</span>
           </span>
         ) : <span className="project-record-meta">{health.reason}</span>}
       </td>
-      <td>{partnersOf(item)}</td>
-      <td>
-        <span className={'pill ' + projectTone(item)}>{projectLabel(item)}</span>
-        {item.state === 'active' && health.level !== 'ok' && <span className={'pill ' + (next ? MILESTONE_TONE[next.state] : health.tone)} title={health.reason}>{health.label}</span>}
-      </td>
-      <td><button className="project-open" aria-label={'Mở ' + item.customer}>›</button></td>
+      <td><span className={'pill ' + pill.tone} title={health.reason}>{pill.label}</span></td>
+      <td aria-hidden="true"><span className="project-open">›</span></td>
     </tr>
   )
 }
@@ -172,6 +199,7 @@ export function ProjectsScreen() {
   ]
   const clearAll = () => change({ kpi: 'open', query: '', status: '', owner: '', area: '' })
   const on = (kpi: Kpi) => filters.kpi === kpi
+  const showOwner = role !== 'account'
 
   return (
     <section className="screen active" id="projects">
@@ -270,15 +298,15 @@ export function ProjectsScreen() {
             </div>
           )}
           <div className="project-table-wrap">
-            <table className="project-table-new">
-              <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Partner</th><th>Trạng thái</th><th /></tr></thead>
+            <table className={'project-table-new' + (showOwner ? ' with-owner' : '')}>
+              <thead><tr><th>Dự án</th>{showOwner && <th>Account</th>}<th>Chu kỳ</th><th>Tiến độ</th><th>Việc tiếp theo</th><th>Sức khỏe</th><th><span className="sr-only">Mở</span></th></tr></thead>
               <tbody>
                 {rows.map((row) => (
-                  <ProjectRow key={row.item.id} row={row} params={params} onOpen={() => openProject(row.item.id)} />
+                  <ProjectRow key={row.item.id} row={row} params={params} showOwner={showOwner} onOpen={() => openProject(row.item.id)} />
                 ))}
                 {!list.length && (
                   <tr>
-                    <td colSpan={8} className="list-empty">
+                    <td colSpan={showOwner ? 7 : 6} className="list-empty">
                       <b>Không có dự án phù hợp</b>
                       <span>{chips.length ? 'Thử bỏ bớt điều kiện lọc hoặc đổi từ khóa.' : 'Chưa có dự án trong phạm vi của bạn.'}</span>
                       {chips.length > 0 && <button type="button" className="secondary" onClick={clearAll}>Xóa bộ lọc</button>}

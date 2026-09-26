@@ -522,3 +522,51 @@ div.project-kpi { cursor: default; }
   #projects .project-table-new tbody tr.health-watch > td:first-child,
   #projects .project-table-new tbody tr.health-ok > td:first-child { box-shadow: none; }
 }
+
+
+/* ---- Projects list v2: 5 columns (+Account for BODs/Admin) ---- */
+#projects .project-table-new td { padding-top: 10px; padding-bottom: 10px; vertical-align: middle; }
+.project-row-title { font-size: 13px; color: var(--ink); }
+.project-row-service { color: #6b5646; font-weight: 600; font-size: 12px; }
+.project-cycle-cell { display: inline-grid; grid-template-columns: auto auto; align-items: center; gap: 2px 8px; }
+.project-cycle-cell b { font: 700 12px var(--font-mono); }
+.project-cycle-cell .project-record-meta { grid-column: 1 / -1; }
+.project-next.is-late .project-record-meta { color: var(--late); font-weight: 700; }
+.project-next.is-due .project-record-meta { color: #92400e; }
+/* reset earlier column hiding (Partner/Account columns changed) */
+@media (max-width: 1280px) { #projects .project-table-new th:nth-child(6), #projects .project-table-new td:nth-child(6) { display: table-cell; } }
+@media (max-width: 1100px) {
+  #projects .project-table-new th:nth-child(2), #projects .project-table-new td:nth-child(2) { display: table-cell; }
+  #projects .project-table-new.with-owner th:nth-child(2), #projects .project-table-new.with-owner td:nth-child(2) { display: none; }
+}
+@media (max-width: 900px) {
+  #projects .project-table-new td:nth-child(2), #projects .project-table-new td:nth-child(6) { display: block !important; }
+  #projects .project-table-new td:nth-child(7) { display: block !important; }
+  #projects .project-table-new td:last-child { display: none !important; }
+  #projects .project-table-new.with-owner td:nth-child(2) { display: none !important; }
+  #projects .project-table-new tbody tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 901px) {
+  #projects .project-table-new { table-layout: fixed; }
+  #projects .project-table-new th:nth-child(1) { width: 36%; }
+  #projects .project-table-new th:nth-child(2) { width: 12%; }
+  #projects .project-table-new th:nth-child(3) { width: 11%; }
+  #projects .project-table-new th:nth-child(4) { width: 27%; }
+  #projects .project-table-new th:nth-child(5) { width: 12%; }
+  #projects .project-table-new th:last-child { width: 36px; }
+  #projects .project-table-new.with-owner th:nth-child(1) { width: 30%; }
+  #projects .project-table-new.with-owner th:nth-child(2) { width: 9%; }
+  #projects .project-table-new.with-owner th:nth-child(5) { width: 24%; }
+}
+#projects .project-row-title { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#projects .project-next b, #projects .project-next .project-record-meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#projects .project-progress { min-width: 0; } #projects .project-progress i { width: 44px; flex: 0 0 auto; } #projects .project-progress span { white-space: nowrap; }
+#projects .project-table-new td:last-child { padding-left: 0; padding-right: 8px; text-align: right; } #projects .project-table-new .project-open { display: inline-grid; width: 24px; min-width: 0; margin: 0; }
+@media (min-width: 901px) {
+  #projects .project-table-new.with-owner th:nth-child(1) { width: 28%; }
+  #projects .project-table-new.with-owner th:nth-child(2) { width: 8%; }
+  #projects .project-table-new.with-owner th:nth-child(3) { width: 11%; }
+  #projects .project-table-new.with-owner th:nth-child(4) { width: 10%; }
+  #projects .project-table-new.with-owner th:nth-child(5) { width: 27%; }
+  #projects .project-table-new.with-owner th:nth-child(6) { width: 12%; }
+}
