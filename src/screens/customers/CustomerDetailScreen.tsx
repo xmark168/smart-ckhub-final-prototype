@@ -137,6 +137,14 @@ export function CustomerDetailScreen() {
 
       <div className="customer-detail-layout">
         <div className="detail-main">
+          <section className="panel" aria-labelledby="custNotes">
+            <div className="panel-head">
+              <div><h2 id="custNotes">Ghi chú khách hàng</h2><p className="subline">Thông tin chung về khách, dùng cho mọi dự án.</p></div>
+              <button className="text-btn" disabled={!canManage} title={canManage ? undefined : readOnlyHint} onClick={() => showModal(<EditCustomerModal customer={item} />)}>{item.notes ? 'Sửa' : '+ Thêm ghi chú'}</button>
+            </div>
+            {item.notes ? <p className="project-note-text">{item.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
+          </section>
+
           <section className="panel customer-project-panel" aria-labelledby="custProjects">
             <div className="panel-head">
               <div><h2 id="custProjects">Dự án</h2><p className="subline">Chu kỳ hiện tại, bài đã đăng và sức khỏe tự tính.</p></div>

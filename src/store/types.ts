@@ -19,6 +19,8 @@ export interface Customer {
   attention: boolean
   /** Why the manual flag was set (required when flagging). */
   attentionReason?: string
+  /** Free notes about the customer (preferences, context, agreements outside the contract). */
+  notes?: string
   /** Set when the cooperation is ended; only allowed once no project is running. */
   ended?: { date: string; reason: string }
   activities: Activity[]

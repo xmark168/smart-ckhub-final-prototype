@@ -19,6 +19,14 @@ function AreaSelect({ value = 'HCM' }: { value?: string }) {
   )
 }
 
+function NotesField({ value }: { value?: string }) {
+  return (
+    <label className="field">Ghi chú <small>(tuỳ chọn)</small>
+      <textarea name="notes" rows={3} defaultValue={value} placeholder="Ví dụ: chủ quán duyệt nội dung qua Zalo buổi tối; không đăng giá khuyến mãi" />
+    </label>
+  )
+}
+
 function OwnerSelect({ value }: { value: string }) {
   return (
     <label className="field">Account phụ trách
@@ -65,6 +73,7 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
             name: field(form, 'name'),
             owner,
             area: field(form, 'area'),
+            notes: field(form, 'notes') || undefined,
             createdAt: TODAY,
             createdBy: account,
             attention: false,
@@ -79,6 +88,7 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
         <NameField error={error} onEdit={() => setError('')} />
         <OwnerSelect value={account} />
         <AreaSelect />
+        <NotesField />
         <div className="customer-data-rules"><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></div>
         <FormActions submit="Tạo khách hàng" />
       </div>
@@ -108,6 +118,9 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
           target.name = field(form, 'name')
           target.owner = owner
           target.area = field(form, 'area')
+          const notes = field(form, 'notes')
+          if ((target.notes ?? '') !== notes) addCustomerActivity(target, 'Cập nhật ghi chú khách hàng', notes ? notes.slice(0, 90) : 'Đã xóa ghi chú', 'notebook-pen')
+          target.notes = notes || undefined
           draft.projects.forEach((project) => {
             if (project.customerId !== target.id) return
             project.customer = target.name
@@ -126,6 +139,7 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
         <OwnerSelect value={customer.owner} />
         <label className="filter-check"><input name="moveProjects" type="checkbox" defaultChecked /> Chuyển cả dự án đang mở của Account cũ sang Account mới</label>
         <AreaSelect value={customer.area} />
+        <NotesField value={customer.notes} />
         <FormActions submit="Lưu thay đổi" />
       </div>
     </Modal>
