@@ -747,3 +747,37 @@ em.pill { font-style: normal; }
 .title-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
 .title-link:hover svg { color: #9a3412; transform: translateX(2px); }
 @media (prefers-reduced-motion: reduce) { .title-link:hover svg { transform: none; } }
+
+
+/* ---- Project dashboard v3: actions · pace · contract ---- */
+.health-band { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 0.9fr); }
+.hb-next { display: grid; gap: 2px; margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.hb-next b { font-size: 14px; color: var(--ink); }
+.hb-next small { color: var(--muted); font-size: 12px; }
+.hb-next:hover b { color: #9a3412; }
+.hb-pace { display: grid; align-content: start; gap: 6px; }
+.pace-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.pace-name { color: var(--muted); font-size: 11px; font-weight: 700; }
+.pace-val { font: 700 12px var(--font-mono); color: var(--ink); white-space: nowrap; }
+.pace-bar { position: relative; height: 8px; border-radius: 99px; background: rgb(238, 230, 222); }
+.pace-bar i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: inherit; background: #a8a29e; }
+.pace-bar i.over { background: var(--late); }
+.pace-bar i.ahead { background: #22c55e; }
+.pace-bar i.behind { background: #f59e0b; }
+.pace-mark { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: #44342b; }
+.pace-note { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.pace-note.is-late { color: #92400e; font-weight: 650; }
+.hb-contract { display: grid; align-content: start; gap: 2px; }
+.hb-contract strong { font-size: 18px; }
+.hb-contract small.inline { display: inline; font: 600 11px var(--font-body); color: var(--muted); }
+.hb-money { font-weight: 800; font-size: 13px; color: var(--ink); }
+.hb-money.is-late { color: var(--late); }
+@media (max-width: 900px) {
+  .health-band { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .health-band .hb-main { grid-column: 1 / -1; }
+  .health-band .hb-main + .hb-pace { border-left: 0; }
+}
+@media (max-width: 520px) {
+  .health-band { grid-template-columns: 1fr; }
+  .health-band > .hb-contract { border-left: 0; border-top: 1px solid rgb(238, 229, 221); }
+}

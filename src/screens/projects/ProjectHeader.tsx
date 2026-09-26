@@ -3,7 +3,7 @@ import { useApp, type ProjectTab } from '../../app/context'
 import { paymentMetrics, primaryContract, projectOverdue } from '../../data/contracts'
 import { diffDays, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
-import { currentCycle, nextActions, projectHealth, runningCycle } from '../../lib/sop'
+import { currentCycle, expectedPublished, nextActions, projectHealth, runningCycle } from '../../lib/sop'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useData } from '../../store/store'
 import type { Project } from '../../store/types'
@@ -88,54 +88,105 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
   )
 }
 
+function dayText(days: number): string {
+  return days < 0 ? 'quá ' + -days + ' ngày' : days === 0 ? 'hôm nay' : 'còn ' + days + ' ngày'
+}
+
+/**
+ * Project dashboard: what needs action, is output keeping pace with time, and where the
+ * contract/money stands. Three blocks, each answering one question.
+ */
 function HealthBand({ project, onTab }: { project: Project; onTab: (tab: ProjectTab) => void }) {
   const { params, contracts } = useData()
   const overdue = projectOverdue(contracts, project.id)
   const health = projectHealth(project, params, TODAY, overdue)
   const cycle = currentCycle(project)
+  const running = runningCycle(project)
   const posts = postProgress(project)
   const contract = primaryContract(contracts, project.id)
   const metrics = contract ? paymentMetrics(contract) : null
-  const urgent = nextActions(project, params).filter((item) => item.state === 'late' || item.state === 'due').slice(0, 3)
-  const days = closeIn(project)
+  const open = nextActions(project, params)
+  const urgent = open.filter((item) => item.state === 'late' || item.state === 'due').slice(0, 3)
+  const upcoming = open.find((item) => item.state === 'upcoming')
   const tone = project.state === 'active' ? HEALTH_CLASS[health.level] ?? 'ok' : 'muted'
+
+  // Pace: share of the cycle elapsed vs share of posts published (and where the cadence says we should be).
+  const length = running ? diffDays(running.start, running.plannedEnd) + 1 : 0
+  const elapsed = running ? Math.max(0, diffDays(running.start, TODAY) + 1) : 0
+  const timePct = length ? Math.min(100, Math.round((elapsed / length) * 100)) : 0
+  const cadenceStart = running ? running.demo.approvedAt || (project.quota.shoots === 0 ? running.plan.approvedAt : '') : ''
+  const expected = running && project.quota.posts ? expectedPublished(cadenceStart, project.quota, params, TODAY) : 0
+  const postPct = posts ? Math.min(100, Math.round((posts.published / Math.max(1, posts.planned)) * 100)) : 0
+  const expectedPct = posts ? Math.min(100, Math.round((expected / Math.max(1, posts.planned)) * 100)) : 0
+  const behind = posts ? Math.max(0, expected - posts.published) : 0
+  const cyclesLeft = project.total ? Math.max(0, project.total - project.cycles.length) : 0
+  const cadence = params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần'
 
   return (
     <section className={'health-band tone-' + tone} aria-label="Tình trạng dự án">
       <div className="hb-main">
-        <span className="hb-label">{urgent.length ? 'Cần xử lý ngay' : project.state === 'active' ? 'Tình hình' : 'Trạng thái'}</span>
-        {urgent.length || (overdue > 0 && project.state === 'active') ? (
+        <span className="hb-label">{urgent.length ? 'Cần xử lý ngay' : project.state === 'active' ? 'Việc tiếp theo' : 'Trạng thái'}</span>
+        {urgent.length ? (
           <ul className="hb-chips">
             {urgent.map((item) => (
               <li key={item.key}>
                 <button type="button" className={'hb-chip is-' + item.state} onClick={() => onTab(tabOf(item.key))}>
-                  {item.label}{item.due ? ' · ' + (diffDays(TODAY, item.due) < 0 ? 'quá ' + -diffDays(TODAY, item.due) + ' ngày' : diffDays(TODAY, item.due) === 0 ? 'hôm nay' : 'còn ' + diffDays(TODAY, item.due) + ' ngày') : ''} ›
+                  {item.label}{item.due ? ' · ' + dayText(diffDays(TODAY, item.due)) : ''} ›
                 </button>
               </li>
             ))}
-            {overdue > 0 && !urgent.length && (
-              <li><button type="button" className="hb-chip is-late" onClick={() => onTab('hop-dong')}>Công nợ quá hạn {shortMoney(overdue)} ›</button></li>
-            )}
           </ul>
+        ) : project.state === 'active' && upcoming ? (
+          <button type="button" className="hb-next" onClick={() => onTab(tabOf(upcoming.key))}>
+            <b>{upcoming.label}</b>
+            <small>{upcoming.due ? dayText(diffDays(TODAY, upcoming.due)) + ' · ' + shortDate(upcoming.due) : upcoming.detail} ›</small>
+          </button>
         ) : <p className="hb-note">{health.reason}</p>}
       </div>
-      <div className="hb-stat">
-        <span className="hb-label">Chu kỳ</span>
-        <strong>{cycle ? cycle.no + '/' + (project.total || '–') : '—'}</strong>
-        <small>
-          {cycle ? shortDate(cycle.start) + ' – ' + shortDate(cycle.plannedEnd) : 'Chưa bắt đầu'}
-          {days !== null && <em className={days < 0 ? 'is-late' : days <= params.cycleEndWarningDays ? 'is-due' : ''}>{days < 0 ? 'quá hạn chốt ' + -days + ' ngày' : 'chốt sau ' + days + ' ngày'}</em>}
-        </small>
+
+      <div className="hb-pace">
+        <span className="hb-label">Tiến độ chu kỳ {cycle ? cycle.no : ''}</span>
+        {running ? (
+          <>
+            <div className="pace-row">
+              <span className="pace-name">Thời gian</span>
+              <span className="pace-bar" aria-hidden="true"><i className={elapsed > length ? 'over' : ''} style={{ width: timePct + '%' }} /></span>
+              <span className="pace-val">{elapsed > length ? 'quá ' + (elapsed - length) + ' ngày' : 'ngày ' + elapsed + '/' + length}</span>
+            </div>
+            {posts && (
+              <div className="pace-row">
+                <span className="pace-name">Bài đăng</span>
+                <span className="pace-bar" aria-hidden="true">
+                  <i className={behind ? 'behind' : 'ahead'} style={{ width: postPct + '%' }} />
+                  {expected > 0 && <b className="pace-mark" style={{ left: expectedPct + '%' }} title={'Theo nhịp nên đạt ' + expected + ' bài'} />}
+                </span>
+                <span className="pace-val">{posts.published}/{posts.planned}{posts.bonus ? ' +' + posts.bonus : ''}</span>
+              </div>
+            )}
+            <small className={behind ? 'pace-note is-late' : 'pace-note'}>
+              {!posts
+                ? 'Gói không có bài đăng.'
+                : !cadenceStart
+                  ? 'Nhịp đăng bắt đầu sau khi khách duyệt Post Demo.'
+                  : behind
+                    ? 'Chậm ' + behind + ' bài so với nhịp ' + cadence + ' (vạch = nên đạt ' + expected + ').'
+                    : 'Đúng nhịp ' + cadence + '.'}
+            </small>
+          </>
+        ) : <small className="pace-note">{cycle ? 'Chu kỳ ' + cycle.no + ' đã chốt.' : 'Chưa bắt đầu triển khai.'}</small>}
       </div>
-      <div className="hb-stat">
-        <span className="hb-label">Bài đăng</span>
-        <strong>{posts ? posts.published + '/' + posts.planned : '—'}</strong>
-        <small>{posts ? (posts.bonus ? '+' + posts.bonus + ' bài tặng' : 'trong chu kỳ') : 'Gói không có bài đăng'}</small>
-      </div>
-      <button type="button" className="hb-stat hb-link" onClick={() => onTab('hop-dong')} disabled={!contract}>
-        <span className="hb-label">Công nợ</span>
-        <strong className={overdue ? 'is-late' : ''}>{metrics ? (overdue ? shortMoney(overdue) : metrics.remaining ? shortMoney(metrics.remaining) : 'Đã thu đủ') : '—'}</strong>
-        <small>{!metrics ? 'Chưa có hợp đồng' : overdue ? 'quá hạn' + (metrics.next ? ' · đợt ' + metrics.next.installment + ' · ' + shortDate(metrics.next.due) : '') : metrics.next ? 'đợt tới ' + shortDate(metrics.next.due) : 'không còn đợt'}</small>
+
+      <button type="button" className="hb-contract hb-link" onClick={() => onTab('hop-dong')} disabled={!contract}>
+        <span className="hb-label">Hợp đồng</span>
+        {contract && metrics ? (
+          <>
+            <strong>{cycle ? cycle.no : 0}/{project.total || '–'} <small className="inline">chu kỳ{cyclesLeft ? ' · còn ' + cyclesLeft : ' · chu kỳ cuối'}</small></strong>
+            <span className={'hb-money' + (overdue ? ' is-late' : '')}>
+              {overdue ? 'Quá hạn ' + shortMoney(overdue) : metrics.remaining ? 'Còn thu ' + shortMoney(metrics.remaining) : 'Đã thu đủ'}
+            </span>
+            <small>{metrics.next ? 'Đợt ' + metrics.next.installment + ' · ' + shortDate(metrics.next.due) : 'Không còn đợt thanh toán'}{!cyclesLeft && project.state === 'active' ? ' · cần trao đổi tái ký' : ''} ›</small>
+          </>
+        ) : <small>Chưa có hợp đồng chính.</small>}
       </button>
     </section>
   )

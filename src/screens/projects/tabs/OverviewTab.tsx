@@ -70,14 +70,17 @@ export function OverviewTab({ project }: { project: Project }) {
         {cycle && (() => {
           const all = cycleMilestones(cycle, quota, params)
           const done = all.filter((item) => item.state === 'done' || item.state === 'doneLate')
+          // Late / due milestones are already the chips in the header band; list what comes next here.
+          const urgentCount = next.filter((item) => item.state === 'late' || item.state === 'due').length
+          const later = next.filter((item) => item.state !== 'late' && item.state !== 'due')
           return (
             <section className="panel">
               <div className="panel-head">
-                <div><h2>Mốc chu kỳ {cycle.no}</h2><p className="subline">Tính từ {shortDate(cycle.start)} theo Tham số vận hành · việc gấp nhất trước.</p></div>
+                <div><h2>Mốc chu kỳ {cycle.no}</h2><p className="subline">{urgentCount ? urgentCount + ' mốc cần xử lý ở phần trên · ' : ''}tính từ {shortDate(cycle.start)} theo Tham số vận hành.</p></div>
               </div>
-              {next.length ? (
+              {later.length ? (
                 <div className="cycle-task-list">
-                  {next.map((item) => (
+                  {later.map((item) => (
                     <div className={'cycle-task milestone-open is-' + item.state} key={item.label}>
                       <span><b>{item.label}</b><small>{item.detail}</small></span>
                       <span className="milestone-when">
@@ -87,7 +90,7 @@ export function OverviewTab({ project }: { project: Project }) {
                     </div>
                   ))}
                 </div>
-              ) : <p className="empty-copy">Không còn mốc mở trong chu kỳ này.</p>}
+              ) : <p className="empty-copy">{urgentCount ? 'Không có mốc sắp tới khác.' : 'Không còn mốc mở trong chu kỳ này.'}</p>}
               {done.length > 0 && (
                 <details className="milestones-done">
                   <summary><Icon name="check" /> {done.length} mốc đã xong{done.some((item) => item.state === 'doneLate') ? ' (có mốc xong trễ)' : ''}</summary>
