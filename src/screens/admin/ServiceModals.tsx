@@ -5,6 +5,7 @@ import { field } from '../../lib/form'
 import { update, useData } from '../../store/store'
 import type { PriceType, ServicePackage } from '../../store/types'
 import { FormActions, Modal } from '../../ui/Modal'
+import { MoneyInput } from '../../ui/MoneyInput'
 
 export function CategoryModal() {
   const { closeModal, toast } = useApp()
@@ -89,7 +90,7 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
               <option value="fixed">Giá cố định</option><option value="range">Khoảng giá</option><option value="from">Giá từ</option><option value="quote">Báo giá riêng</option>
             </select>
           </div>
-          <div className="field"><label>Đơn giá chưa VAT</label><input name="price" type="number" min="0" defaultValue={item?.price || ''} /></div>
+          <div className="field"><label>Đơn giá chưa VAT</label><MoneyInput name="price" defaultValue={item?.price} ariaLabel="Đơn giá chưa VAT" /></div>
         </div>
         <div className="form-grid">
           <div className="field"><label>Bài / chu kỳ</label><input name="qPosts" type="number" min="0" defaultValue={item?.quota.posts ?? 0} /></div>

@@ -1048,3 +1048,8 @@ em.pill { font-style: normal; }
 .cd-record h3 { margin: 0 0 6px; font-size: 14px; }
 @media (max-width: 520px) { .cd-facts { grid-template-columns: 1fr 1fr; } }
 .customer-modal .contract-modal .modal-top { margin: 0; }
+
+/* ---- Money input: 58.320.000 đ ---- */
+.money-input { position: relative; display: block; }
+.money-input input[type="text"] { width: 100%; padding-right: 32px; font-variant-numeric: tabular-nums; text-align: right; }
+.money-input em { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font: 700 13px var(--font-body); font-style: normal; pointer-events: none; }

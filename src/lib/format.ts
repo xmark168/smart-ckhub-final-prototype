@@ -4,7 +4,7 @@ export const TODAY = '2026-09-25'
 export const ACCOUNTS = ['Tuyền', 'Nguyên', 'Hiền', 'Minh Anh', 'Hải']
 
 export function money(value: number | string | undefined): string {
-  return Number(value || 0).toLocaleString('vi-VN') + 'đ'
+  return Number(value || 0).toLocaleString('vi-VN') + ' đ'
 }
 
 export function pad(value: number, size = 2): string {

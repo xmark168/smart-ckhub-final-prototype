@@ -9,6 +9,10 @@ import { update, useData } from '../../store/store'
 import type { Contract, ContractStatus, Payment } from '../../store/types'
 import { field } from '../../lib/form'
 import { Modal, Req } from '../../ui/Modal'
+import { MoneyInput } from '../../ui/MoneyInput'
+
+/** VAT on service contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
+const VAT_RATE = 0.08
 
 interface PlanRow {
   key: number
@@ -33,7 +37,11 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   const [newPackage, setNewPackage] = useState(row?.packageChange?.packageId ?? '')
   const [fromCycle, setFromCycle] = useState(row?.packageChange?.fromCycle ?? (running ? running.no + 1 : 1))
   const activePackages = packages.filter((item) => item.status === 'Đang áp dụng')
-  const [value, setValue] = useState<number>(row ? row.value : project?.servicePrice ?? 0)
+  const [cycles, setCycles] = useState<number>(row ? row.cycles : 1)
+  // Suggested value: monthly price of every package in the contract × cycles + VAT.
+  const monthly = [project, ...projects.filter((item) => extraIds.includes(item.id))].reduce((sum, item) => sum + (item?.servicePrice ?? 0), 0)
+  const suggested = Math.round(monthly * cycles * (1 + VAT_RATE))
+  const [value, setValue] = useState<number>(row ? row.value : suggested)
   const [plan, setPlan] = useState<PlanRow[]>(() =>
     (row?.payments.length ? row.payments : [{ percent: 100, due: '' }]).map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due })),
   )
@@ -53,7 +61,6 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         cycles: 1, start: '', end: '', value: 0, paid: 0, payments: [], status: 'Nháp', evidence: '', folderUrl: '', activity: [],
       }
       const previousProjectId = current.projectId
-      const cycles = Number(field(form, 'cycles'))
       // Keep money already collected on each installment when the schedule is edited.
       const payments: Payment[] = plan.map((item, index) => {
         const amount = Math.round((value * item.percent) / 100)
@@ -109,30 +116,31 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   return (
     <Modal title={row ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} className="contract-modal" onSubmit={save}>
       <div className="form">
-        {project && (
-          <div className="customer-data-rules">
-            <b>{project.customer} · Account {project.owner}</b>
-            <p>Gói dịch vụ: {project.service || 'Chưa có dịch vụ áp dụng'}. Giá trị được điền theo snapshot dự án; kiểm tra lại theo HĐ đã ký.</p>
-          </div>
+        {row && row.status === 'Hiệu lực' && (
+          <div className="customer-data-rules warn"><p>Hợp đồng đã hiệu lực. Đổi gói, số chu kỳ hoặc giá trị theo thỏa thuận mới thì làm <b>Phụ lục</b>; chỉ sửa ở đây khi nhập sai.</p></div>
         )}
         <label className="field">Dự án<Req />
           <select
-            name="project"
             value={projectId}
+            disabled={Boolean(row)}
             onChange={(event) => {
               setProjectId(event.target.value)
-              if (!row) setValue(projects.find((item) => item.id === event.target.value)?.servicePrice ?? 0)
+              const next = projects.find((item) => item.id === event.target.value)
+              setExtraIds([])
+              setValue(Math.round((next?.servicePrice ?? 0) * cycles * (1 + VAT_RATE)))
             }}
           >
             {projects.map((item) => <option key={item.id} value={item.id}>{item.customer} · {item.service}</option>)}
           </select>
+          <input type="hidden" name="project" value={projectId} />
         </label>
-        <label className="field">Loại liên kết<Req />
-          <select name="type" value={type} onChange={(event) => setType(event.target.value as Contract['type'])}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
+        <label className="field">Loại<Req />
+          <select value={type} disabled={Boolean(row)} onChange={(event) => setType(event.target.value as Contract['type'])}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
+          <input type="hidden" name="type" value={type} />
         </label>
         {type === 'Hợp đồng chính' && siblings.length > 0 && (
           <fieldset className="field">
-            <legend>Gói khác trong cùng hợp đồng</legend>
+            <legend>Gói khác ký chung hợp đồng này</legend>
             {siblings.map((item) => (
               <label className="filter-check" key={item.id}>
                 <input
@@ -143,7 +151,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
                 {item.code} · {item.service}
               </label>
             ))}
-            <small className="field-hint">Một hợp đồng có thể gồm nhiều gói; mỗi gói theo dõi triển khai ở dự án riêng.</small>
+            <small className="field-hint">Các dự án khác của cùng khách. Tick nếu hợp đồng này bao gồm cả gói đó: dùng chung giá trị và lịch thanh toán, mỗi gói vẫn theo dõi triển khai ở dự án riêng.</small>
           </fieldset>
         )}
         {type === 'Phụ lục' && (
@@ -167,9 +175,17 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </fieldset>
         )}
         <label className="field">Mã hợp đồng<Req /><input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
-        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required defaultValue={row ? row.cycles : 1} /></label>
+        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={cycles} onChange={(event) => setCycles(Math.max(1, Number(event.target.value) || 1))} /></label>
         <label className="field">Ngày bắt đầu hợp đồng<Req /><input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>
-        <label className="field">Giá trị hợp đồng<Req /><input name="value" type="number" min="0" required value={value} onChange={(event) => setValue(Number(event.target.value))} /></label>
+        <label className="field">Giá trị hợp đồng (gồm VAT)<Req />
+          <MoneyInput value={value} onChange={setValue} required ariaLabel="Giá trị hợp đồng" />
+          {monthly > 0 && suggested !== value && (
+            <small className="field-hint">
+              Theo gói: {money(monthly)} × {cycles} chu kỳ + VAT {VAT_RATE * 100}% = {money(suggested)}{' '}
+              <button type="button" className="text-btn" onClick={() => setValue(suggested)}>Dùng số này</button>
+            </small>
+          )}
+        </label>
         <label className="field">Trạng thái<Req />
           <select name="status" defaultValue={row ? row.status : fromOnboarding ? 'Hiệu lực' : 'Nháp'}><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option></select>
         </label>
@@ -303,7 +319,7 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
                   {unpaid.map((payment) => <option key={payment.installment} value={payment.installment}>Đợt {payment.installment} · còn {money(payment.amount - payment.paid)}</option>)}
                 </select>
               </label>
-              <label className="field">Số tiền thực thu<Req /><input key={installment} name="payment" type="number" min="1" max={left} defaultValue={left || ''} /></label>
+              <label className="field">Số tiền thực thu<Req /><MoneyInput key={installment} name="payment" defaultValue={left} max={left} required ariaLabel="Số tiền thực thu" /></label>
             </div>
             <div className="form-grid">
               <label className="field">Ngày thu<input name="paidAt" type="date" defaultValue={TODAY} max={TODAY} /></label>
