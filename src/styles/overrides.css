@@ -415,3 +415,6 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 /* The legacy ≤850px rule gives <aside> a 3-column grid; our aside holds one panel, so it must span full width. */
 #customerDetail .customer-detail-layout > aside { grid-template-columns: 1fr !important; width: 100%; }
 #customerDetail .customer-account-panel { width: 100%; box-sizing: border-box; }
+
+.customer-data-rules.warn { border-left-color: #b45309; background: #fff7ed; }
+.project-readonly .project-tab-content fieldset.readonly-fence { all: unset; display: contents; }

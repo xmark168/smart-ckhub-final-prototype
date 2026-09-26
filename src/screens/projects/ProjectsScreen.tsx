@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useApp } from '../../app/context'
-import { ACCOUNTS, includesText, shortDate } from '../../lib/format'
+import { ACCOUNTS, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
 import { useOutsideClose } from '../../lib/useOutsideClose'
@@ -8,7 +8,8 @@ import { inScope } from '../../lib/scope'
 import { MILESTONE_TONE, nextActions, projectHealth } from '../../lib/sop'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
-import type { Project, ProjectState, SopParams } from '../../store/types'
+import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
+import { projectOverdue } from '../../data/contracts'
 import { InfoModal } from '../../ui/Modal'
 import { CreateProjectModal } from './ProjectModals'
 import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone } from './projectLogic'
@@ -30,22 +31,22 @@ const PAGE_SIZE = 20
 const PROJECT_RULES =
   'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo. Gói dịch vụ theo hợp đồng: một hợp đồng có thể gồm nhiều gói; đổi gói phải làm phụ lục hoặc hợp đồng mới (hóa đơn xuất theo hạng mục hợp đồng). Khách không chốt thì Hủy nháp (dự án chuyển sang Đã dừng, giữ lịch sử); sau đó mới kết thúc hợp tác với khách được.'
 
-function atRisk(item: Project, params: SopParams): boolean {
-  return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late')
+function atRisk(item: Project, params: SopParams, contracts: Contract[]): boolean {
+  return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late' || projectOverdue(contracts, item.id) > 0)
 }
 
-function matchesKpi(item: Project, kpi: Kpi, params: SopParams): boolean {
+function matchesKpi(item: Project, kpi: Kpi, params: SopParams, contracts: Contract[]): boolean {
   if (kpi === 'active') return item.state === 'active'
-  if (kpi === 'risk') return atRisk(item, params)
+  if (kpi === 'risk') return atRisk(item, params, contracts)
   if (kpi === 'paused') return item.state === 'pending' || item.state === 'stopped'
   if (kpi === 'draft') return item.state === 'draft'
   return true
 }
 
-function ProjectRow({ item, params, onOpen }: { item: Project; params: SopParams; onOpen: () => void }) {
+function ProjectRow({ item, params, contracts, onOpen }: { item: Project; params: SopParams; contracts: Contract[]; onOpen: () => void }) {
   const posts = postProgress(item)
   const next = nextActions(item, params)[0]
-  const health = projectHealth(item, params)
+  const health = projectHealth(item, params, TODAY, projectOverdue(contracts, item.id))
   return (
     <tr onClick={onOpen}>
       <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
@@ -91,7 +92,7 @@ export function ProjectsScreen() {
     resetPage()
   }
   const active = projects.filter((item) => item.state === 'active')
-  const risk = active.filter((item) => atRisk(item, params))
+  const risk = active.filter((item) => atRisk(item, params, data.contracts))
   const paused = projects.filter((item) => item.state === 'pending' || item.state === 'stopped')
   const drafts = projects.filter((item) => item.state === 'draft')
   const list = projects.filter(
@@ -100,8 +101,8 @@ export function ProjectsScreen() {
       (!filters.status || item.state === filters.status) &&
       (!filters.owner || item.owner === filters.owner) &&
       (!filters.area || item.area === filters.area) &&
-      (!filters.risk || atRisk(item, params)) &&
-      matchesKpi(item, filters.kpi, params),
+      (!filters.risk || atRisk(item, params, data.contracts)) &&
+      matchesKpi(item, filters.kpi, params, data.contracts),
   )
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
   const areas = Array.from(new Set(projects.map((item) => item.area)))
@@ -118,7 +119,7 @@ export function ProjectsScreen() {
 
         <section className="project-dashboard">
           <button className={kpiClass('active', 'hero')} onClick={() => change({ kpi: 'active' })}><label>Đang triển khai</label><strong>{active.length}</strong><small>{risk.length} dự án cần theo dõi</small></button>
-          <button className={kpiClass('risk', 'risk')} onClick={() => change({ kpi: 'risk' })}><label>Có rủi ro</label><strong>{risk.length}</strong><small>Có mốc SOP trễ hoặc gắn cờ</small></button>
+          <button className={kpiClass('risk', 'risk')} onClick={() => change({ kpi: 'risk' })}><label>Có rủi ro</label><strong>{risk.length}</strong><small>Mốc SOP trễ, công nợ quá hạn hoặc gắn cờ</small></button>
           <button className={kpiClass('paused')} onClick={() => change({ kpi: 'paused' })}><label>Tạm dừng / đã dừng</label><strong>{paused.length}</strong><small>Không tự đổi tiến độ hợp đồng</small></button>
           <button className={kpiClass('draft')} onClick={() => change({ kpi: 'draft' })}><label>Dự án nháp</label><strong>{drafts.length}</strong><small>Cần hoàn tất Cổng khởi động</small></button>
         </section>
@@ -166,7 +167,7 @@ export function ProjectsScreen() {
               <thead><tr><th>Dự án</th><th>Account</th><th>Chu kỳ</th><th>Bài đăng</th><th>Mốc tiếp theo</th><th>Media</th><th>Trạng thái</th><th /></tr></thead>
               <tbody>
                 {rows.map((item) => (
-                  <ProjectRow key={item.id} item={item} params={params} onOpen={() => openProject(item.id)} />
+                  <ProjectRow key={item.id} item={item} params={params} contracts={data.contracts} onOpen={() => openProject(item.id)} />
                 ))}
                 {!list.length && <tr><td colSpan={8}>Không tìm thấy dự án phù hợp.</td></tr>}
               </tbody>

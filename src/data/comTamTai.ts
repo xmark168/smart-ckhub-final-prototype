@@ -1,4 +1,5 @@
 import type { ContentItem, ContentStage, Cycle, Payment, Project } from '../store/types'
+import { addDaysIso } from '../lib/format'
 import { seedPackages } from './catalog'
 
 /**
@@ -55,16 +56,23 @@ const T9_ROWS: Row[] = [
   [14, true, 'Thông báo', 'Review', 'CẬN CẢNH CHẢ HẤP TRỨNG MUỐI NHÀ TÀI – CĂNG TRÒN BÉO NGẬY SIÊU MÊ', 'Album', '2026-09-14', 'Đã đăng'],
 ]
 
+/** Planned post dates of the rows not yet published (Content Post 9/2026). */
+const T9_PLANNED: Record<number, string> = { 5: '2026-09-12', 6: '2026-09-19', 10: '2026-09-25', 11: '2026-09-28', 12: '2026-09-30' }
+
 function t9Contents(): ContentItem[] {
-  return T9_ROWS.map(([stt, bonus, category, topic, title, format, postDate, stage]) => {
+  return T9_ROWS.map(([stt, bonus, category, topic, title, format, posted, stage]) => {
     const published = stage === 'Đã đăng'
+    // Unpublished rows keep the planned date from Content Post 9/2026; edit = post − 1 day, script = edit − 2 days (SOP).
+    const postDate = posted || T9_PLANNED[stt] || ''
+    const deadlineEdit = postDate ? addDaysIso(postDate, -1) : ''
+    const deadlineScript = deadlineEdit ? addDaysIso(deadlineEdit, -2) : ''
     return {
       id: 'ctt-t9-' + stt,
       stt,
       bonus,
       postDate,
-      deadlineScript: '',
-      deadlineEdit: '',
+      deadlineScript,
+      deadlineEdit,
       // Plan T9 phân bổ 9 thương hiệu / 3 bán hàng nhưng toàn bộ bài đang ở nhiệm vụ thương hiệu.
       mission: 'Thương hiệu',
       category,

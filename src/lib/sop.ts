@@ -84,7 +84,7 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
   const add = (key: string, label: string, due: string, done: string, detail: string) =>
     list.push({ key, label, due, done, detail, state: stateOf(due, done, today) })
 
-  add('t0', 'T0 · Khởi động chu kỳ ' + cycle.no, cycle.start, cycle.start <= today ? cycle.start : '', 'Khách đã cọc và đủ brief')
+  add('t0', (cycle.no === 1 ? 'T0 · Khởi động chu kỳ 1' : 'Bắt đầu chu kỳ ' + cycle.no), cycle.start, cycle.start <= today ? cycle.start : '', cycle.no === 1 ? 'Khách đã cọc và đủ brief' : 'Nối tiếp chu kỳ ' + (cycle.no - 1))
 
   if (quota.plans > 0) {
     const plan = cycle.plan
@@ -184,7 +184,8 @@ export interface Health {
   tone: string
 }
 
-export function projectHealth(project: Project, params: SopParams, today = TODAY): Health {
+/** `overdue`: unpaid overdue amount on the project's contract; it turns an on-track project into "Cần theo dõi". */
+export function projectHealth(project: Project, params: SopParams, today = TODAY, overdue = 0): Health {
   if (project.state === 'draft') return { level: 'draft', label: 'Chưa bắt đầu', reason: 'Hoàn tất Cổng khởi động để tạo chu kỳ 1.', tone: 'muted' }
   if (project.state === 'pending') return { level: 'paused', label: 'Tạm dừng', reason: project.pause?.reason || 'Dự án đang tạm dừng.', tone: 'waiting' }
   if (project.state === 'stopped') return { level: 'stopped', label: 'Đã dừng', reason: project.stop?.reason || 'Dự án đã dừng.', tone: 'muted' }
@@ -198,6 +199,9 @@ export function projectHealth(project: Project, params: SopParams, today = TODAY
     return { level: 'late', label: 'Chậm tiến độ', reason: first.label + (days > 0 ? ' trễ ' + days + ' ngày' : '') + (late.length > 1 ? ' · +' + (late.length - 1) + ' mốc khác' : ''), tone: 'danger' }
   }
   const due = milestones.filter((item) => item.state === 'due')
+  if (overdue > 0 && !due.length) {
+    return { level: 'watch', label: 'Cần theo dõi', reason: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', tone: 'waiting' }
+  }
   if (due.length || project.risk) {
     return { level: 'watch', label: 'Cần theo dõi', reason: due.length ? due[0].label + ' đến hạn ' + shortDate(due[0].due) : 'Gắn cờ: ' + (project.riskReason || 'Account cần theo dõi.'), tone: 'waiting' }
   }

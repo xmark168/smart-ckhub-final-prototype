@@ -46,6 +46,12 @@ export function coversProject(row: Contract, projectId: string): boolean {
   return row.projectId === projectId || Boolean(row.extraProjectIds?.includes(projectId))
 }
 
+/** Overdue unpaid amount on the project's primary contract (0 when none). */
+export function projectOverdue(contracts: Contract[], projectId: string): number {
+  const row = primaryContract(contracts, projectId)
+  return row && row.status === 'Hiệu lực' ? paymentMetrics(row).overdue : 0
+}
+
 export function primaryContract(contracts: Contract[], projectId: string): Contract | undefined {
   return contracts.find((row) => coversProject(row, projectId) && row.isPrimary && row.status !== 'Đã hủy')
 }

@@ -1,6 +1,7 @@
 import { cycleProgress, currentCycle, runningCycle } from '../../lib/sop'
 import { formatDate, parseInput } from '../../lib/format'
 import { update } from '../../store/store'
+import { viewOnlyReason } from '../../ui/viewOnly'
 import type { Cycle, PlanStatus, Project, SopParams } from '../../store/types'
 
 export const MEDIA_PEOPLE = ['Hải', 'Như', 'Hân', 'Bình', 'Phước', 'Anh Thư', 'Ngọc']
@@ -93,6 +94,7 @@ export function statusTone(status: string): string {
 }
 
 export function updateProject(id: string, change: (project: Project) => void): void {
+  if (viewOnlyReason()) return
   update((draft) => {
     const project = draft.projects.find((item) => item.id === id)
     if (project) change(project)

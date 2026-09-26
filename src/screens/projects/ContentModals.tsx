@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { newCycle } from '../../data/cycles'
-import { addDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
+import { addDaysIso, diffDays, formatDate, parseInput, TODAY } from '../../lib/format'
+import { projectOverdue } from '../../data/contracts'
 import { checked, field } from '../../lib/form'
 import { cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
 import { getData, useData } from '../../store/store'
@@ -178,6 +179,8 @@ export function CloseCycleModal({ project }: { project: Project }) {
   const unpublished = cycle.contents.filter((entry) => !entry.bonus && !isPublished(entry))
   const hasNext = cycle.no < project.total
   const nextStart = addDaysIso(cycle.plannedEnd, 1)
+  const overdue = projectOverdue(getData().contracts, project.id)
+  const daysLeft = diffDays(TODAY, cycle.plannedEnd)
 
   return (
     <Modal
@@ -233,6 +236,8 @@ export function CloseCycleModal({ project }: { project: Project }) {
           <b>{progress.published} / {progress.planned} bài đã đăng{progress.bonus ? ' · +' + progress.bonus + ' bài tặng' : ''}</b>
           <p>Kết thúc dự kiến {formatDate(parseInput(cycle.plannedEnd))}. {progress.missing ? 'Còn thiếu ' + progress.missing + ' bài so với định mức.' : 'Đã đủ định mức.'}</p>
         </div>
+        {overdue > 0 && <div className="customer-data-rules warn"><b>Công nợ quá hạn {overdue.toLocaleString('vi-VN')}đ</b><p>Nhắc khách thanh toán trước khi mở chu kỳ tiếp theo. Việc chốt chu kỳ không bị chặn.</p></div>}
+        {daysLeft > params.cycleEndWarningDays && <div className="customer-data-rules warn"><b>Chốt sớm {daysLeft} ngày</b><p>Chu kỳ dự kiến kết thúc {formatDate(parseInput(cycle.plannedEnd))}. Chỉ chốt sớm khi đã thống nhất với khách.</p></div>}
         <label className="field">Ngày kết thúc thực tế<input name="actualEnd" type="date" required defaultValue={TODAY} min={cycle.start} /></label>
         {progress.missing > 0 && (
           <>

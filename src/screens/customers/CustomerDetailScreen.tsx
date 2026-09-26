@@ -1,6 +1,6 @@
 import { useApp } from '../../app/context'
-import { contractTone, coversProject, paymentMetrics } from '../../data/contracts'
-import { formatDate, initials, money, parseInput, shortDate } from '../../lib/format'
+import { contractTone, coversProject, paymentMetrics, projectOverdue } from '../../data/contracts'
+import { formatDate, initials, money, parseInput, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { inScope } from '../../lib/scope'
 import { currentCycle, projectHealth } from '../../lib/sop'
@@ -154,7 +154,7 @@ export function CustomerDetailScreen() {
             </div>
             {own.map((project) => {
               const posts = postProgress(project)
-              const health = projectHealth(project, params)
+              const health = projectHealth(project, params, TODAY, projectOverdue(contracts, project.id))
               const cycle = currentCycle(project)
               return (
                 <button type="button" className="customer-project-line" key={project.id} onClick={() => openProject(project.id)}>

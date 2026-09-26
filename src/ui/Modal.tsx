@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../app/context'
+import { viewOnlyReason } from './viewOnly'
 
 interface ModalProps {
   title: ReactNode
@@ -19,7 +20,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * first field gets focus on open and focus returns to the opener on close.
  */
 export function Modal({ title, children, className = '', backdropClassName = 'customer-modal', onSubmit, onClose }: ModalProps) {
-  const { closeModal } = useApp()
+  const { closeModal, toast } = useApp()
   const close = onClose ?? closeModal
   const titleId = useId()
   const formRef = useRef<HTMLDivElement>(null)
@@ -69,6 +70,11 @@ export function Modal({ title, children, className = '', backdropClassName = 'cu
           className="modal-form"
           onSubmit={(event) => {
             event.preventDefault()
+            const blocked = viewOnlyReason()
+            if (blocked && onSubmit) {
+              toast(blocked + ' — chế độ xem, không lưu thay đổi.')
+              return
+            }
             onSubmit?.(event.currentTarget)
           }}
         >

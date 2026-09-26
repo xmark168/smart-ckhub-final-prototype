@@ -124,6 +124,7 @@ export function EditCustomerModal({ customer }: { customer: Customer }) {
           draft.projects.forEach((project) => {
             if (project.customerId !== target.id) return
             project.customer = target.name
+            project.area = target.area
             if (moveProjects && project.owner === previous && project.state !== 'stopped') {
               project.owner = owner
               project.team.account = owner

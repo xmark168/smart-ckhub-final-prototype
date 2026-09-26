@@ -4,6 +4,7 @@ import { navigate, pathFor, useLocation, withQuery } from '../../app/router'
 import { Icon } from '../../lib/icons'
 import { currentCycle, projectHealth, runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
+import { projectOverdue } from '../../data/contracts'
 import type { Project } from '../../store/types'
 import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone, relativeDay } from './projectLogic'
 import { ProjectActivityRows } from './ProjectActivityRows'
@@ -13,6 +14,8 @@ import { CyclesTab } from './tabs/CyclesTab'
 import { DocsTab } from './tabs/DocsTab'
 import { OverviewTab } from './tabs/OverviewTab'
 import { useProjectActions } from './useProjectActions'
+import { canStopProject } from './projectLogic'
+import { setViewOnly } from '../../ui/viewOnly'
 import { TODAY } from '../../lib/format'
 
 const TABS: Array<[ProjectTab, string, string, string]> = [
@@ -28,7 +31,7 @@ function isTab(value: string | null): value is ProjectTab {
   return TABS.some(([id]) => id === value)
 }
 
-function Header({ project }: { project: Project }) {
+function Header({ project, readOnly }: { project: Project; readOnly: boolean }) {
   const { go, openCustomer } = useApp()
   const actions = useProjectActions(project)
   const draft = project.state === 'draft'
@@ -40,7 +43,7 @@ function Header({ project }: { project: Project }) {
           <h1>{project.customer} <span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></h1>
           <p>{project.code} · Khách <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>{project.customer}</button> · {project.service} · Account {project.owner}</p>
         </div>
-        <div className="project-detail-actions">
+        <div className="project-detail-actions" hidden={readOnly}>
           <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa dự án</button>
           {draft && <button className="primary" onClick={actions.start}><Icon name="play" /> Bắt đầu triển khai</button>}
           {project.state === 'active' && runningCycle(project) && <button className="primary" onClick={actions.closeCycle}><Icon name="calendar-check-2" /> Chốt chu kỳ</button>}
@@ -53,7 +56,8 @@ function Header({ project }: { project: Project }) {
 
 function Summary({ project }: { project: Project }) {
   const { params } = useData()
-  const health = projectHealth(project, params)
+  const { contracts } = useData()
+  const health = projectHealth(project, params, TODAY, projectOverdue(contracts, project.id))
   const cycle = currentCycle(project)
   const posts = postProgress(project)
   const endNote = cycle && cycle.status === 'running' ? 'chốt ' + relativeDay(cycle.plannedEnd, TODAY) : cycle ? 'đã chốt' : 'tạo khi bắt đầu triển khai'
@@ -76,7 +80,7 @@ function Summary({ project }: { project: Project }) {
 }
 
 export function ProjectDetailScreen() {
-  const { projectId, go, screen } = useApp()
+  const { projectId, go, screen, role, account } = useApp()
   const { route } = useLocation()
   const project = useData().projects.find((item) => item.id === projectId)
   const raw = route?.query.get('tab') ?? null
@@ -88,6 +92,12 @@ export function ProjectDetailScreen() {
     if (legacyCycleLink) navigate(pathFor('projectDetail', projectId, { tab: 'chu-ky' }), { replace: true })
     else if (route && raw !== null && !isTab(raw)) navigate(withQuery(route, { tab: undefined }), { replace: true })
   }, [legacyCycleLink, projectId, raw, route])
+
+  const hint = !project || canStopProject(role, account, project) ? null : role === 'account' ? 'Chỉ Account ' + project.owner + (project.createdBy !== project.owner ? ' hoặc ' + project.createdBy : '') + ' được thao tác' : 'BODs và Administrator chỉ xem'
+  useEffect(() => {
+    setViewOnly(hint)
+    return () => setViewOnly(null)
+  }, [hint])
 
   if (!project) {
     return (
@@ -103,7 +113,8 @@ export function ProjectDetailScreen() {
   const [, , title, subtitle] = TABS.find(([id]) => id === tab)!
   return (
     <section className="screen active" id="projectWorkspaceDetail">
-      <Header project={project} />
+      <Header project={project} readOnly={Boolean(hint)} />
+      {hint && <div className="scope-banner"><Icon name="shield-check" /> {hint}. Chế độ xem: mở được các form để xem nhưng không lưu thay đổi.</div>}
       <Summary project={project} />
       <nav className="project-detail-tabs" aria-label="Chi tiết dự án">
         {TABS.map(([id, label]) => (

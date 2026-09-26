@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { primaryContract } from '../../data/contracts'
+import { coversProject, primaryContract } from '../../data/contracts'
 import { newCycle } from '../../data/cycles'
 import { ACCOUNTS, addBusinessDaysIso, formatDate, newId, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
@@ -227,6 +227,9 @@ export function EditProjectModal({ project }: { project: Project }) {
 
 export function StopProjectModal({ project }: { project: Project }) {
   const { closeModal } = useApp()
+  const { contracts, projects } = useData()
+  const contract = primaryContract(contracts, project.id)
+  const others = contract ? projects.filter((item) => item.id !== project.id && item.state !== 'stopped' && coversProject(contract, item.id)) : []
   return (
     <Modal
       title="Dừng dự án"
@@ -247,6 +250,14 @@ export function StopProjectModal({ project }: { project: Project }) {
           }
           addProjectActivity(item, 'circle-stop', 'Dự án đã dừng', formatDate(parseInput(date)) + ' · ' + reason)
         })
+        if (contract && checked(form, 'endContract')) {
+          update((draft) => {
+            const row = draft.contracts.find((entry) => entry.id === contract.id)
+            if (!row) return
+            row.status = 'Kết thúc'
+            row.activity.unshift('Kết thúc cùng lúc dừng ' + project.code + ' · ' + formatDate(parseInput(date)))
+          })
+        }
         closeModal()
       }}
     >
@@ -254,6 +265,13 @@ export function StopProjectModal({ project }: { project: Project }) {
         <div className="customer-data-rules"><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Chu kỳ đang chạy được chốt tại ngày hiệu lực; số chu kỳ đã triển khai giữ nguyên.</p></div>
         <label className="field">Lý do dừng<textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
         <label className="field">Ngày hiệu lực<input name="effectiveDate" type="date" required defaultValue={TODAY} /></label>
+        {contract && contract.status === 'Hiệu lực' && (
+          others.length ? (
+            <div className="customer-data-rules"><p>{contract.code} còn gồm {others.map((item) => item.code).join(', ')} đang chạy nên giữ Hiệu lực. Đổi phạm vi hợp đồng bằng phụ lục.</p></div>
+          ) : (
+            <label className="filter-check"><input name="endContract" type="checkbox" defaultChecked /> Chuyển {contract.code} sang Kết thúc (công nợ còn lại vẫn được theo dõi)</label>
+          )
+        )}
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận đã kiểm tra ảnh hưởng tới hợp đồng, kế hoạch và công việc.</label>
         <FormActions submit="Xác nhận dừng" />
       </div>
