@@ -32,7 +32,6 @@ export function PlanModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Content Plan"
-      help={<><p>Ngày gửi dùng để chấm mốc Content Plan. Ngày duyệt là mốc tính hạn Shooting Plan.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.plan.status = status
@@ -67,7 +66,6 @@ export function ShootingPlanModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Shooting Plan"
-      help={<><p>Shooting Plan gồm giờ, địa điểm, Media, danh sách món và cảnh cần chuẩn bị. Khách cần xác nhận trước ngày shoot.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.shootingPlan = { sentAt: field(form, 'sentAt'), link: field(form, 'link') }
@@ -92,7 +90,6 @@ export function ShootingModal({ project, shooting }: { project: Project; shootin
   return (
     <Modal
       title={shooting ? 'Cập nhật lịch shooting' : 'Tạo lịch shooting'}
-      help={<><p>Khi đánh dấu Đã hoàn thành, mốc Post Demo tự tính từ ngày shoot. Ghi Shooting recap vào Key notes ngay sau buổi quay.</p></>}
       onSubmit={(form) => {
         const media = people.filter((name) => (form.elements.namedItem('media-' + name) as HTMLInputElement | null)?.checked)
         const next: Shooting = {
@@ -141,7 +138,6 @@ export function DemoModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Post Demo"
-      help={<><p>Ngày khách duyệt Demo là mốc bắt đầu nhịp đăng bài.</p></>}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.demo = {
@@ -177,7 +173,6 @@ export function CycleTaskModal({ project, task }: { project: Project; task?: Cyc
   return (
     <Modal
       title={task ? 'Cập nhật công việc' : 'Tạo công việc'}
-      help={<><p>Công việc thiếu Owner hoặc deadline chỉ được lưu ở trạng thái Nháp.</p></>}
       onSubmit={(form) => {
         const owner = form.elements.namedItem('owner') as HTMLSelectElement
         const status = field(form, 'status')

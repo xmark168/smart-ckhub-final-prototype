@@ -428,3 +428,4 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
 .modal-help-panel p + p, .modal-help-panel b + p { margin-top: 4px; }
 .req { margin-left: 2px; color: #b42318; font-weight: 800; text-decoration: none; border: 0; cursor: help; }
 .modal .form:has(.req)::before { content: "* là trường bắt buộc"; display: block; color: var(--muted); font-size: 11px; }
+.rules-list { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; } .rules-list li + li { margin-top: 4px; }

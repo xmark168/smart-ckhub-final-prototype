@@ -15,7 +15,7 @@ import { addProjectActivity, onboardingItems, onboardingReady, updateProject } f
 
 function QuotaNote({ quota }: { quota: Project['quota'] }) {
   if (!quota.posts && !quota.shoots && !quota.plans) {
-    return <div className="customer-data-rules"><p>Gói không có đầu ra nội dung hằng tháng: không áp dụng mốc Content Plan, shoot và nhịp đăng.</p></div>
+    return null
   }
   return (
     <div className="customer-data-rules">
@@ -54,7 +54,6 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
   return (
     <Modal
       title="Tạo dự án"
-      help={<><p>Dự án được tạo ở trạng thái nháp. Partner gán theo từng buổi shoot và công việc; Content nội bộ dùng chung. Chu kỳ 1 và các mốc SOP chỉ được tạo khi Cổng khởi động đủ điều kiện.</p></>}
       onSubmit={(form) => {
         const customer = findCustomer(customerText)
         if (!customer) {
@@ -204,7 +203,6 @@ export function StopProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Dừng dự án"
-      help={<><b>Phân quyền dừng dự án</b><p>Chỉ Account phụ trách hoặc Account tạo dự án được thực hiện. Chu kỳ đang chạy được chốt tại ngày hiệu lực; số chu kỳ đã triển khai giữ nguyên.</p></>}
       onSubmit={(form) => {
         const date = field(form, 'effectiveDate')
         const reason = field(form, 'reason')
@@ -255,7 +253,6 @@ export function PauseProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Tạm dừng dự án"
-      help={<><p>Tạm dừng giữ nguyên chu kỳ đang chạy và hợp đồng. Mốc SOP không bị tính trễ trong thời gian tạm dừng.</p></>}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         const returnDate = field(form, 'returnDate')
@@ -282,7 +279,6 @@ export function StartProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Bắt đầu triển khai"
-      help={<><b>T0 · Tạo chu kỳ 1 cho {project.customer}</b><p>Cổng khởi động đã đủ điều kiện. Ngày bắt đầu là T0: mọi mốc SOP (Content Plan, Shooting Plan, Post Demo, nhịp đăng) tính từ ngày này.</p></>}
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
         updateProject(project.id, (item) => {
@@ -451,7 +447,6 @@ export function CancelDraftModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Hủy dự án nháp"
-      help={<><p>Dùng khi khách không chốt. Dự án chuyển sang Đã dừng, không tạo chu kỳ; hợp đồng nháp (nếu có) cần hủy tại Hợp đồng &amp; công nợ.</p></>}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         updateProject(project.id, (item) => {
@@ -477,7 +472,6 @@ export function NotesModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Ghi chú dự án"
-      help={<><p>Ghi chú hiện ở trang dự án và trang khách hàng. Kiến thức lâu dài về khách (feedback, recap) ghi vào Key notes ở tab Tài liệu.</p></>}
       onSubmit={(form) => {
         const notes = field(form, 'notes')
         updateProject(project.id, (item) => {

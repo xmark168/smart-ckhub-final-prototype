@@ -58,7 +58,6 @@ export function CreateCustomerModal({ onCreated }: { onCreated: (id: string) => 
   return (
     <Modal
       title="Tạo khách hàng"
-      help={<><p>Trạng thái khách hàng tính từ dự án. Sau khi tạo, trang chi tiết khách mở ra để lập dự án nháp.</p></>}
       onSubmit={(form) => {
         const duplicate = duplicateError(form)
         setError(duplicate)
@@ -227,7 +226,6 @@ export function AccountSummaryModal({ owner }: { owner: string }) {
           </ul>
         </div>
       )}
-      <div className="customer-data-rules"><b>Phạm vi dữ liệu</b><p>Account xem các khách hàng và dự án mình phụ trách hoặc tạo.</p></div>
       <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div>
     </Modal>
   )
@@ -267,7 +265,7 @@ export function CustomerFlowModal() {
       </div>
       <div className="customer-data-rules">
         <b>Chỉ số và kỳ xem</b>
-        <p>Khách hiện hữu: mọi khách chưa kết thúc hợp tác (gồm đang hợp tác, chờ khởi động, tạm ngưng, chưa có dự án). Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay. Khách mới trong kỳ: ngày tạo hồ sơ nằm trong kỳ xem, kể cả khách đã kết thúc hợp tác sau đó. Kết thúc trong kỳ: ngày kết thúc hợp tác nằm trong kỳ xem. Bấm +mới / −kết thúc để lọc danh sách. Kỳ xem (nút lịch cạnh tiêu đề) chỉ áp dụng cho hai số này và lưu chung cho mọi người dùng trong bản prototype.</p>
+        <p>Khách hiện hữu: mọi khách chưa kết thúc hợp tác (gồm đang hợp tác, chờ khởi động, tạm ngưng, chưa có dự án). Khách cần chú ý: có dự án trễ mốc SOP, dự án gắn cờ, công nợ quá hạn hoặc cờ tay. Gắn cờ bắt buộc ghi lý do; gỡ cờ khi đã xử lý xong. Khách mới trong kỳ: ngày tạo hồ sơ nằm trong kỳ xem, kể cả khách đã kết thúc hợp tác sau đó. Kết thúc trong kỳ: ngày kết thúc hợp tác nằm trong kỳ xem. Bấm +mới / −kết thúc để lọc danh sách. Kỳ xem (nút lịch cạnh tiêu đề) chỉ áp dụng cho hai số này và lưu chung cho mọi người dùng trong bản prototype.</p>
       </div>
       <div className="customer-data-rules">
         <b>Kết thúc hợp tác</b>
@@ -288,7 +286,6 @@ export function PeriodModal() {
   return (
     <Modal
       title="Kỳ xem"
-      help={<><p>Kỳ xem áp dụng cho số khách mới và khách kết thúc hợp tác. Khách hiện hữu và khách cần chú ý luôn tính tại hôm nay. Bản prototype lưu kỳ xem chung cho mọi người dùng trên trình duyệt này.</p></>}
       onSubmit={(form) => {
         update((draft) => {
           draft.period = { mode, month: field(form, 'month') || period.month, year: field(form, 'year') }

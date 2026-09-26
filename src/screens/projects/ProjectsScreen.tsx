@@ -10,8 +10,8 @@ import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
 import type { Contract, Project, ProjectState, SopParams } from '../../store/types'
 import { projectOverdue } from '../../data/contracts'
-import { InfoModal } from '../../ui/Modal'
 import { CreateProjectModal } from './ProjectModals'
+import { ProjectRulesModal } from './ProjectRulesModal'
 import { cycleCounter, cycleRange, postProgress, projectLabel, projectTone } from './projectLogic'
 
 type Kpi = 'all' | 'active' | 'risk' | 'paused' | 'draft'
@@ -28,8 +28,6 @@ interface Filters {
 const INITIAL: Filters = { kpi: 'all', query: '', status: '', owner: '', area: '', risk: false }
 const PAGE_SIZE = 20
 
-const PROJECT_RULES =
-  'Mỗi dự án thuộc một khách hàng và một Account phụ trách. Dự án nháp chỉ được bắt đầu (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief và brief khách hàng. Mốc Content Plan, Shooting Plan, Post Demo và nhịp đăng tự tính từ T0 theo Tham số vận hành. "Có rủi ro" gồm dự án có mốc trễ hoặc được gắn cờ tay. Account chỉ thấy dự án mình phụ trách hoặc tạo. Gói dịch vụ theo hợp đồng: một hợp đồng có thể gồm nhiều gói; đổi gói phải làm phụ lục hoặc hợp đồng mới (hóa đơn xuất theo hạng mục hợp đồng). Khách không chốt thì Hủy nháp (dự án chuyển sang Đã dừng, giữ lịch sử); sau đó mới kết thúc hợp tác với khách được.'
 
 function atRisk(item: Project, params: SopParams, contracts: Contract[]): boolean {
   return item.state === 'active' && (item.risk || projectHealth(item, params).level === 'late' || projectOverdue(contracts, item.id) > 0)
@@ -122,7 +120,7 @@ export function ProjectsScreen() {
     <section className="screen active" id="projects">
       <div className="projects-page">
         <div className="project-page-head">
-          <h1>Dự án <button className="customer-help" aria-label="Quy tắc dự án" onClick={() => showModal(<InfoModal title="Quy tắc dự án" message={PROJECT_RULES} />)}>?</button></h1>
+          <h1>Dự án <button className="customer-help" aria-label="Quy tắc dự án" onClick={() => showModal(<ProjectRulesModal />)}>?</button></h1>
           <button className="primary" onClick={() => showModal(<CreateProjectModal onCreated={(id) => openProject(id)} />)}><Icon name="plus" /> Tạo dự án</button>
         </div>
 

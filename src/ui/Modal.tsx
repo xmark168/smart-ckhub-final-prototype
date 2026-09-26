@@ -11,8 +11,6 @@ interface ModalProps {
   backdropClassName?: string
   onSubmit?: (form: HTMLFormElement) => void
   onClose?: () => void
-  /** Rules and explanations, shown behind a "?" next to the title instead of inside the form. */
-  help?: ReactNode
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -21,12 +19,10 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * Accessible modal dialog: role="dialog" named by its title, Escape closes, Tab stays inside,
  * first field gets focus on open and focus returns to the opener on close.
  */
-export function Modal({ title, children, className = '', backdropClassName = 'customer-modal', onSubmit, onClose, help }: ModalProps) {
+export function Modal({ title, children, className = '', backdropClassName = 'customer-modal', onSubmit, onClose }: ModalProps) {
   const { closeModal, toast } = useApp()
   const close = onClose ?? closeModal
   const titleId = useId()
-  const helpId = useId()
-  const [helpOpen, setHelpOpen] = useState(false)
   const formRef = useRef<HTMLDivElement>(null)
   // Captured during the first render, before autoFocus moves focus into the dialog.
   const [opener] = useState(() => document.activeElement as HTMLElement | null)
@@ -84,12 +80,8 @@ export function Modal({ title, children, className = '', backdropClassName = 'cu
         >
           <div className="modal-top">
             <h2 id={titleId}>{title}</h2>
-            {help && (
-              <button type="button" className="customer-help modal-help" aria-expanded={helpOpen} aria-controls={helpId} aria-label="Quy tắc và giải thích" onClick={() => setHelpOpen(!helpOpen)}>?</button>
-            )}
             <button className="close" type="button" onClick={close} aria-label="Đóng">×</button>
           </div>
-          {help && helpOpen && <div id={helpId} className="customer-data-rules modal-help-panel">{help}</div>}
           {children}
         </form>
       </div>

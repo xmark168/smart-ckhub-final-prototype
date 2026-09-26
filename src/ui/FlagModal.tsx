@@ -9,8 +9,7 @@ export function FlagModal({ subject, onConfirm }: { subject: string; onConfirm: 
   const { closeModal } = useApp()
   return (
     <Modal
-      title="Đánh dấu cần chú ý"
-      help={<p>{subject}. Lý do hiển thị cùng cờ để người xem biết cần theo dõi điều gì; gỡ cờ khi đã xử lý xong.</p>}
+      title={subject}
       onSubmit={(form) => {
         onConfirm(field(form, 'reason'))
         closeModal()

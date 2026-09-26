@@ -107,7 +107,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   }
 
   return (
-    <Modal title={row ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} className="contract-modal" onSubmit={save} help={<><p>Ngày kết thúc dự kiến tự tính từ ngày bắt đầu và số chu kỳ. Chỉ một hợp đồng chính hiệu lực trên mỗi dự án.</p><p>Link file và folder Drive không bắt buộc; bổ sung khi có.</p></>}>
+    <Modal title={row ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} className="contract-modal" onSubmit={save}>
       <div className="form">
         {project && (
           <div className="customer-data-rules">
