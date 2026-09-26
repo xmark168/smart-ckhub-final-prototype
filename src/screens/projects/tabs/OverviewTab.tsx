@@ -1,4 +1,4 @@
-import { initials, money, shortDate } from '../../../lib/format'
+import { initials, shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { cycleMilestones, runningCycle } from '../../../lib/sop'
 import { useData } from '../../../store/store'
@@ -68,17 +68,6 @@ export function OverviewTab({ project }: { project: Project }) {
             <button className="text-btn" onClick={actions.notes}>{project.notes ? 'Sửa' : '+ Thêm ghi chú'}</button>
           </div>
           {project.notes ? <p className="project-note-text">{project.notes}</p> : <p className="empty-copy">Chưa có ghi chú.</p>}
-        </section>
-        <section className="panel project-service-panel">
-          <div className="panel-head"><h2>Dịch vụ và định mức</h2></div>
-          <div className="project-service-grid">
-            <div>
-              <span>Gói</span><b>{project.service}</b>
-              {project.pendingPackage && <small className="cpl-reason tone-waiting">Đổi gói từ chu kỳ {project.pendingPackage.fromCycle}</small>}
-            </div>
-            <div><span>Đơn giá</span><b>{project.servicePackageId ? money(project.servicePrice) : '—'}</b></div>
-            <div><span>Mỗi chu kỳ</span><b>{quota.posts ? quota.posts + ' bài · ' + quota.shoots + ' shoot' : 'Không có bài đăng'}</b></div>
-          </div>
         </section>
       </main>
       <aside>
