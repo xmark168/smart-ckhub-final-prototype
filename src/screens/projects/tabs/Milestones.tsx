@@ -16,7 +16,7 @@ export function MilestoneList({ items }: { items: Milestone[] }) {
           </div>
           <span className="sop-milestone-due">
             {item.due ? shortDate(item.due) : '—'}
-            {item.done && item.done !== item.due && <small>xong {shortDate(item.done)}</small>}
+            {item.done && item.done !== item.due && <small>{item.done < item.due ? 'xong sớm ' : 'xong '}{shortDate(item.done)}</small>}
             {!item.done && item.due && (item.state === 'late' || item.state === 'due') && <small>{relativeDay(item.due, TODAY)}</small>}
           </span>
           <span className={'pill ' + MILESTONE_TONE[item.state]}>{MILESTONE_LABEL[item.state]}</span>

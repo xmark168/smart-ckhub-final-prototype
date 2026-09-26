@@ -1,9 +1,9 @@
-import { initials, money, shortDate } from '../../../lib/format'
+import { initials, money, shortDate, TODAY } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { cycleMilestones, MILESTONE_TONE, nextActions, runningCycle } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Project } from '../../../store/types'
-import { onboardingItems, type OnboardingItem } from '../projectLogic'
+import { onboardingItems, relativeDay, type OnboardingItem } from '../projectLogic'
 import { useProjectActions } from '../useProjectActions'
 import { MilestoneList } from './Milestones'
 
@@ -90,12 +90,12 @@ export function OverviewTab({ project }: { project: Project }) {
   const { params } = useData()
   const actions = useProjectActions(project)
   const cycle = runningCycle(project)
-  const next = nextActions(project, params).slice(0, 5)
+  const next = nextActions(project, params)
   const quota = project.quota
   // People working this cycle, gathered from shootings (Media) and cycle tasks (Owner).
   const roles = new Map<string, string[]>()
   const addRole = (name: string, role: string) => {
-    if (!name || name === project.owner) return
+    if (!name || name === project.owner || name === 'Content nội bộ') return
     const list = roles.get(name) ?? []
     if (!list.includes(role)) roles.set(name, [...list, role])
   }
@@ -106,29 +106,36 @@ export function OverviewTab({ project }: { project: Project }) {
     <div className="project-detail-grid">
       <main>
         {project.state === 'draft' && <OnboardingPanel project={project} />}
-        {cycle && (
-          <section className="panel">
-            <div className="panel-head">
-              <div><h2>Việc cần làm tiếp</h2><p className="subline">Mốc chưa xong của chu kỳ {cycle.no}, trễ nhất trước.</p></div>
-            </div>
-            {next.length ? (
-              <div className="cycle-task-list">
-                {next.map((item) => (
-                  <div className="cycle-task" key={item.label}>
-                    <span><b>{item.label}</b><small>{item.detail}{item.due ? ' · hạn ' + shortDate(item.due) : ''}</small></span>
-                    <em className={'pill ' + MILESTONE_TONE[item.state]}>{item.state === 'late' ? 'Trễ' : item.state === 'due' ? 'Đến hạn' : item.state === 'waiting' ? 'Chờ' : 'Sắp tới'}</em>
-                  </div>
-                ))}
+        {cycle && (() => {
+          const all = cycleMilestones(cycle, quota, params)
+          const done = all.filter((item) => item.state === 'done' || item.state === 'doneLate')
+          return (
+            <section className="panel">
+              <div className="panel-head">
+                <div><h2>Mốc chu kỳ {cycle.no}</h2><p className="subline">Tính từ {shortDate(cycle.start)} theo Tham số vận hành · việc gấp nhất trước.</p></div>
               </div>
-            ) : <p className="empty-copy">Không còn mốc mở trong chu kỳ này.</p>}
-          </section>
-        )}
-        {cycle && (
-          <section className="panel">
-            <div className="panel-head"><div><h2>Mốc SOP chu kỳ {cycle.no}</h2><p className="subline">Tính từ T0 {shortDate(cycle.start)} theo Tham số vận hành.</p></div></div>
-            <MilestoneList items={cycleMilestones(cycle, quota, params)} />
-          </section>
-        )}
+              {next.length ? (
+                <div className="cycle-task-list">
+                  {next.map((item) => (
+                    <div className={'cycle-task milestone-open is-' + item.state} key={item.label}>
+                      <span><b>{item.label}</b><small>{item.detail}</small></span>
+                      <span className="milestone-when">
+                        <span className={'pill ' + MILESTONE_TONE[item.state]}>{item.state === 'late' ? 'Trễ' : item.state === 'due' ? 'Đến hạn' : item.state === 'waiting' ? 'Chờ bước trước' : 'Sắp tới'}</span>
+                        {item.due && <small>{relativeDay(item.due, TODAY)} · {shortDate(item.due)}</small>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="empty-copy">Không còn mốc mở trong chu kỳ này.</p>}
+              {done.length > 0 && (
+                <details className="milestones-done">
+                  <summary><Icon name="check" /> {done.length} mốc đã xong{done.some((item) => item.state === 'doneLate') ? ' (có mốc xong trễ)' : ''}</summary>
+                  <MilestoneList items={done} />
+                </details>
+              )}
+            </section>
+          )
+        })()}
         <section className="panel project-notes-panel">
           <div className="panel-head">
             <div><h2>Ghi chú dự án</h2><p className="subline">Điều cả team cần nhớ khi làm dự án này.</p></div>

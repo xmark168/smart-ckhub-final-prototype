@@ -135,7 +135,7 @@ export function ProjectDetailScreen() {
       </nav>
       <div className="project-tab-content">
         <section className="project-tab-panel is-active">
-          <div className="project-tab-heading"><div><h2>{title}</h2><p>{subtitle}</p></div></div>
+          <p className="project-tab-desc"><span className="sr-only">{title}: </span>{subtitle}</p>
           {tab === 'tong-quan' && <OverviewTab project={project} />}
           {tab === 'chu-ky' && <CyclesTab project={project} />}
           {tab === 'noi-dung' && <ContentTab project={project} />}

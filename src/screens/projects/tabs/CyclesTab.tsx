@@ -1,13 +1,26 @@
 import { useApp } from '../../../app/context'
 import { addBusinessDaysIso, addDaysIso, shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
-import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle } from '../../../lib/sop'
+import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type MilestoneState } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
 import { CycleTaskModal, DemoModal, ExceptionModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
 import { planLabel, resolveException, statusTone } from '../projectLogic'
 import { useProjectActions } from '../useProjectActions'
+
+/** Short outcome for the history row; the full note stays in the tooltip. */
+function resultLabel(cycle: Cycle, progress: { published: number; planned: number }, state: MilestoneState): string {
+  if (cycle.status === 'running') return MILESTONE_LABEL[state]
+  if (!progress.planned) return 'Đã chốt'
+  const missing = progress.planned - progress.published
+  return missing > 0 ? 'Thiếu ' + missing + (cycle.result?.note.includes('bù') ? ' · bù' : '') : 'Đủ bài'
+}
+
+function resultTone(cycle: Cycle, progress: { published: number; planned: number }, state: MilestoneState): string {
+  if (cycle.status === 'running') return MILESTONE_TONE[state]
+  return progress.published >= progress.planned ? 'ok' : 'waiting'
+}
 
 function History({ project }: { project: Project }) {
   const { params } = useData()
@@ -23,10 +36,10 @@ function History({ project }: { project: Project }) {
           <div className="project-cycle-row" key={cycle.no}>
             <b>{cycle.no} / {project.total || '–'}</b>
             <span>{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}</span>
-            <span>{cycle.actualEnd ? shortDate(cycle.actualEnd) : cycle.status === 'running' ? 'Đang chạy' : '—'}</span>
+            <span className="cycle-actual">{cycle.actualEnd ? 'chốt ' + shortDate(cycle.actualEnd) : cycle.status === 'running' ? 'Đang chạy' : '—'}</span>
             <span>{project.quota.posts ? progress.published + ' / ' + progress.planned + (progress.bonus ? ' (+' + progress.bonus + ')' : '') : '—'}</span>
-            <span className={'pill ' + MILESTONE_TONE[end.state]} title={cycle.result?.note}>
-              {cycle.status === 'running' ? MILESTONE_LABEL[end.state] : cycle.result?.note ?? MILESTONE_LABEL[end.state]}
+            <span className={'pill ' + resultTone(cycle, progress, end.state)} title={cycle.result?.note}>
+              {resultLabel(cycle, progress, end.state)}
             </span>
           </div>
         )
