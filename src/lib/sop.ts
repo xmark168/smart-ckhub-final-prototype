@@ -141,7 +141,7 @@ interface StepResult {
 /** "T0 + 3 ngày làm việc", "Khách duyệt Gửi Content Plan + 1 ngày", "Shoot xong + 3 ngày". */
 export function anchorText(step: Pick<TimelineStep, 'anchor'>, nameOf: (id: string) => string): string {
   const { after, event, offset, unit } = step.anchor
-  const base = after === 'T0' ? 'T0' : event === 'approved' ? 'Khách duyệt ' + nameOf(after) : nameOf(after) + ' xong'
+  const base = after === 'T0' ? 'T0' : after === 'shoot' ? 'Shoot xong' : event === 'approved' ? 'Khách duyệt ' + nameOf(after) : nameOf(after) + ' xong'
   return offset ? base + ' + ' + offset + (unit === 'bd' ? ' ngày làm việc' : ' ngày') : base
 }
 
@@ -155,8 +155,14 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
     // Anchor: T0, or when the step it waits for happened (estimated from its due date if not yet).
     let anchor = cycle.start
     let projected = false
-    const prev = step.anchor.after === 'T0' ? undefined : results.get(step.anchor.after)
-    if (prev) {
+    const prev = step.anchor.after === 'T0' || step.anchor.after === 'shoot' ? undefined : results.get(step.anchor.after)
+    if (step.anchor.after === 'shoot') {
+      // Virtual anchor: the first shooting of the cycle (scheduled date is an estimate until it is done).
+      const first = shootings[0]
+      const plan = results.get('shootingPlan')
+      anchor = first ? first.date : plan ? plan.done || plan.due : cycle.start
+      projected = first?.status !== 'Đã hoàn thành'
+    } else if (prev) {
       if (step.anchor.event === 'approved') {
         anchor = prev.approvedAt || addDaysIso(prev.done || prev.due, REVIEW_DAYS)
         projected = !prev.approvedAt
@@ -174,6 +180,10 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
     const items = STEP_KINDS[step.kind].posts ? itemsIn(cycle, step.posts) : []
 
     switch (step.kind) {
+      case 'kickoff':
+        done = cycle.start <= today ? cycle.start : ''
+        detail = cycle.no === 1 ? 'Khách đã cọc và đủ brief' : 'Nối tiếp chu kỳ ' + (cycle.no - 1)
+        break
       case 'plan':
         done = cycle.plan.sentAt
         approvedAt = cycle.plan.approvedAt
@@ -214,8 +224,9 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
         const target = step.posts ? items.length : postTarget(cycle, quota)
         const start = projected ? '' : ruleDue
         pace = { start, published: published.length, target, expected: expectedPublished(start, target, perWeek[0], today), perWeek }
-        if (target && published.length >= target) done = published.map((item) => item.postDate).sort().pop() || today
-        detail = published.length + ' / ' + target + ' bài · ' + perWeek[0] + '–' + perWeek[1] + ' bài/tuần'
+        // The milestone is the start of regular posting; volume and cadence are checked at closing.
+        done = published.map((item) => item.postDate).filter((date) => date && date >= (start || '0')).sort()[0] ?? ''
+        detail = 'Nhịp ' + perWeek[0] + '–' + perWeek[1] + ' bài/tuần · ' + published.length + ' / ' + target + ' bài'
         break
       }
       case 'custom':
@@ -223,8 +234,7 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
         break
     }
 
-    // Posting lasts as many weeks as the target needs at the upper cadence.
-    const baseDue = pace ? addDaysIso(ruleDue, Math.max(1, Math.ceil(pace.target / Math.max(1, pace.perWeek[1]))) * 7 - 1) : ruleDue
+    const baseDue = ruleDue
     const due = step.dueOverride || planned || baseDue
     const isProjected = projected && !step.dueOverride && !planned
     // Content-based steps have no completion date of their own: count them done on time (or today).
@@ -235,13 +245,11 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
     if (step.skipped) state = 'skipped'
     else if (done) state = stateOf(due, done, today)
     else if (isProjected) state = 'waiting'
-    else if (pace) state = pace.expected > pace.published || today > due ? 'late' : today === due ? 'due' : 'upcoming'
     else state = stateOf(due, '', today)
 
     const rule = anchorText(step, nameOf)
     if (isProjected) detail = 'Dự kiến · ' + rule + (detail ? ' · ' + detail : '')
     else if (!detail) detail = step.kind === 'shoot' ? 'Chưa chốt lịch · ' + rule : rule
-    if (pace && pace.expected > pace.published) detail += ' · chậm ' + (pace.expected - pace.published) + ' bài so với nhịp'
     const last = step.log[step.log.length - 1]
     if ((step.dueOverride || step.skipped) && last) detail += ' · ' + last.text
 
@@ -249,8 +257,15 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
     list.push({ key: step.id, kind: step.kind, label: step.name, owner: step.owner, due, baseDue, moved: Boolean(step.dueOverride), projected: isProjected, done, state, detail, pace })
   }
 
-  // Closing: once every step is delivered; the target end date only warns.
+  // Closing: once every milestone is reached and every post (quota + gifted) is out; the target date only warns.
   const open = list.filter((item) => !item.done && item.state !== 'skipped')
+  const pace = list.find((item) => item.pace)?.pace
+  const postsLeft = pace ? Math.max(0, pace.target - pace.published) : 0
+  const behind = pace ? Math.max(0, pace.expected - pace.published) : 0
+  const ready = list.length > 0 && !open.length && !postsLeft
+  const status = [pace ? 'Đã đăng ' + pace.published + ' / ' + pace.target + ' bài' : '', behind ? 'chậm ' + behind + ' bài so với nhịp' : '', open.length ? 'còn ' + open.length + ' mốc' : '']
+    .filter(Boolean)
+    .join(' · ')
   const end: Milestone = {
     key: 'end',
     kind: 'end',
@@ -262,9 +277,10 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
     projected: false,
     done: cycle.actualEnd,
     state: stateOf(cycle.plannedEnd, cycle.actualEnd, today),
-    detail: cycle.actualEnd ? 'Đã chốt ' + shortDate(cycle.actualEnd) : open.length ? 'Còn ' + open.length + ' bước · mục tiêu ' + shortDate(cycle.plannedEnd) : 'Đã xong mọi bước — sẵn sàng chốt',
+    detail: cycle.actualEnd ? 'Đã chốt ' + shortDate(cycle.actualEnd) : ready ? 'Đủ mốc và đủ bài — sẵn sàng chốt' : status + ' · mục tiêu ' + shortDate(cycle.plannedEnd),
   }
-  if (!cycle.actualEnd && !open.length && list.length) end.state = today > cycle.plannedEnd ? 'late' : 'due'
+  if (!cycle.actualEnd && ready) end.state = today > cycle.plannedEnd ? 'late' : 'due'
+  else if (!cycle.actualEnd && behind) end.state = 'late'
   else if (end.state === 'upcoming' && diffDays(today, cycle.plannedEnd) <= params.cycleEndWarningDays) end.state = 'due'
   list.push(end)
   return list
@@ -272,8 +288,8 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
 
 /** True once every step of the cycle is delivered or skipped. */
 export function readyToClose(cycle: Cycle, quota: PackageQuota, params: SopParams, today = TODAY): boolean {
-  const steps = cycleMilestones(cycle, quota, params, today).filter((item) => item.kind !== 'end')
-  return steps.length > 0 && steps.every((item) => item.done || item.state === 'skipped')
+  const end = cycleMilestones(cycle, quota, params, today).find((item) => item.kind === 'end')
+  return Boolean(end?.detail.includes('sẵn sàng chốt'))
 }
 
 export function runningCycle(project: Project): Cycle | undefined {

@@ -123,12 +123,12 @@ export interface Shooting {
  * Timeline step types. Each type reads its "done" from the cycle's own records (Content Plan,
  * Shooting, Post Demo, content stages), so nothing is entered twice. `custom` is ticked by hand.
  */
-export type StepKind = 'plan' | 'shootingPlan' | 'shoot' | 'demo' | 'script' | 'edit' | 'publish' | 'custom'
+export type StepKind = 'kickoff' | 'plan' | 'shootingPlan' | 'shoot' | 'demo' | 'script' | 'edit' | 'publish' | 'custom'
 export type StepOwner = 'Account' | 'Planner/Content' | 'Media' | 'Khách'
 
 /** When a step is due: `offset` days (working or calendar) after T0 or after another step. */
 export interface StepAnchor {
-  /** 'T0' or the id of an earlier step. */
+  /** 'T0', 'shoot' (the cycle's first shooting) or the id of an earlier step. */
   after: string
   /** 'approved' waits for the customer to approve that step (Content Plan, Post Demo). */
   event: 'done' | 'approved'

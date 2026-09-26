@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
 import { newCycle } from '../../data/cycles'
-import { defaultTimeline, STEP_KINDS, STEP_OWNERS } from '../../data/timeline'
+import { defaultTimeline, STEP_KINDS, STEP_OWNERS, VIRTUAL_ANCHORS } from '../../data/timeline'
 import { diffDays, TODAY } from '../../lib/format'
 import { cycleMilestones } from '../../lib/sop'
 import { update, useData } from '../../store/store'
@@ -32,12 +32,11 @@ function problems(pkg: ServicePackage, steps: TimelineStepTemplate[]): string[] 
   const list: string[] = []
   steps.forEach((step, index) => {
     const after = step.anchor.after
-    if (after !== 'T0' && !steps.slice(0, index).some((prev) => prev.id === after)) list.push('"' + step.name + '" chờ một bước không nằm phía trên nó.')
+    if (!VIRTUAL_ANCHORS[after] && !steps.slice(0, index).some((prev) => prev.id === after)) list.push('"' + step.name + '" chờ một bước không nằm phía trên nó.')
   })
-  const shoots = steps.filter((step) => step.kind === 'shoot').length
-  if (shoots !== pkg.quota.shoots) list.push('Gói có ' + pkg.quota.shoots + ' buổi shoot / chu kỳ nhưng timeline có ' + shoots + ' bước Shooting.')
+  if (pkg.quota.shoots && pkg.quota.posts && !steps.some((step) => step.kind === 'demo')) list.push('Gói có shoot nhưng chưa có mốc Post Demo.')
   if (pkg.quota.plans && !steps.some((step) => step.kind === 'plan')) list.push('Gói có Content Plan nhưng timeline chưa có bước Content Plan.')
-  if (pkg.quota.posts && !steps.some((step) => step.kind === 'publish')) list.push('Gói có ' + pkg.quota.posts + ' bài / chu kỳ nhưng chưa có bước Đăng bài.')
+  if (pkg.quota.posts && !steps.some((step) => step.kind === 'publish')) list.push('Gói có ' + pkg.quota.posts + ' bài / chu kỳ nhưng chưa có mốc Bắt đầu đăng.')
   for (const kind of ['script', 'edit'] as const) {
     const ranges = steps.filter((step) => step.kind === kind && step.posts).map((step) => step.posts!).sort((a, b) => a[0] - b[0])
     if (!pkg.quota.posts || !ranges.length) continue
@@ -104,7 +103,7 @@ export function TimelineEditorModal({ pkg }: { pkg: ServicePackage }) {
       <div className="form">
         <div className="customer-data-rules">
           <b>{pkg.quota.posts ? pkg.quota.posts + ' bài · ' + pkg.quota.shoots + ' buổi shoot · ' + pkg.quota.plans + ' Content Plan / chu kỳ' : 'Gói không có đầu ra nội dung hằng tháng'}</b>
-          <p>Mỗi chu kỳ của gói được sinh từ timeline này. Hạn mỗi bước = sau T0 hoặc sau một bước phía trên (xong / khách duyệt) + số ngày. Chu kỳ chốt khi xong mọi bước. Account chỉ điều chỉnh bản của từng chu kỳ, kèm lý do.</p>
+          <p>Mỗi chu kỳ của gói được sinh từ timeline này. Mặc định theo SOP có 5 mốc: T0 → Content Plan → Shooting Plan → Post Demo → Bắt đầu đăng. Hạn mỗi mốc = sau T0, sau buổi shoot hoặc sau một mốc phía trên (xong / khách duyệt) + số ngày. Chu kỳ chốt khi đủ mốc và đủ bài. Account chỉ điều chỉnh bản của từng chu kỳ, kèm lý do.</p>
           {steps.length > 0 && <p>Nếu mọi bước đúng hạn: chu kỳ kéo dài khoảng <b>{lastDay + 1} ngày</b>.</p>}
         </div>
         {issues.length > 0 && (
@@ -143,11 +142,11 @@ export function TimelineEditorModal({ pkg }: { pkg: ServicePackage }) {
                 <div className="tle-rule">
                   <span>Hạn: sau</span>
                   <select aria-label="Sau bước" value={step.anchor.after} disabled={!editable} onChange={(event) => setAnchor(index, { after: event.target.value, event: 'done' })}>
-                    <option value="T0">T0 (bắt đầu chu kỳ)</option>
+                    {Object.entries(VIRTUAL_ANCHORS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                     {earlier.map((prev) => <option key={prev.id} value={prev.id}>{prev.name}</option>)}
-                    {step.anchor.after !== 'T0' && !afterStep && <option value={step.anchor.after}>⚠ bước không hợp lệ</option>}
+                    {!VIRTUAL_ANCHORS[step.anchor.after] && !afterStep && <option value={step.anchor.after}>⚠ bước không hợp lệ</option>}
                   </select>
-                  {step.anchor.after !== 'T0' && (
+                  {!VIRTUAL_ANCHORS[step.anchor.after] && (
                     <select aria-label="Sự kiện" value={step.anchor.event} disabled={!editable} onChange={(event) => setAnchor(index, { event: event.target.value as 'done' | 'approved' })}>
                       <option value="done">xong</option>
                       {canApprove && <option value="approved">khách duyệt</option>}

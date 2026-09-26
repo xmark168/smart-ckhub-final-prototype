@@ -11,13 +11,14 @@ interface KindMeta {
 
 /** Step types offered in the template editor. */
 export const STEP_KINDS: Record<StepKind, KindMeta> = {
+  kickoff: { label: 'T0 khởi động', owner: 'Account' },
   plan: { label: 'Content Plan', owner: 'Planner/Content', approval: true },
   shootingPlan: { label: 'Shooting Plan', owner: 'Planner/Content' },
   shoot: { label: 'Shooting', owner: 'Media' },
   demo: { label: 'Post Demo', owner: 'Media', approval: true },
   script: { label: 'Script', owner: 'Planner/Content', posts: true },
   edit: { label: 'Edit post', owner: 'Media', posts: true },
-  publish: { label: 'Đăng bài', owner: 'Account', posts: true },
+  publish: { label: 'Bắt đầu đăng', owner: 'Account', posts: true },
   custom: { label: 'Mốc khác', owner: 'Account' },
 }
 
@@ -29,63 +30,34 @@ export function cadenceFor(posts: number, params: SopParams): [number, number] {
   return [Math.max(params.postsPerWeekMin, max - 1), max]
 }
 
+/** Anchors that are not steps: cycle start and the cycle's first shooting. */
+export const VIRTUAL_ANCHORS: Record<string, string> = { T0: 'T0 (bắt đầu chu kỳ)', shoot: 'Buổi shoot đầu tiên' }
+
 /**
- * The SOP timeline for a package quota: Content Plan → Shooting Plan → Shoot → Post Demo →
- * script / edit in batches of `scriptBatchSize` → posting at the weekly cadence. Packages with
- * two shoots get the second shoot before the second edit batch.
+ * The 5 milestones of the SOP: T0 → Content Plan (T0 + 3 ngày LV) → Shooting Plan (khách duyệt
+ * Plan + 1 ngày) → Post Demo (shoot + 1 ngày LV) → bắt đầu đăng đều (khách duyệt Demo). Script
+ * batches and the weekly cadence are rules checked inside the posting period, not milestones.
  */
 export function defaultTimeline(quota: PackageQuota, params: SopParams): TimelineStepTemplate[] {
-  const steps: TimelineStepTemplate[] = []
-  if (!quota.posts && !quota.plans && !quota.shoots) return steps
-  const approved = quota.plans ? { after: 'plan', event: 'approved' as const } : { after: 'T0', event: 'done' as const }
-
-  if (quota.plans) steps.push({ id: 'plan', kind: 'plan', name: 'Gửi Content Plan', owner: 'Planner/Content', anchor: { after: 'T0', event: 'done', offset: params.planLeadBusinessDays, unit: 'bd' } })
+  if (!quota.posts && !quota.plans && !quota.shoots) return []
+  const steps: TimelineStepTemplate[] = [
+    { id: 't0', kind: 'kickoff', name: 'T0 khởi động', owner: 'Account', anchor: { after: 'T0', event: 'done', offset: 0, unit: 'd' } },
+  ]
+  const approved = quota.plans ? { after: 'plan', event: 'approved' as const } : { after: 't0', event: 'done' as const }
+  if (quota.plans) steps.push({ id: 'plan', kind: 'plan', name: 'Gửi Content Plan', owner: 'Planner/Content', anchor: { after: 't0', event: 'done', offset: params.planLeadBusinessDays, unit: 'bd' } })
   if (quota.shoots) {
     steps.push({ id: 'shootingPlan', kind: 'shootingPlan', name: 'Gửi Shooting Plan', owner: 'Planner/Content', anchor: { ...approved, offset: params.shootingPlanAfterApprovalDays, unit: 'd' } })
-    steps.push({ id: 'shoot-1', kind: 'shoot', name: quota.shoots > 1 ? 'Shoot lần 1' : 'Shoot', owner: 'Media', shootNo: 1, anchor: { after: 'shootingPlan', event: 'done', offset: 3, unit: 'd' } })
-    if (quota.posts) steps.push({ id: 'demo', kind: 'demo', name: 'Gửi Post Demo', owner: 'Media', anchor: { after: 'shoot-1', event: 'done', offset: params.postDemoAfterShootBusinessDays, unit: 'bd' } })
+    if (quota.posts) steps.push({ id: 'demo', kind: 'demo', name: 'Gửi Post Demo', owner: 'Media', anchor: { after: 'shoot', event: 'done', offset: params.postDemoAfterShootBusinessDays, unit: 'bd' } })
   }
-
-  const addShoot = (no: number) =>
-    steps.push({ id: 'shoot-' + no, kind: 'shoot', name: 'Shoot lần ' + no, owner: 'Media', shootNo: no, anchor: { after: 'shoot-' + (no - 1), event: 'done', offset: 14, unit: 'd' } })
-
   if (quota.posts) {
-    const size = Math.max(1, params.scriptBatchSize)
-    const batches = Math.ceil(quota.posts / size)
-    for (let batch = 1; batch <= batches; batch++) {
-      const from = (batch - 1) * size + 1
-      const to = batch === batches ? 0 : batch * size
-      steps.push({
-        id: 'script-' + batch,
-        kind: 'script',
-        name: 'Script lô ' + batch,
-        owner: 'Planner/Content',
-        posts: [from, to],
-        anchor: batch === 1 ? { ...approved, offset: 2, unit: 'd' } : { after: 'script-' + (batch - 1), event: 'done', offset: 7, unit: 'd' },
-      })
-      // A batch shot in its own session is edited after that shoot, otherwise after its scripts.
-      const ownShoot = batch >= 2 && batch <= quota.shoots
-      if (ownShoot) addShoot(batch)
-      steps.push({
-        id: 'edit-' + batch,
-        kind: 'edit',
-        name: 'Edit lô ' + batch,
-        owner: 'Media',
-        posts: [from, to],
-        anchor: ownShoot ? { after: 'shoot-' + batch, event: 'done', offset: params.scriptLeadDays, unit: 'd' } : { after: 'script-' + batch, event: 'done', offset: params.scriptLeadDays, unit: 'd' },
-      })
-    }
-    for (let no = batches + 1; no <= quota.shoots; no++) addShoot(no)
     steps.push({
       id: 'publish',
       kind: 'publish',
-      name: 'Đăng bài',
+      name: 'Bắt đầu đăng',
       owner: 'Account',
       perWeek: cadenceFor(quota.posts, params),
-      anchor: quota.shoots ? { after: 'demo', event: 'approved', offset: 1, unit: 'd' } : { ...approved, offset: 3, unit: 'd' },
+      anchor: quota.shoots ? { after: 'demo', event: 'approved', offset: 0, unit: 'd' } : { ...approved, offset: 0, unit: 'd' },
     })
-  } else {
-    for (let no = 2; no <= quota.shoots; no++) addShoot(no)
   }
   return steps
 }

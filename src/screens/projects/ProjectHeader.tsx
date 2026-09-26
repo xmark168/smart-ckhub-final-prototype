@@ -105,8 +105,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
   const contract = primaryContract(contracts, project.id)
   const metrics = contract ? paymentMetrics(contract) : null
   const open = nextActions(project, params)
-  // The posting cadence is shown by the pace bars below, so it is not repeated as a to-do.
-  const urgent = open.filter((item) => item.kind !== 'publish' && (item.state === 'late' || item.state === 'due')).slice(0, 3)
+  const urgent = open.filter((item) => item.state === 'late' || item.state === 'due').slice(0, 3)
   const upcoming = open.find((item) => item.state === 'upcoming')
   const tone = project.state === 'active' ? HEALTH_CLASS[health.level] ?? 'ok' : 'muted'
 
@@ -183,7 +182,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
               {!posts || !pace
                 ? 'Gói không có bài đăng.'
                 : !cadenceStart
-                  ? 'Nhịp đăng bắt đầu khi xong bước trước bước Đăng bài.'
+                  ? 'Nhịp đăng tính từ mốc Bắt đầu đăng.'
                   : behind
                     ? 'Chậm ' + behind + ' bài · theo nhịp ' + cadence + ' nên đạt ' + expected + ' (vạch đỏ)'
                     : 'Đúng nhịp ' + cadence}
