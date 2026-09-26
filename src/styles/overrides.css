@@ -1003,3 +1003,4 @@ em.pill { font-style: normal; }
 .cw-shoot.is-empty { background: transparent; border: 1px dashed rgb(226, 216, 206); }
 .shoot-clash { display: inline-block; margin-left: 6px; }
 .muted-text { color: var(--muted); }
+.doc-log { margin-top: 16px; }

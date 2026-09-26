@@ -3,7 +3,6 @@ import { useApp, type ProjectTab } from '../../app/context'
 import { navigate, pathFor, useLocation, withQuery } from '../../app/router'
 import { Icon } from '../../lib/icons'
 import { useData } from '../../store/store'
-import { ProjectActivityRows } from './ProjectActivityRows'
 import { ContentTab } from './tabs/ContentTab'
 import { ShootsTab } from './tabs/ShootsTab'
 import { ContractTab } from './tabs/ContractTab'
@@ -18,8 +17,7 @@ const TABS: Array<[ProjectTab, string, string, string]> = [
   ['quay-chup', 'Quay chụp', 'Quay chụp', ''],
   ['noi-dung', 'Bài đăng', 'Bài đăng', 'Mỗi dòng là một nội dung trong Content Plan; Facebook và TikTok là kênh xuất bản.'],
   ['hop-dong', 'Hợp đồng', 'Hợp đồng & thanh toán', 'Đọc trực tiếp từ Hợp đồng & công nợ.'],
-  ['tai-lieu', 'Tài liệu', 'Tài liệu', 'Liên kết Drive và Key notes. Nội dung làm việc nằm trên Drive.'],
-  ['nhat-ky', 'Nhật ký', 'Nhật ký dự án', 'Sự kiện vận hành quan trọng được lưu trên dự án.'],
+  ['tai-lieu', 'Tài liệu & nhật ký', 'Tài liệu & nhật ký', 'Liên kết Drive và Key notes. Nội dung làm việc nằm trên Drive.'],
 ]
 
 function isTab(value: string | null): value is ProjectTab {
@@ -37,6 +35,7 @@ export function ProjectDetailScreen() {
   // Old `/projects/:id/cycle` links open the Cycle tab; unknown tabs fall back to the overview.
   useEffect(() => {
     if (legacyCycleLink) navigate(pathFor('projectDetail', projectId), { replace: true })
+    else if (route && raw === 'nhat-ky') navigate(withQuery(route, { tab: 'tai-lieu' }), { replace: true })
     else if (route && raw !== null && !isTab(raw)) navigate(withQuery(route, { tab: undefined }), { replace: true })
   }, [legacyCycleLink, projectId, raw, route])
 
@@ -77,7 +76,6 @@ export function ProjectDetailScreen() {
           {tab === 'noi-dung' && <ContentTab project={project} />}
           {tab === 'hop-dong' && <ContractTab project={project} />}
           {tab === 'tai-lieu' && <DocsTab project={project} />}
-          {tab === 'nhat-ky' && <section className="panel"><ProjectActivityRows project={project} /></section>}
         </section>
       </div>
     </section>

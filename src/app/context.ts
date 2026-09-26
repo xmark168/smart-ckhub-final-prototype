@@ -14,7 +14,7 @@ export const ROLES: Record<Role, { initial: string; label: string; note: string;
 }
 
 /** Tabs of the project detail page, as they appear in `?tab=`. */
-export type ProjectTab = 'tong-quan' | 'quay-chup' | 'noi-dung' | 'hop-dong' | 'tai-lieu' | 'nhat-ky'
+export type ProjectTab = 'tong-quan' | 'quay-chup' | 'noi-dung' | 'hop-dong' | 'tai-lieu'
 
 export interface AppContextValue {
   role: Role
