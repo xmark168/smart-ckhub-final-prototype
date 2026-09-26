@@ -93,7 +93,7 @@ export function ShootingsScreen() {
                   const clash = clashOf(row)
                   const editable = role === 'account' && row.running
                   return (
-                    <tr key={shooting.id} onClick={() => (editable ? showModal(<ShootingModal project={project} shooting={shooting} />) : openProject(project.id, 'chu-ky'))}>
+                    <tr key={shooting.id} onClick={() => (editable ? showModal(<ShootingModal project={project} shooting={shooting} />) : openProject(project.id))}>
                       <td>
                         <b className="project-record-name">{shooting.date ? shortDate(shooting.date) : 'Chưa chốt'}</b>
                         <span className="project-record-meta">{shooting.time || '—'}</span>
@@ -113,7 +113,7 @@ export function ShootingsScreen() {
                       </td>
                       <td><span className={'pill ' + statusTone(shooting.status)}>{shooting.status}</span></td>
                       <td>
-                        <button className="project-open" aria-label={'Mở dự án ' + project.customer} onClick={(event) => { event.stopPropagation(); openProject(project.id, 'chu-ky') }}>›</button>
+                        <button className="project-open" aria-label={'Mở dự án ' + project.customer} onClick={(event) => { event.stopPropagation(); openProject(project.id) }}>›</button>
                       </td>
                     </tr>
                   )

@@ -2,12 +2,13 @@ import type { ReactNode } from 'react'
 import { useApp } from '../../../app/context'
 import { sortShoots } from '../../../data/shootings'
 import { shortDate } from '../../../lib/format'
-import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type Milestone } from '../../../lib/sop'
+import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, type Milestone } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
 import { DemoModal, PlanModal, ShootingModal } from '../CycleModals'
 import { statusTone } from '../projectLogic'
+import { CycleTimeline } from './CycleTimeline'
 
 /** "Gửi 14.08 · Duyệt 16.08", or the due date while the step is open. */
 function when(step: Milestone | undefined, sent: string, approved = ''): string {
@@ -31,7 +32,7 @@ function StepRow({ title, step, meta, action, children }: { title: string; step?
   )
 }
 
-function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
+export function CycleSteps({ project, cycle }: { project: Project; cycle: Cycle }) {
   const { showModal, toast } = useApp()
   const { params } = useData()
   const quota = project.quota
@@ -48,6 +49,7 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
         <h2>Chu kỳ {cycle.no}{project.state === 'pending' ? ' · tạm dừng' : ''}</h2>
         <span className="cw-range">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}</span>
       </div>
+      <CycleTimeline items={steps} />
       {quota.plans > 0 && (
         <StepRow
           title="Content Plan"
@@ -121,7 +123,7 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
 }
 
 /** Past and running cycles. Posts read "published / target" the same way as the header. */
-function History({ project }: { project: Project }) {
+export function CycleHistory({ project }: { project: Project }) {
   const { params } = useData()
   const rows = [...project.cycles].reverse()
   if (!rows.length) return null
@@ -149,21 +151,5 @@ function History({ project }: { project: Project }) {
         )
       })}
     </section>
-  )
-}
-
-export function CyclesTab({ project }: { project: Project }) {
-  const cycle = runningCycle(project)
-  const active = cycle && project.state !== 'stopped'
-  return (
-    <>
-      {active && (
-        <div className="cw-flow">
-          <Steps project={project} cycle={cycle} />
-        </div>
-      )}
-      {!project.cycles.length && <p className="empty-copy">Chưa có chu kỳ. Chu kỳ 1 được tạo khi bắt đầu triển khai.</p>}
-      <History project={project} />
-    </>
   )
 }

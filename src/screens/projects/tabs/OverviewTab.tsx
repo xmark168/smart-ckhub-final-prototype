@@ -1,13 +1,13 @@
 import { useApp } from '../../../app/context'
 import { shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
-import { cycleMilestones, runningCycle } from '../../../lib/sop'
+import { runningCycle } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { KeyNote, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
 import { onboardingItems, type OnboardingItem } from '../projectLogic'
 import { useProjectActions } from '../useProjectActions'
-import { CycleTimeline } from './CycleTimeline'
+import { CycleHistory, CycleSteps } from './CycleSections'
 
 function OnboardingRow({ entry }: { entry: OnboardingItem }) {
   return (
@@ -50,20 +50,14 @@ function OnboardingPanel({ project }: { project: Project }) {
 }
 
 export function OverviewTab({ project }: { project: Project }) {
-  const { params } = useData()
   const cycle = runningCycle(project)
-  const quota = project.quota
   return (
     <div className="project-detail-grid is-single">
       <main>
         {project.state === 'draft' && <OnboardingPanel project={project} />}
-        {cycle && (
-          <section className="panel">
-            <div className="panel-head"><div><h2>Tiến trình chu kỳ {cycle.no}</h2><p className="subline">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}</p></div></div>
-            <CycleTimeline items={cycleMilestones(cycle, quota, params)} />
-          </section>
-        )}
+        {cycle && project.state !== 'stopped' && <CycleSteps project={project} cycle={cycle} />}
         <NotesPanel project={project} />
+        <CycleHistory project={project} />
       </main>
     </div>
   )
