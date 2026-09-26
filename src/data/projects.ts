@@ -2,6 +2,8 @@ import { addBusinessDaysIso, addDaysIso, parseInput, periodEndIso, TODAY, toIso 
 import type { ContentItem, ContentStage, Cycle, PackageQuota, Project, ProjectState, ServicePackage } from '../store/types'
 import { comTamTaiProject } from './comTamTai'
 import { channelsFor } from './cycles'
+import { DEFAULT_PARAMS } from './params'
+import { instantiateTimeline, timelineFor } from './timeline'
 import { customerIdAt, customerRows, extraCustomer } from './customers'
 
 export { COM_TAM_TAI_ID } from './comTamTai'
@@ -67,6 +69,7 @@ function workCycle(no: number, start: string, quota: PackageQuota, index: number
     plannedEnd,
     actualEnd: '',
     status: 'running',
+    timeline: [],
     plan: {
       status: approvedAt ? 'approved' : changes && sentAt ? 'changes' : sentAt ? 'sent' : 'draft',
       link: '',
@@ -97,6 +100,7 @@ function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
     plannedEnd,
     actualEnd: late ? addDaysIso(plannedEnd, 2) : plannedEnd,
     status: 'closed',
+    timeline: [],
     result: { published: Math.max(0, quota.posts - (late ? 1 : 0)), planned: quota.posts, note: late ? 'Chốt trễ 2 ngày, bù 1 bài.' : 'Đủ đầu ra.' },
     plan: { status: 'approved', link: '', sentAt: '', approvedAt: '', feedback: '' },
     shootingPlan: { sentAt: '', link: '' },
@@ -184,5 +188,10 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
     })
   }
   records.unshift(comTamTaiProject())
+  // Every cycle carries its own copy of the package timeline.
+  for (const project of records) {
+    const template = timelineFor(packages.find((item) => item.id === project.servicePackageId), project.quota, DEFAULT_PARAMS)
+    for (const cycle of project.cycles) cycle.timeline = instantiateTimeline(template)
+  }
   return records
 }

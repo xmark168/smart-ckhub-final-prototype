@@ -119,13 +119,58 @@ export interface Shooting {
   checklist: string
 }
 
-/** One monthly service cycle. All dates are yyyy-mm-dd or ''. */
+/**
+ * Timeline step types. Each type reads its "done" from the cycle's own records (Content Plan,
+ * Shooting, Post Demo, content stages), so nothing is entered twice. `custom` is ticked by hand.
+ */
+export type StepKind = 'plan' | 'shootingPlan' | 'shoot' | 'demo' | 'script' | 'edit' | 'publish' | 'custom'
+export type StepOwner = 'Account' | 'Planner/Content' | 'Media' | 'Khách'
+
+/** When a step is due: `offset` days (working or calendar) after T0 or after another step. */
+export interface StepAnchor {
+  /** 'T0' or the id of an earlier step. */
+  after: string
+  /** 'approved' waits for the customer to approve that step (Content Plan, Post Demo). */
+  event: 'done' | 'approved'
+  offset: number
+  unit: 'bd' | 'd'
+}
+
+/** One step of a package's timeline template. */
+export interface TimelineStepTemplate {
+  id: string
+  kind: StepKind
+  name: string
+  owner: StepOwner
+  anchor: StepAnchor
+  /** script / edit / publish: posts covered, 1-based by order in the Content Plan; `to` 0 = to the end (bonus posts included). */
+  posts?: [number, number]
+  /** shoot: which shooting of the cycle (1-based). */
+  shootNo?: number
+  /** publish: posts per week [min, max]. */
+  perWeek?: [number, number]
+}
+
+/** A template step copied into a cycle; Account adjustments are kept with their reasons. */
+export interface TimelineStep extends TimelineStepTemplate {
+  /** Due date set by hand; replaces the computed one. */
+  dueOverride?: string
+  skipped?: boolean
+  /** custom steps only: ticked done on this date. */
+  doneAt?: string
+  log: Array<{ at: string; by: string; text: string }>
+}
+
+/** One service cycle. It closes when every step is done, not on a calendar date. All dates are yyyy-mm-dd or ''. */
 export interface Cycle {
   no: number
   start: string
+  /** Target end (T0 + cycle length); the cycle is closed when the timeline is delivered. */
   plannedEnd: string
   actualEnd: string
   status: 'running' | 'closed'
+  /** Snapshot of the package timeline when the cycle opened. */
+  timeline: TimelineStep[]
   /** Filled when the cycle is closed; history rows read it instead of the content list. */
   result?: { published: number; planned: number; note: string }
   plan: { status: PlanStatus; link: string; sentAt: string; approvedAt: string; feedback: string }
@@ -250,6 +295,8 @@ export interface ServicePackage {
   status: 'Đang áp dụng' | 'Ngừng áp dụng'
   scope: string
   quota: PackageQuota
+  /** Default steps of every cycle of this package; edited in Gói dịch vụ › Timeline. */
+  timeline: TimelineStepTemplate[]
 }
 
 /** [code, title, project, time, partner, input, status] */

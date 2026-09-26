@@ -1,12 +1,13 @@
 import { useApp } from '../../../app/context'
-import { addBusinessDaysIso, addDaysIso, shortDate } from '../../../lib/format'
+import { shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
-import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type MilestoneState } from '../../../lib/sop'
+import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type Milestone, type MilestoneState } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
 import { CycleTaskModal, DemoModal, ExceptionModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
 import { planLabel, resolveException, statusTone } from '../projectLogic'
+import { AddStepModal, StepModal } from '../TimelineModals'
 import { useProjectActions } from '../useProjectActions'
 
 /** Short outcome for the history row; the full note stays in the tooltip. */
@@ -50,6 +51,47 @@ function History({ project }: { project: Project }) {
   )
 }
 
+/** Due text of a step: "~dd.mm" while it is an estimate, "xong dd.mm" once done. */
+function dueText(item: Milestone): string {
+  if (item.state === 'skipped') return '—'
+  if (item.done) return 'xong ' + shortDate(item.done)
+  return item.due ? (item.projected ? '~' : '') + shortDate(item.due) : '—'
+}
+
+/** The cycle's own copy of the package timeline; Account adjusts it with a reason per change. */
+function TimelinePanel({ project, cycle }: { project: Project; cycle: Cycle }) {
+  const { showModal } = useApp()
+  const { params } = useData()
+  const items = cycleMilestones(cycle, project.quota, params)
+  const custom = cycle.timeline.filter((step) => step.kind === 'custom').length
+  const changed = cycle.timeline.filter((step) => step.log.length && step.kind !== 'custom').length
+  return (
+    <section className="panel timeline-panel">
+      <div className="panel-head">
+        <div>
+          <h2>Timeline chu kỳ {cycle.no}</h2>
+          <p className="subline">Sinh từ mẫu của gói {project.service}{changed || custom ? ' · đã điều chỉnh ' + changed + ' bước' + (custom ? ', thêm ' + custom + ' mốc' : '') : ''}. Ngày có dấu ~ là dự kiến, chạy theo bước trước.</p>
+        </div>
+        <button className="text-btn" onClick={() => showModal(<AddStepModal project={project} />)}>+ Mốc</button>
+      </div>
+      <ol className="tl-list">
+        {items.map((item) => (
+          <li key={item.key} className={'tl-row is-' + item.state}>
+            <i className="tl-dot" aria-hidden="true" />
+            <span className="tl-main"><b>{item.label}{item.moved && <em className="tl-moved">đã dời</em>}</b><small>{item.detail}</small></span>
+            <span className="tl-owner">{item.owner}</span>
+            <span className={'tl-due' + (item.projected ? ' is-projected' : '')}>{dueText(item)}</span>
+            <span className={'pill ' + MILESTONE_TONE[item.state]}>{item.kind === 'end' && item.state === 'due' && !item.done ? 'Sẵn sàng chốt' : MILESTONE_LABEL[item.state]}</span>
+            {item.kind === 'end'
+              ? <span className="tl-action" />
+              : <button type="button" className="text-btn tl-action" onClick={() => showModal(<StepModal project={project} stepId={item.key} />)} aria-label={'Điều chỉnh ' + item.label}>Điều chỉnh</button>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
   const { showModal, toast } = useApp()
   const { params } = useData()
@@ -59,7 +101,15 @@ function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
   const shootingLocked = cycle.plan.status !== 'approved'
   const openExceptions = cycle.exceptions.filter((item) => !item.resolved)
   const completedTasks = cycle.tasks.filter((task) => task.status === 'Đã hoàn thành').length
-  const planDue = addBusinessDaysIso(cycle.start, params.planLeadBusinessDays)
+  const steps = cycleMilestones(cycle, quota, params)
+  const stepOf = (kind: string) => steps.find((item) => item.kind === kind)
+  const due = (kind: string, fallback: string) => {
+    const item = stepOf(kind)
+    if (!item) return fallback
+    // Done: only the approval note is worth repeating; open: due date and the rule behind it.
+    if (item.done) return 'Xong ' + shortDate(item.done) + (item.kind === 'plan' || item.kind === 'demo' ? ' · ' + item.detail : '')
+    return 'Hạn ' + (item.projected ? 'dự kiến ' : '') + shortDate(item.due) + ' · ' + item.detail.replace(/^Dự kiến · /, '')
+  }
 
   return (
     <div className="cycle-layout">
@@ -67,7 +117,7 @@ function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
         {quota.plans > 0 && (
           <section className="panel cycle-panel">
             <div className="panel-head">
-              <div><h2>Content Plan</h2><p className="subline">Hạn gửi khách {shortDate(planDue)} (T0 + {params.planLeadBusinessDays} ngày làm việc).</p></div>
+              <div><h2>Content Plan</h2><p className="subline">{due('plan', 'Không có bước Content Plan trong timeline.')}</p></div>
               <span className={'cycle-status ' + statusTone(planText)}>{planText}</span>
             </div>
             <dl className="cycle-definition">
@@ -113,7 +163,7 @@ function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
             <div className="panel-head">
               <div>
                 <h2>Shooting</h2>
-                <p className="subline">{cycle.plan.approvedAt ? 'Shooting Plan hạn ' + shortDate(addDaysIso(cycle.plan.approvedAt, params.shootingPlanAfterApprovalDays)) : 'Mở sau khi khách duyệt Content Plan.'}</p>
+                <p className="subline">Shooting Plan: {due('shootingPlan', 'không có trong timeline')}</p>
               </div>
               <span className={'cycle-status ' + (shootingLocked ? 'muted' : 'info')}>{shootingLocked ? 'Đang khóa' : cycle.shootings.length + ' / ' + quota.shoots + ' buổi'}</span>
             </div>
@@ -149,7 +199,7 @@ function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
         {quota.shoots > 0 && quota.posts > 0 && (
           <section className="panel cycle-panel">
             <div className="panel-head">
-              <div><h2>Post Demo</h2><p className="subline">Gửi khách sau shoot {params.postDemoAfterShootBusinessDays} ngày làm việc.</p></div>
+              <div><h2>Post Demo</h2><p className="subline">{due('demo', 'Không có bước Post Demo trong timeline.')}</p></div>
               <span className={'cycle-status ' + statusTone(cycle.demo.status)}>{cycle.demo.status}</span>
             </div>
             <p className="cycle-meta">Đã gửi: {cycle.demo.sentAt ? shortDate(cycle.demo.sentAt) : 'Chưa gửi'} · Đã duyệt: {cycle.demo.approvedAt ? shortDate(cycle.demo.approvedAt) : 'Chưa duyệt'}</p>
@@ -174,7 +224,7 @@ function Workspace({ project, cycle }: { project: Project; cycle: Cycle }) {
         </section>
 
         <section className="panel cycle-panel">
-          <div className="panel-head"><div><h2>Chốt chu kỳ {cycle.no}</h2><p className="subline">Kết thúc dự kiến {shortDate(cycle.plannedEnd)}.</p></div></div>
+          <div className="panel-head"><div><h2>Chốt chu kỳ {cycle.no}</h2><p className="subline">{stepOf('end')?.detail}</p></div></div>
           <button className="primary" onClick={actions.closeCycle}><Icon name="calendar-check-2" /> Chốt chu kỳ</button>
         </section>
       </aside>
@@ -190,6 +240,7 @@ export function CyclesTab({ project }: { project: Project }) {
       {cycle && project.state !== 'stopped' ? (
         <>
           <div className="project-tab-heading cycle-work-heading"><div><h2>Chu kỳ {cycle.no} đang chạy</h2><p>{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}{project.state === 'pending' ? ' · dự án đang tạm dừng' : ''}</p></div></div>
+          <TimelinePanel project={project} cycle={cycle} />
           <Workspace project={project} cycle={cycle} />
         </>
       ) : null}

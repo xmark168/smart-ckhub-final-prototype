@@ -3,7 +3,7 @@ import { useApp, type ProjectTab } from '../../app/context'
 import { paymentMetrics, primaryContract, projectOverdue } from '../../data/contracts'
 import { diffDays, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
-import { currentCycle, expectedPublished, nextActions, projectHealth, runningCycle } from '../../lib/sop'
+import { currentCycle, cycleMilestones, nextActions, projectHealth, runningCycle } from '../../lib/sop'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useData } from '../../store/store'
 import type { Project } from '../../store/types'
@@ -11,9 +11,8 @@ import { shortMoney } from '../customers/customerLogic'
 import { postProgress, projectLabel } from './projectLogic'
 import { useProjectActions } from './useProjectActions'
 
-/** Milestone key → the tab where it is worked on. */
-const MILESTONE_TAB: Record<string, ProjectTab> = { cadence: 'noi-dung' }
-const tabOf = (key: string): ProjectTab => MILESTONE_TAB[key] ?? (key.startsWith('script') ? 'noi-dung' : 'chu-ky')
+/** Content steps are worked on in the Nội dung tab, the rest in Chu kỳ. */
+const tabOf = (kind: string): ProjectTab => (kind === 'script' || kind === 'edit' || kind === 'publish' ? 'noi-dung' : 'chu-ky')
 
 const HEALTH_CLASS: Record<string, string> = { late: 'late', watch: 'watch', ok: 'ok' }
 
@@ -107,7 +106,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
   const metrics = contract ? paymentMetrics(contract) : null
   const open = nextActions(project, params)
   // The posting cadence is shown by the pace bars below, so it is not repeated as a to-do.
-  const urgent = open.filter((item) => item.key !== 'cadence' && (item.state === 'late' || item.state === 'due')).slice(0, 3)
+  const urgent = open.filter((item) => item.kind !== 'publish' && (item.state === 'late' || item.state === 'due')).slice(0, 3)
   const upcoming = open.find((item) => item.state === 'upcoming')
   const tone = project.state === 'active' ? HEALTH_CLASS[health.level] ?? 'ok' : 'muted'
 
@@ -115,13 +114,17 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
   const length = running ? diffDays(running.start, running.plannedEnd) + 1 : 0
   const elapsed = running ? Math.max(0, diffDays(running.start, TODAY) + 1) : 0
   const timePct = length ? Math.min(100, Math.round((elapsed / length) * 100)) : 0
-  const cadenceStart = running ? running.demo.approvedAt || (project.quota.shoots === 0 ? running.plan.approvedAt : '') : ''
-  const expected = running && project.quota.posts ? expectedPublished(cadenceStart, project.quota, params, TODAY) : 0
-  const postPct = posts ? Math.min(100, Math.round((posts.published / Math.max(1, posts.planned)) * 100)) : 0
-  const expectedPct = posts ? Math.min(100, Math.round((expected / Math.max(1, posts.planned)) * 100)) : 0
-  const behind = posts ? Math.max(0, expected - posts.published) : 0
+  // Posting pace comes from the cycle's "Đăng bài" step (its cadence may be adjusted per cycle).
+  const pace = running ? cycleMilestones(running, project.quota, params).find((item) => item.kind === 'publish')?.pace : undefined
+  const cadenceStart = pace?.start ?? ''
+  const expected = pace?.expected ?? 0
+  const target = pace?.target || posts?.planned || 1
+  const published = pace?.published ?? posts?.published ?? 0
+  const postPct = Math.min(100, Math.round((published / target) * 100))
+  const expectedPct = Math.min(100, Math.round((expected / target) * 100))
+  const behind = Math.max(0, expected - published)
   const cyclesLeft = project.total ? Math.max(0, project.total - project.cycles.length) : 0
-  const cadence = params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần'
+  const cadence = pace ? pace.perWeek[0] + '–' + pace.perWeek[1] + ' bài/tuần' : ''
 
   const lateCount = urgent.filter((item) => item.state === 'late').length
 
@@ -136,7 +139,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
           <ul className="hb-todo">
             {urgent.map((item) => (
               <li key={item.key}>
-                <button type="button" className={'is-' + item.state} onClick={() => onTab(tabOf(item.key))}>
+                <button type="button" className={'is-' + item.state} onClick={() => onTab(tabOf(item.kind))}>
                   <i aria-hidden="true" />
                   <span className="t">{item.label}</span>
                   <span className="d">{item.due ? dayText(diffDays(TODAY, item.due)) : ''}</span>
@@ -148,7 +151,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
         ) : project.state === 'active' && upcoming ? (
           <ul className="hb-todo">
             <li>
-              <button type="button" className="is-upcoming" onClick={() => onTab(tabOf(upcoming.key))}>
+              <button type="button" className="is-upcoming" onClick={() => onTab(tabOf(upcoming.kind))}>
                 <i aria-hidden="true" />
                 <span className="t">{upcoming.label}</span>
                 <span className="d">{upcoming.due ? dayText(diffDays(TODAY, upcoming.due)) : ''}</span>
@@ -167,9 +170,9 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
               <div className="pace-top"><span>Thời gian</span><b className={elapsed > length ? 'is-late' : ''}>{elapsed > length ? 'quá ' + (elapsed - length) + ' ngày' : 'ngày ' + elapsed + ' / ' + length}</b></div>
               <span className="pace-bar" aria-hidden="true"><i className={elapsed > length ? 'over' : ''} style={{ width: timePct + '%' }} /></span>
             </div>
-            {posts && (
+            {posts && pace && (
               <div className="pace-item">
-                <div className="pace-top"><span>Bài đăng</span><b className={behind ? 'is-due' : ''}>{posts.published} / {posts.planned}{posts.bonus ? ' (+' + posts.bonus + ' tặng)' : ''}</b></div>
+                <div className="pace-top"><span>Bài đăng</span><b className={behind ? 'is-due' : ''}>{published} / {target}{target > posts.planned ? ' (gồm ' + (target - posts.planned) + ' tặng/bù)' : ''}</b></div>
                 <span className="pace-bar" aria-hidden="true">
                   <i className={behind ? 'behind' : 'ahead'} style={{ width: postPct + '%' }} />
                   {expected > 0 && <b className="pace-mark" style={{ left: expectedPct + '%' }} />}
@@ -177,10 +180,10 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
               </div>
             )}
             <small className={behind ? 'pace-note is-late' : 'pace-note'}>
-              {!posts
+              {!posts || !pace
                 ? 'Gói không có bài đăng.'
                 : !cadenceStart
-                  ? 'Nhịp đăng bắt đầu sau khi khách duyệt Post Demo.'
+                  ? 'Nhịp đăng bắt đầu khi xong bước trước bước Đăng bài.'
                   : behind
                     ? 'Chậm ' + behind + ' bài · theo nhịp ' + cadence + ' nên đạt ' + expected + ' (vạch đỏ)'
                     : 'Đúng nhịp ' + cadence}

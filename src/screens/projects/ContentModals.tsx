@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
-import { newCycle } from '../../data/cycles'
-import { addDaysIso, diffDays, formatDate, parseInput, TODAY } from '../../lib/format'
+import { projectCycle } from '../../data/cycles'
+import { addDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
 import { projectOverdue } from '../../data/contracts'
 import { checked, field } from '../../lib/form'
-import { cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
+import { cycleMilestones, cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
 import { getData, useData } from '../../store/store'
 import type { ContentChannel, ContentItem, ContentStage, KeyNote, Platform, Project } from '../../store/types'
 import { FormActions, Modal, Req } from '../../ui/Modal'
@@ -178,9 +178,10 @@ export function CloseCycleModal({ project }: { project: Project }) {
   const progress = cycleProgress(cycle, project.quota)
   const unpublished = cycle.contents.filter((entry) => !entry.bonus && !isPublished(entry))
   const hasNext = cycle.no < project.total
-  const nextStart = addDaysIso(cycle.plannedEnd, 1)
+  // Cycles follow the timeline, not the calendar: the next one starts the day after this one closes.
+  const nextStart = addDaysIso(TODAY, 1)
   const overdue = projectOverdue(getData().contracts, project.id)
-  const daysLeft = diffDays(TODAY, cycle.plannedEnd)
+  const openSteps = cycleMilestones(cycle, project.quota, params).filter((entry) => entry.kind !== 'end' && !entry.done && entry.state !== 'skipped')
 
   return (
     <Modal
@@ -205,14 +206,9 @@ export function CloseCycleModal({ project }: { project: Project }) {
           running.activity.unshift({ title: 'Đã chốt chu kỳ', detail: running.result.note, time: 'Vừa xong' })
           addProjectActivity(item, 'calendar-check-2', 'Đã chốt chu kỳ ' + running.no, formatDate(parseInput(actualEnd)) + ' · ' + done.published + ' / ' + done.planned + ' bài · ' + running.result.note)
           if (hasNext) {
-            const next = newCycle(running.no + 1, start, params)
-            if (carry) {
-              next.contents = missing.map((entry, index) => ({ ...entry, id: entry.id + '-c' + next.no, stt: index + 1, carried: true, postDate: '', deadlineEdit: '', deadlineScript: '' }))
-              running.contents = running.contents.filter((entry) => !missing.includes(entry))
-            }
-            item.cycles.push(next)
+            const nextNo = running.no + 1
             const pending = item.pendingPackage
-            const pkg = pending && next.no >= pending.fromCycle ? getData().packages.find((entry) => entry.id === pending.packageId) : undefined
+            const pkg = pending && nextNo >= pending.fromCycle ? getData().packages.find((entry) => entry.id === pending.packageId) : undefined
             if (pending && pkg) {
               item.servicePackageId = pkg.id
               item.service = pkg.group + ' · ' + pkg.name
@@ -220,8 +216,14 @@ export function CloseCycleModal({ project }: { project: Project }) {
               item.servicePrice = pkg.price
               item.quota = { ...pkg.quota }
               item.pendingPackage = undefined
-              addProjectActivity(item, 'package-check', 'Áp dụng gói mới từ chu kỳ ' + next.no, item.service + ' · theo ' + pending.source)
+              addProjectActivity(item, 'package-check', 'Áp dụng gói mới từ chu kỳ ' + nextNo, item.service + ' · theo ' + pending.source)
             }
+            const next = projectCycle(item, nextNo, start, params, getData().packages)
+            if (carry) {
+              next.contents = missing.map((entry, index) => ({ ...entry, id: entry.id + '-c' + next.no, stt: index + 1, carried: true, postDate: '', deadlineEdit: '', deadlineScript: '' }))
+              running.contents = running.contents.filter((entry) => !missing.includes(entry))
+            }
+            item.cycles.push(next)
             addProjectActivity(item, 'calendar-plus', 'Mở chu kỳ ' + next.no, 'T0 ' + formatDate(parseInput(start)) + (carry && missing.length ? ' · nhận ' + missing.length + ' bài bù' : ''))
           } else {
             addProjectActivity(item, 'flag', 'Hết chu kỳ hợp đồng', 'Đã chạy ' + running.no + ' / ' + item.total + ' chu kỳ. Cần tái ký để tiếp tục.')
@@ -234,10 +236,15 @@ export function CloseCycleModal({ project }: { project: Project }) {
       <div className="form">
         <div className="customer-data-rules">
           <b>{progress.published} / {progress.planned} bài đã đăng{progress.bonus ? ' · +' + progress.bonus + ' bài tặng' : ''}</b>
-          <p>Kết thúc dự kiến {formatDate(parseInput(cycle.plannedEnd))}. {progress.missing ? 'Còn thiếu ' + progress.missing + ' bài so với định mức.' : 'Đã đủ định mức.'}</p>
+          <p>Mục tiêu {formatDate(parseInput(cycle.plannedEnd))}. {progress.missing ? 'Còn thiếu ' + progress.missing + ' bài so với định mức.' : 'Đã đủ định mức.'}</p>
         </div>
         {overdue > 0 && <div className="customer-data-rules warn"><b>Công nợ quá hạn {overdue.toLocaleString('vi-VN')}đ</b><p>Nhắc khách thanh toán trước khi mở chu kỳ tiếp theo. Việc chốt chu kỳ không bị chặn.</p></div>}
-        {daysLeft > params.cycleEndWarningDays && <div className="customer-data-rules warn"><b>Chốt sớm {daysLeft} ngày</b><p>Chu kỳ dự kiến kết thúc {formatDate(parseInput(cycle.plannedEnd))}. Chỉ chốt sớm khi đã thống nhất với khách.</p></div>}
+        {openSteps.length > 0 && (
+          <div className="customer-data-rules warn">
+            <b>Còn {openSteps.length} bước chưa xong</b>
+            <p>{openSteps.map((entry) => entry.label).join(', ')}. Chu kỳ chốt khi xong mọi bước; chỉ chốt trước khi đã thống nhất với khách.</p>
+          </div>
+        )}
         <label className="field">Ngày kết thúc thực tế<Req /><input name="actualEnd" type="date" required defaultValue={TODAY} min={cycle.start} /></label>
         {progress.missing > 0 && (
           <>

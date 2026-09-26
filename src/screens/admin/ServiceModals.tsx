@@ -1,4 +1,6 @@
 import { useApp } from '../../app/context'
+import { DEFAULT_PARAMS } from '../../data/params'
+import { defaultTimeline } from '../../data/timeline'
 import { field } from '../../lib/form'
 import { update, useData } from '../../store/store'
 import type { PriceType, ServicePackage } from '../../store/types'
@@ -36,7 +38,7 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
       title={(item ? 'Sửa ' : 'Tạo ') + 'gói dịch vụ'}
       backdropClassName="service-modal"
       onSubmit={(form) => {
-        const values: Omit<ServicePackage, 'id'> = {
+        const values: Omit<ServicePackage, 'id' | 'timeline'> = {
           category: field(form, 'category'),
           group: field(form, 'group'),
           name: field(form, 'name'),
@@ -57,13 +59,17 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
           toast('Tổng bài thương hiệu và bán hàng phải bằng số bài mỗi chu kỳ.')
           return
         }
+        // A timeline never edited by hand follows the quota; an edited one is kept and flagged.
+        const quotaChanged = item && (item.quota.posts !== values.quota.posts || item.quota.shoots !== values.quota.shoots || item.quota.plans !== values.quota.plans)
+        const untouched = !item || JSON.stringify(item.timeline) === JSON.stringify(defaultTimeline(item.quota, DEFAULT_PARAMS))
+        const timeline = !item || (quotaChanged && untouched) ? defaultTimeline(values.quota, DEFAULT_PARAMS) : item.timeline
         update((draft) => {
           const existing = item && draft.packages.find((entry) => entry.id === item.id)
-          if (existing) Object.assign(existing, values)
-          else draft.packages.push({ id: 'svc-' + Date.now(), ...values })
+          if (existing) Object.assign(existing, values, { timeline })
+          else draft.packages.push({ id: 'svc-' + Date.now(), ...values, timeline })
         })
         closeModal()
-        toast((item ? 'Đã cập nhật' : 'Đã tạo') + ' gói dịch vụ.')
+        toast((item ? 'Đã cập nhật' : 'Đã tạo') + ' gói dịch vụ.' + (quotaChanged && !untouched ? ' Định mức đổi: kiểm tra lại Timeline mẫu của gói.' : ''))
       }}
     >
       <div className="form">

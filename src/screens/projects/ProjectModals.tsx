@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
 import { coversProject, primaryContract } from '../../data/contracts'
-import { newCycle } from '../../data/cycles'
+import { projectCycle } from '../../data/cycles'
 import { ACCOUNTS, addBusinessDaysIso, formatDate, newId, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
 import { Icon } from '../../lib/icons'
@@ -284,7 +284,7 @@ export function StartProjectModal({ project }: { project: Project }) {
         updateProject(project.id, (item) => {
           item.state = 'active'
           item.risk = false
-          item.cycles = [newCycle(1, start, params)]
+          item.cycles = [projectCycle(item, 1, start, params, getData().packages)]
           addProjectActivity(item, 'play', 'Đã bắt đầu triển khai', 'Chu kỳ 1: ' + formatDate(parseInput(start)) + ' – ' + formatDate(parseInput(item.cycles[0].plannedEnd)))
           if (item.quota.plans) {
             addProjectActivity(item, 'file-text', 'Đã tạo mốc Content Plan', 'Hạn gửi khách: ' + formatDate(parseInput(addBusinessDaysIso(start, params.planLeadBusinessDays))) + ' (T0 + ' + params.planLeadBusinessDays + ' ngày làm việc).')

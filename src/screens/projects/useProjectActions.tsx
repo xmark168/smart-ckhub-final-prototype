@@ -1,5 +1,5 @@
 import { useApp } from '../../app/context'
-import { newCycle } from '../../data/cycles'
+import { projectCycle } from '../../data/cycles'
 import { TODAY } from '../../lib/format'
 import { runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
@@ -13,7 +13,7 @@ import { addProjectActivity, canStopProject, onboardingReady, updateProject } fr
 /** Project actions shared by the detail header, its tabs and the list. */
 export function useProjectActions(project: Project) {
   const { role, account, toast, showModal } = useApp()
-  const { params } = useData()
+  const { params, packages } = useData()
   const canStop = canStopProject(role, account, project)
   const start = () => {
     if (!onboardingReady(project, params)) {
@@ -70,7 +70,7 @@ export function useProjectActions(project: Project) {
         item.state = 'active'
         item.pause = undefined
         item.stop = undefined
-        if (!runningCycle(item) && item.cycles.length < item.total) item.cycles.push(newCycle(item.cycles.length + 1, TODAY, params))
+        if (!runningCycle(item) && item.cycles.length < item.total) item.cycles.push(projectCycle(item, item.cycles.length + 1, TODAY, params, packages))
         addProjectActivity(item, 'play', reopened ? 'Đã mở lại dự án' : 'Đã tiếp tục triển khai', runningCycle(item) ? 'Chu kỳ ' + runningCycle(item)!.no + ' đang chạy.' : 'Không còn chu kỳ trong hợp đồng.')
       }),
   }

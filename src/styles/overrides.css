@@ -891,3 +891,61 @@ em.pill { font-style: normal; }
 .cycle-timeline { max-width: 100%; }
 .ct-step { flex: 1 0 84px; }
 .ct-step { flex: 1 0 66px; } .ct-name { font-size: 11px; } @media (min-width: 1000px) { .ct-name { font-size: 12px; } }
+
+
+/* ---- Timeline: cycle panel, step dialog, package template editor ---- */
+.ct-step.is-projected .ct-date { font-style: italic; }
+.ct-step.is-skipped .ct-name, .ct-step.is-skipped .ct-date { color: var(--muted); text-decoration: line-through; }
+.timeline-panel { margin-top: 16px; }
+.tl-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.tl-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) 118px 92px 112px 82px; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid rgb(240, 233, 226); }
+.tl-row:first-child { border-top: 0; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgb(214, 204, 194); background: #fff; }
+.tl-row.is-done .tl-dot, .tl-row.is-doneLate .tl-dot { border-color: #44342b; background: #44342b; }
+.tl-row.is-late .tl-dot { border-color: var(--late); background: var(--late); }
+.tl-row.is-due .tl-dot { border-color: #c43d0c; box-shadow: 0 0 0 3px rgba(196, 61, 12, 0.15); }
+.tl-row.is-skipped { opacity: 0.6; }
+.tl-main { display: grid; gap: 2px; min-width: 0; }
+.tl-main b { font-size: 13px; color: var(--ink); }
+.tl-main small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.tl-moved { margin-left: 6px; padding: 1px 6px; border-radius: 99px; background: rgb(245, 238, 230); color: #7a4200; font: 700 10px var(--font-body); font-style: normal; }
+.tl-owner { color: var(--muted); font-size: 12px; font-weight: 600; }
+.tl-due { font: 700 12px var(--font-body); color: var(--ink); white-space: nowrap; }
+.tl-due.is-projected { color: var(--muted); font-style: italic; font-weight: 600; }
+.tl-row .pill { justify-self: start; white-space: nowrap; }
+.tl-action { justify-self: end; }
+@media (max-width: 760px) {
+  .tl-row { grid-template-columns: 10px minmax(0, 1fr) auto; row-gap: 4px; }
+  .tl-owner, .tl-due { grid-column: 2; }
+  .tl-owner { grid-row: 2; }
+  .tl-due { grid-row: 3; }
+  .tl-row .pill { grid-column: 3; grid-row: 1; justify-self: end; }
+  .tl-action { grid-column: 3; grid-row: 2 / 4; }
+}
+.step-log { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: rgb(250, 246, 242); }
+.step-log b { font-size: 12px; }
+.step-log small { color: var(--muted); font-size: 12px; }
+.service-timeline { display: inline-block; margin-top: 4px; font-size: 12px; }
+.customer-modal .contract-modal.timeline-editor { width: min(1040px, 100%); }
+.tle-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tle-row { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid rgb(236, 227, 218); border-radius: 12px; background: #fff; }
+.tle-top { display: grid; grid-template-columns: 24px 140px minmax(0, 1fr) 150px 70px auto; align-items: center; gap: 8px; }
+.tle-no { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgb(245, 238, 230); font: 800 11px var(--font-body); color: #44342b; }
+.tle-top input, .tle-top select, .tle-rule input, .tle-rule select { min-height: 34px; padding: 4px 8px; font-size: 13px; }
+.tle-day { color: var(--muted); font: 700 12px var(--font-body); white-space: nowrap; text-align: right; }
+.tle-actions { display: flex; gap: 2px; }
+.tle-actions .icon-btn { width: 30px; height: 30px; padding: 0; border: 1px solid rgb(230, 221, 212); border-radius: 8px; background: #fff; cursor: pointer; }
+.tle-actions .icon-btn:disabled { opacity: 0.35; cursor: default; }
+.tle-actions .icon-btn.danger { color: var(--late); }
+.tle-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 32px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.tle-rule select { width: auto; max-width: 220px; }
+.tle-num { width: 64px !important; }
+.tle-sep { margin-left: 10px; padding-left: 10px; border-left: 1px solid rgb(230, 221, 212); }
+.tle-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tle-add select { width: auto; }
+@media (max-width: 760px) {
+  .tle-top { grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .tle-top > input { grid-column: 2 / -1; }
+  .tle-top > select:nth-of-type(2) { grid-column: 2; }
+  .tle-rule { padding-left: 0; }
+}

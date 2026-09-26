@@ -1,4 +1,6 @@
 import type { PackageQuota, ServiceCategory, ServicePackage } from '../store/types'
+import { DEFAULT_PARAMS } from './params'
+import { defaultTimeline } from './timeline'
 
 /** Setup, website, chatbot and ads packages have no monthly content deliverables. */
 export const NO_QUOTA: PackageQuota = { posts: 0, shoots: 0, plans: 0, brandPosts: 0, salesPosts: 0 }
@@ -9,7 +11,7 @@ export const seedCategories: ServiceCategory[] = [
   { id: 'growth', name: 'Tăng trưởng', code: 'TT', status: 'Đang áp dụng' },
 ]
 
-export const seedPackages: ServicePackage[] = [
+const packageRows: Array<Omit<ServicePackage, 'timeline'>> = [
   { id: 'social-setup', category: 'system', group: 'Mạng xã hội', name: 'Khởi tạo & Tối ưu', unit: 'Gói', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Thiết lập và tối ưu nền tảng mạng xã hội.', quota: NO_QUOTA },
   { id: 'chatbot-setup', category: 'system', group: 'Chatbot', name: 'Khởi tạo & Setup', unit: 'Gói', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Khởi tạo chatbot và cấu hình luồng cơ bản.', quota: NO_QUOTA },
   { id: 'chatbot-ops', category: 'system', group: 'Chatbot', name: 'Quản trị vận hành', unit: 'Tháng', priceType: 'fixed', price: 1000000, status: 'Đang áp dụng', scope: 'Theo dõi, tối ưu và vận hành chatbot.', quota: NO_QUOTA },
@@ -22,8 +24,14 @@ export const seedPackages: ServicePackage[] = [
   { id: 'design-premium', category: 'brand', group: 'Graphic Design', name: 'Premium', unit: 'Tháng', priceType: 'fixed', price: 5000000, status: 'Đang áp dụng', scope: 'Gói thiết kế đồ họa nâng cao.', quota: { posts: 12, shoots: 0, plans: 1, brandPosts: 10, salesPosts: 2 } },
   { id: 'full-funnel', category: 'growth', group: 'Trọn gói tăng trưởng', name: 'Full phễu – Full khách', unit: 'Tháng', priceType: 'fixed', price: 19000000, status: 'Đang áp dụng', scope: 'Gói tăng trưởng theo phễu toàn diện.', quota: { posts: 20, shoots: 2, plans: 1, brandPosts: 14, salesPosts: 6 } },
   { id: 'growth-basic', category: 'growth', group: 'Xây kênh tăng trưởng doanh thu', name: 'Basic', unit: 'Tháng', priceType: 'fixed', price: 9000000, status: 'Đang áp dụng', scope: '1 Content Plan · 1 buổi shoot · 12 post/tháng (9 thương hiệu, 3 bán hàng).', quota: { posts: 12, shoots: 1, plans: 1, brandPosts: 9, salesPosts: 3 } },
+  // Shoot counts per price confirmed by Account (26.09.2026); post counts of 11tr/13tr are demo values.
+  { id: 'growth-standard', category: 'growth', group: 'Xây kênh tăng trưởng doanh thu', name: 'Standard', unit: 'Tháng', priceType: 'fixed', price: 11000000, status: 'Đang áp dụng', scope: '1 Content Plan · 2 buổi shoot · 12 post/tháng.', quota: { posts: 12, shoots: 2, plans: 1, brandPosts: 9, salesPosts: 3 } },
+  { id: 'growth-plus', category: 'growth', group: 'Xây kênh tăng trưởng doanh thu', name: 'Plus', unit: 'Tháng', priceType: 'fixed', price: 13000000, status: 'Đang áp dụng', scope: '1 Content Plan · 2 buổi shoot · 17 post/tháng.', quota: { posts: 17, shoots: 2, plans: 1, brandPosts: 12, salesPosts: 5 } },
   { id: 'ads-management', category: 'growth', group: 'Ads Management', name: 'Quản trị quảng cáo', unit: 'Tháng', priceType: 'fixed', price: 2000000, status: 'Đang áp dụng', scope: 'Quản trị quảng cáo theo chu kỳ.', quota: NO_QUOTA },
 ]
+
+/** Every package starts with the SOP timeline for its quota; Administrator adjusts it per package. */
+export const seedPackages: ServicePackage[] = packageRows.map((item) => ({ ...item, timeline: defaultTimeline(item.quota, DEFAULT_PARAMS) }))
 
 export function packageLabel(item: ServicePackage): string {
   return item.group + ' · ' + item.name

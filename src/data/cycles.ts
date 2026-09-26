@@ -1,14 +1,16 @@
 import { periodEndIso } from '../lib/format'
-import type { ContentItem, ContentStage, Cycle, SopParams } from '../store/types'
+import type { ContentItem, ContentStage, Cycle, Project, ServicePackage, SopParams, TimelineStepTemplate } from '../store/types'
+import { instantiateTimeline, timelineFor } from './timeline'
 
-/** A fresh running cycle; the SOP milestones are computed from its start date. */
-export function newCycle(no: number, start: string, params: SopParams): Cycle {
+/** A fresh running cycle with its own copy of the package timeline. */
+export function newCycle(no: number, start: string, params: SopParams, template: TimelineStepTemplate[]): Cycle {
   return {
     no,
     start,
     plannedEnd: periodEndIso(start, params.cycleMonths),
     actualEnd: '',
     status: 'running',
+    timeline: instantiateTimeline(template),
     plan: { status: 'draft', link: '', sentAt: '', approvedAt: '', feedback: '' },
     shootingPlan: { sentAt: '', link: '' },
     shootings: [],
@@ -18,6 +20,12 @@ export function newCycle(no: number, start: string, params: SopParams): Cycle {
     exceptions: [],
     activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: 'Vừa xong' }],
   }
+}
+
+/** Next cycle of a project, with the timeline of the project's current package. */
+export function projectCycle(project: Project, no: number, start: string, params: SopParams, packages: ServicePackage[]): Cycle {
+  const pkg = packages.find((item) => item.id === project.servicePackageId)
+  return newCycle(no, start, params, timelineFor(pkg, project.quota, params))
 }
 
 /** Channel statuses that follow the item's stage. */

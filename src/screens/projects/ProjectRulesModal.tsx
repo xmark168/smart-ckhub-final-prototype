@@ -18,12 +18,14 @@ export function ProjectRulesModal() {
       'Phụ lục đổi gói áp dụng từ chu kỳ đang chạy hoặc chu kỳ tiếp theo; chu kỳ đã chốt giữ nguyên số liệu.',
       'Gói không có đầu ra nội dung hằng tháng (setup, website, chatbot, ads…): không áp dụng mốc Content Plan, shoot và nhịp đăng.',
     ]],
-    ['Chu kỳ và mốc SOP', [
-      'Content Plan gửi khách trước T0 + ' + params.planLeadBusinessDays + ' ngày làm việc; ngày khách duyệt là mốc tính Shooting Plan (+' + params.shootingPlanAfterApprovalDays + ' ngày).',
-      'Lịch shoot mở sau khi khách duyệt Content Plan. Đánh dấu buổi shoot Đã hoàn thành thì mốc Post Demo tự tính (+' + params.postDemoAfterShootBusinessDays + ' ngày làm việc); ghi Shooting recap vào Key notes.',
-      'Ngày khách duyệt Post Demo là mốc bắt đầu nhịp đăng ' + params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần. Script gối đầu theo lô ' + params.scriptBatchSize + ' bài, gửi trước deadline dựng ' + params.scriptLeadDays + ' ngày.',
+    ['Timeline và chu kỳ', [
+      'Mỗi gói có Timeline mẫu (Administrator sửa ở Gói dịch vụ). Khi mở chu kỳ, dự án sao chép timeline của gói; sửa mẫu sau đó không đổi chu kỳ đang chạy.',
+      'Mốc phụ thuộc nhau: hạn mỗi bước tính từ ngày bước trước thực sự xong hoặc được khách duyệt. Bước trước chưa xong thì hạn bước sau là dự kiến (dấu ~), không tính trễ.',
+      'Mẫu SOP: Content Plan T0 + ' + params.planLeadBusinessDays + ' ngày làm việc → Shooting Plan sau khi khách duyệt + ' + params.shootingPlanAfterApprovalDays + ' ngày → Shoot → Post Demo sau shoot + ' + params.postDemoAfterShootBusinessDays + ' ngày làm việc → Script và Edit theo lô ' + params.scriptBatchSize + ' bài (script trước deadline dựng ' + params.scriptLeadDays + ' ngày) → Đăng ' + params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần.',
+      'Từng bài: Edit xong → Account gửi khách duyệt → Account đăng. Bài tặng cộng vào số bài phải đăng của chu kỳ.',
+      'Account điều chỉnh timeline của chu kỳ đang chạy: dời hạn, đổi nhịp đăng, bỏ qua bước, thêm mốc sự kiện. Mọi thay đổi bắt buộc lý do và được lưu lại; không xóa được bước của mẫu.',
       'Công việc thiếu người phụ trách hoặc deadline chỉ lưu ở trạng thái Nháp.',
-      'Chốt chu kỳ: bài còn thiếu chuyển bù sang chu kỳ sau hoặc bỏ kèm lý do; chu kỳ kế tiếp tự mở nếu hợp đồng còn chu kỳ. Chốt sớm hoặc còn công nợ quá hạn thì có cảnh báo, không bị chặn.',
+      'Chu kỳ chốt khi xong mọi bước (đủ bài theo gói và bài tặng), không theo ngày dương lịch; ngày kết thúc chỉ là mục tiêu. Chốt khi còn bước dở thì có cảnh báo; bài còn thiếu chuyển bù sang chu kỳ sau hoặc bỏ kèm lý do. Chu kỳ kế tiếp bắt đầu ngay sau ngày chốt.',
     ]],
     ['Tạm dừng, dừng và rủi ro', [
       'Tạm dừng giữ nguyên chu kỳ và hợp đồng, ghi lý do và ngày dự kiến quay lại; mốc SOP không tính trễ trong thời gian tạm dừng.',

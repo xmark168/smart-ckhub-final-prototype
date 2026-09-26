@@ -98,6 +98,7 @@ function closedCycle(no: number, start: string, plannedEnd: string, actualEnd: s
     plannedEnd,
     actualEnd,
     status: 'closed',
+    timeline: [],
     result: { published, planned: 12, note },
     plan: { status: 'approved', link: COM_TAM_TAI_LINKS.contentPlan, sentAt: '', approvedAt: '', feedback: '' },
     shootingPlan: { sentAt: '', link: '' },
@@ -118,6 +119,7 @@ export function comTamTaiProject(): Project {
     plannedEnd: '2026-09-22',
     actualEnd: '',
     status: 'running',
+    timeline: [],
     plan: { status: 'approved', link: COM_TAM_TAI_LINKS.contentPlan, sentAt: '2026-08-14', approvedAt: '2026-08-16', feedback: 'Khách muốn đẩy mạnh nội dung viral TikTok.' },
     shootingPlan: { sentAt: '2026-08-17', link: COM_TAM_TAI_LINKS.contentPlan },
     shootings: [
