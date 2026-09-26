@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { coversProject, paymentMetrics, paymentState, paymentTone, syncProjectContract, totalPaid } from '../../data/contracts'
+import { contractTone, coversProject, paymentMetrics, paymentState, syncProjectContract, totalPaid } from '../../data/contracts'
 import { runningCycle } from '../../lib/sop'
-import { contractEnd, formatDate, money, parseInput, TODAY } from '../../lib/format'
+import { contractEnd, diffDays, money, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { update, useData } from '../../store/store'
 import type { Contract, ContractStatus, Payment } from '../../store/types'
@@ -219,24 +219,32 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   )
 }
 
+/**
+ * Contract at a glance: status and term, money collected, one line per installment (evidence
+ * under it), and the form to record money actually received.
+ */
 export function ContractDetailModal({ contractId }: { contractId: string }) {
   const { toast, showModal } = useApp()
-  const row = useData().contracts.find((item) => item.id === contractId)
+  const { contracts, projects } = useData()
+  const row = contracts.find((item) => item.id === contractId)
+  const unpaid = row ? row.payments.filter((payment) => payment.paid < payment.amount) : []
+  const [installment, setInstallment] = useState(String(unpaid[0]?.installment ?? ''))
   if (!row) return null
   const metrics = paymentMetrics(row)
-  const debt = metrics.remaining
-  const unpaid = row.payments.filter((payment) => payment.paid < payment.amount)
+  const paidPct = row.value ? Math.min(100, Math.round((row.paid / row.value) * 100)) : 0
+  const selected = row.payments.find((payment) => String(payment.installment) === installment)
+  const left = selected ? Math.max(0, selected.amount - selected.paid) : 0
+  const project = projects.find((item) => item.id === row.projectId)
+  const cycle = project ? project.cycles.length : 0
 
   const record = (form: HTMLFormElement) => {
-    const payment = row.payments.find((entry) => String(entry.installment) === field(form, 'installment'))
     const amount = Number(field(form, 'payment') || 0)
-    const remaining = payment ? Math.max(0, payment.amount - payment.paid) : 0
-    if (!payment || !amount || amount > remaining) { toast('Kiểm tra số tiền thực thu của đợt đã chọn.'); return }
+    if (!selected || !amount || amount > left) { toast('Kiểm tra số tiền thực thu của đợt đã chọn.'); return }
     const evidence = field(form, 'paymentEvidence')
     if (!evidence) { toast('Cần mã chứng từ trước khi ghi nhận.'); return }
     update((draft) => {
       const contract = draft.contracts.find((item) => item.id === row.id)
-      const target = contract?.payments.find((entry) => entry.installment === payment.installment)
+      const target = contract?.payments.find((entry) => entry.installment === selected.installment)
       if (!contract || !target) return
       target.paid += amount
       target.paidAt = field(form, 'paidAt')
@@ -250,55 +258,65 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
   }
 
   return (
-    <Modal title={row.code} className="contract-modal" onSubmit={record}>
+    <Modal title={row.code} className="contract-modal contract-detail" onSubmit={record}>
       <div className="form">
-        <div className="contract-detail-meta">
-          <div><span>Khách hàng</span><b>{row.customer}</b></div>
-          <div><span>Loại liên kết</span><b>{row.isPrimary ? 'Hợp đồng chính' : row.type}</b></div>
-          <div><span>Thời hạn HĐ</span><b>{formatDate(parseInput(row.start))} – {row.end}</b></div>
+        <div className="cd-head">
+          <span className={'pill ' + contractTone(row.status)}>{row.status}</span>
+          <span>{row.isPrimary ? 'Hợp đồng chính' : row.type} · {row.customer}</span>
         </div>
-        <div className="customer-data-rules"><b>{row.service || 'Chưa có dịch vụ áp dụng'}</b><p>{row.scope || 'Chưa có phạm vi dịch vụ.'}</p></div>
-        <div className="contract-money-grid">
-          <div><span>Giá trị hợp đồng</span><b>{money(row.value)}</b></div>
-          <div><span>Đã ghi nhận</span><b>{money(row.paid)}</b></div>
-          <div><span>{metrics.overdue ? 'Công nợ quá hạn' : 'Phải thu còn lại'}</span><b className={metrics.overdue ? 'contract-debt' : ''}>{money(metrics.overdue || debt)}</b></div>
+        <dl className="cd-facts">
+          <div><dt>Thời hạn</dt><dd>{shortDate(row.start)} – {row.end}</dd></div>
+          <div><dt>Chu kỳ</dt><dd>{row.isPrimary ? cycle + ' / ' + row.cycles : row.cycles}</dd></div>
+          <div><dt>Gói</dt><dd>{row.service || '—'}</dd></div>
+        </dl>
+
+        <div className="contract-money">
+          <span className="pace-bar" aria-hidden="true"><i className={metrics.overdue ? 'behind' : 'ahead'} style={{ width: paidPct + '%' }} /></span>
+          <small>Đã thu <b>{money(row.paid)}</b> / {money(row.value)}{metrics.overdue ? <> · <b className="is-late">quá hạn {money(metrics.overdue)}</b></> : metrics.remaining ? ' · còn ' + money(metrics.remaining) : ''}</small>
         </div>
 
-        <section className="contract-payment-schedule">
-          <div className="contract-schedule-head"><div><h3>Lịch thanh toán</h3><p>Chứng từ gắn theo từng đợt thu.</p></div><span>{row.payments.length} đợt</span></div>
+        <ol className="pay-list">
           {row.payments.map((payment) => {
-            const status = paymentState(payment)
+            const paid = payment.paid >= payment.amount
+            const late = !paid && payment.due < TODAY
             return (
-              <article className="contract-payment-item" key={payment.installment}>
-                <div className="contract-payment-step">Đợt {payment.installment}</div>
-                <div><b>{money(payment.amount)}</b><span>Hạn {formatDate(parseInput(payment.due))}</span></div>
-                <div><b>Đã thu {money(payment.paid)}</b><span>Còn {money(Math.max(0, payment.amount - payment.paid))}</span></div>
-                <div>
-                  <span className={'pill ' + paymentTone(status)}>{status}</span>
-                  <small>{payment.evidence ? 'Mã: ' + payment.evidence : 'Chưa có mã chứng từ'}</small>
-                </div>
-              </article>
+              <li key={payment.installment} className={'pay-row' + (paid ? ' is-paid' : late ? ' is-late' : '')}>
+                <i aria-hidden="true">{paid ? <Icon name="check" /> : late ? '!' : ''}</i>
+                <b>Đợt {payment.installment} · {payment.percent}% · {money(payment.amount)}</b>
+                <span className="pay-when">
+                  {paid && payment.paidAt ? 'Thu ' + shortDate(payment.paidAt) : 'Hạn ' + shortDate(payment.due) + (late ? ' · quá ' + diffDays(payment.due, TODAY) + ' ngày' : '')}
+                  {!paid && payment.paid > 0 && ' · đã thu ' + money(payment.paid)}
+                  {payment.evidence && <small className="pay-evidence">{payment.evidence}{payment.driveLink && <> · <a href={payment.driveLink} target="_blank" rel="noreferrer">chứng từ</a></>}</small>}
+                </span>
+                <span className="sr-only">{paymentState(payment)}</span>
+              </li>
             )
           })}
-        </section>
+        </ol>
 
-        <section className="contract-payment-form">
-          <h3>Ghi nhận khoản thu</h3>
-          <p>Chỉ dùng cho tiền đã thu thực tế. Mã chứng từ bắt buộc.</p>
-          <label className="field">Đợt thanh toán
-            <select name="installment" disabled={!debt}>
-              {unpaid.map((payment) => <option key={payment.installment} value={payment.installment}>Đợt {payment.installment} · còn {money(payment.amount - payment.paid)}</option>)}
-            </select>
-          </label>
-          <label className="field">Số tiền thực thu<input name="payment" type="number" min="1" disabled={!debt} placeholder="Nhập số tiền đã thu" /></label>
-          <label className="field">Ngày thu<input name="paidAt" type="date" defaultValue={TODAY} disabled={!debt} /></label>
-          <label className="field">Mã chứng từ<input name="paymentEvidence" required disabled={!debt} placeholder="Ví dụ: UNC-0926-018" autoComplete="off" /></label>
-          <label className="field">Link chứng từ trên Drive <small>(khuyến nghị)</small><input name="paymentDrive" type="url" disabled={!debt} placeholder="https://drive.google.com/..." /></label>
-          <div className="form-actions">
-            <button className="secondary" type="button" onClick={() => showModal(<ContractFormModal contractId={row.id} />)}>Sửa hợp đồng</button>
-            <button className="primary" disabled={!debt}>Ghi nhận thu</button>
-          </div>
-        </section>
+        {unpaid.length > 0 && (
+          <section className="cd-record">
+            <h3>Ghi nhận khoản thu</h3>
+            <div className="form-grid">
+              <label className="field">Đợt
+                <select name="installment" value={installment} onChange={(event) => setInstallment(event.target.value)}>
+                  {unpaid.map((payment) => <option key={payment.installment} value={payment.installment}>Đợt {payment.installment} · còn {money(payment.amount - payment.paid)}</option>)}
+                </select>
+              </label>
+              <label className="field">Số tiền thực thu<Req /><input key={installment} name="payment" type="number" min="1" max={left} defaultValue={left || ''} /></label>
+            </div>
+            <div className="form-grid">
+              <label className="field">Ngày thu<input name="paidAt" type="date" defaultValue={TODAY} max={TODAY} /></label>
+              <label className="field">Mã chứng từ<Req /><input name="paymentEvidence" required placeholder="UNC-0926-018" autoComplete="off" /></label>
+            </div>
+            <label className="field">Link chứng từ <small>(không bắt buộc)</small><input name="paymentDrive" type="url" placeholder="https://drive.google.com/..." /></label>
+          </section>
+        )}
+
+        <div className="form-actions">
+          <button className="secondary" type="button" onClick={() => showModal(<ContractFormModal contractId={row.id} />)}>Sửa hợp đồng</button>
+          {unpaid.length > 0 && <button className="primary">Ghi nhận thu</button>}
+        </div>
       </div>
     </Modal>
   )

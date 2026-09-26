@@ -1034,3 +1034,17 @@ em.pill { font-style: normal; }
   .pay-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
   .pay-when { grid-column: 2; grid-row: 2; }
 }
+
+/* ---- Contract detail dialog v2 ---- */
+.contract-detail .form { display: grid; gap: 14px; }
+.cd-head { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.cd-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 12px 0; border-top: 1px solid rgb(238, 229, 221); border-bottom: 1px solid rgb(238, 229, 221); }
+.cd-facts dt { color: var(--muted); font-size: 11px; font-weight: 700; }
+.cd-facts dd { margin: 3px 0 0; color: var(--ink); font-size: 13px; font-weight: 700; }
+.contract-detail .pay-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
+.contract-detail .pay-when { grid-column: 2 / -1; grid-row: 2; margin-top: -4px; }
+.pay-evidence { display: block; margin-top: 2px; color: var(--muted); font-weight: 500; }
+.cd-record { display: grid; gap: 4px; padding: 14px; border-radius: 12px; background: rgb(250, 246, 242); }
+.cd-record h3 { margin: 0 0 6px; font-size: 14px; }
+@media (max-width: 520px) { .cd-facts { grid-template-columns: 1fr 1fr; } }
+.customer-modal .contract-modal .modal-top { margin: 0; }
