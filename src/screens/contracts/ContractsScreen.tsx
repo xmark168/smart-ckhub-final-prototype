@@ -1,15 +1,18 @@
 import { useApp } from '../../app/context'
-import { contractTone, paymentMetrics, paymentState, paymentTone } from '../../data/contracts'
-import { formatDate, includesText, money, parseInput } from '../../lib/format'
+import { contractTone, paymentMetrics, paymentState } from '../../data/contracts'
+import { addDaysIso, diffDays, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
+import { inScope } from '../../lib/scope'
 import { useScreenState } from '../../lib/useScreenState'
 import { useData } from '../../store/store'
-import type { Contract } from '../../store/types'
+import type { Contract, Payment } from '../../store/types'
 import { InfoModal } from '../../ui/Modal'
+import { shortMoney } from '../customers/customerLogic'
+import { addProjectActivity, updateProject } from '../projects/projectLogic'
 import { ContractDetailModal, ContractFormModal } from './ContractModals'
 
-type Collection = '' | 'overdue' | 'due' | 'future' | 'settled'
+type Collection = '' | 'overdue' | 'soon' | 'settled'
 
 interface Filters {
   query: string
@@ -19,123 +22,154 @@ interface Filters {
 
 const INITIAL: Filters = { query: '', status: '', collection: '' }
 const PAGE_SIZE = 10
+const SOON = addDaysIso(TODAY, 30)
 
 const RULES =
-  'Một dự án có thể có nhiều hợp đồng hoặc phụ lục. Hợp đồng có nhiều đợt thanh toán. Công nợ chỉ là phần chưa thu của đợt đã đến hạn; đợt tương lai là phải thu. Mỗi khoản thu cần mã chứng từ và có thể gắn link Drive.'
+  'Một dự án có thể có hợp đồng chính và phụ lục; một hợp đồng có thể gồm nhiều gói. Công nợ là phần chưa thu của đợt đã quá hạn; đợt chưa tới hạn là phải thu. Mỗi khoản thu cần mã chứng từ. Account chỉ thấy hợp đồng của dự án mình phụ trách.'
 
-function matchesCollection(row: Contract, collection: Collection): boolean {
-  const metrics = paymentMetrics(row)
-  if (collection === 'overdue') return metrics.overdue > 0
-  if (collection === 'due') return metrics.dueToday > 0
-  if (collection === 'future') return metrics.future > 0 && !metrics.overdue && !metrics.dueToday
-  if (collection === 'settled') return metrics.remaining === 0
+const unpaid = (payment: Payment) => payment.paid < payment.amount
+/** The installment to act on: the oldest overdue one, else the next due within 30 days. */
+function actionable(rows: Contract[]): Payment | undefined {
+  return rows
+    .flatMap((row) => row.payments)
+    .filter((payment) => unpaid(payment) && payment.due <= SOON)
+    .sort((a, b) => a.due.localeCompare(b.due))[0]
+}
+
+function matches(group: Contract[], collection: Collection): boolean {
+  const metrics = group.map(paymentMetrics)
+  if (collection === 'overdue') return metrics.some((item) => item.overdue > 0)
+  if (collection === 'soon') return group.some((row) => row.payments.some((payment) => unpaid(payment) && payment.due >= TODAY && payment.due <= SOON))
+  if (collection === 'settled') return metrics.every((item) => item.remaining === 0)
   return true
 }
 
-function NextPayment({ row }: { row: Contract }) {
-  const next = paymentMetrics(row).next
-  if (!next) return <><b className="contract-settled">Đã thu đủ</b><span className="project-record-meta">Không còn đợt cần thu</span></>
-  const status = paymentState(next)
-  return (
-    <>
-      <b>{money(Math.max(0, next.amount - next.paid))}</b>
-      <span className="project-record-meta">Đợt {next.installment} · {formatDate(parseInput(next.due))}</span>
-      <span className={'pill ' + paymentTone(status)}>{status}</span>
-    </>
-  )
-}
-
 export function ContractsScreen() {
-  const { showModal } = useApp()
-  const { contracts } = useData()
+  const { showModal, role, account, toast } = useApp()
+  const { contracts, projects } = useData()
   const [filters, setFilters] = useScreenState<Filters>('contracts.filters', INITIAL)
   const change = (patch: Partial<Filters>) => {
     setFilters((current) => ({ ...current, ...patch }))
     resetPage()
   }
 
-  const summary = contracts
-    .filter((row) => row.status === 'Hiệu lực')
-    .reduce(
-      (all, row) => {
-        const metrics = paymentMetrics(row)
-        all.overdue += metrics.overdue
-        all.dueToday += metrics.dueToday
-        all.future += metrics.future
-        all.collected += row.paid
-        all.overdueCount += row.payments.filter((payment) => paymentState(payment) === 'Quá hạn').length
-        all.dueCount += row.payments.filter((payment) => paymentState(payment) === 'Đến hạn').length
-        return all
-      },
-      { overdue: 0, dueToday: 0, future: 0, collected: 0, overdueCount: 0, dueCount: 0 },
+  // Account sees the contracts of the projects they run; BODs and Admin see all.
+  const visible = contracts.filter((row) => {
+    const project = projects.find((item) => item.id === row.projectId)
+    return !project || inScope(role, account, project)
+  })
+  const active = visible.filter((row) => row.status === 'Hiệu lực')
+  const payments = active.flatMap((row) => row.payments)
+  const month = TODAY.slice(0, 7)
+  const sum = (list: Payment[], pick: (payment: Payment) => number) => list.reduce((total, payment) => total + pick(payment), 0)
+  const overdue = payments.filter((payment) => unpaid(payment) && payment.due < TODAY)
+  const soon = payments.filter((payment) => unpaid(payment) && payment.due >= TODAY && payment.due <= SOON)
+  const summary = {
+    overdue: sum(overdue, (payment) => payment.amount - payment.paid),
+    soon: sum(soon, (payment) => payment.amount - payment.paid),
+    collected: sum(payments.filter((payment) => payment.paidAt?.startsWith(month)), (payment) => payment.paid),
+    remaining: active.reduce((total, row) => total + paymentMetrics(row).remaining, 0),
+  }
+
+  // One row per primary contract; its appendices ride along (money and due dates included).
+  const groups = visible
+    .filter((row) => row.isPrimary || !visible.some((main) => main.isPrimary && main.projectId === row.projectId))
+    .map((main) => ({ main, appendices: visible.filter((row) => !row.isPrimary && row !== main && row.projectId === main.projectId) }))
+  const list = groups
+    .filter(({ main, appendices }) =>
+      (!filters.status || main.status === filters.status) &&
+      matches([main, ...appendices], filters.collection) &&
+      includesText([main.code, main.customer, main.service, ...appendices.map((row) => row.code)], filters.query),
     )
-  const list = contracts.filter(
-    (row) =>
-      (!filters.status || row.status === filters.status) &&
-      matchesCollection(row, filters.collection) &&
-      includesText([row.code, row.customer, row.project, row.service, row.type], filters.query),
-  )
+    .sort((a, b) => (actionable([a.main, ...a.appendices])?.due ?? '9999').localeCompare(actionable([b.main, ...b.appendices])?.due ?? '9999'))
   const { rows, page, pages, from, to, goTo, resetPage } = usePagedList(list, PAGE_SIZE)
+
+  const remind = (row: Contract, payment: Payment) => {
+    updateProject(row.projectId, (item) => addProjectActivity(item, 'bell', 'Đã nhắc khách thu đợt ' + payment.installment + ' · ' + row.code, shortMoney(payment.amount - payment.paid) + ' · hạn ' + shortDate(payment.due)))
+    toast('Đã ghi nhận nhắc thu vào nhật ký dự án.')
+  }
   const card = (key: Collection, label: string, value: number, note: string, tone = '') => (
-    <button className={('contract-kpi ' + tone).trim()} onClick={() => change({ collection: key })}>
-      <span>{label}</span><b>{money(value)}</b><small>{note}</small>
+    <button className={('contract-kpi ' + tone + (filters.collection === key && key ? ' is-active' : '')).trim()} onClick={() => change({ collection: filters.collection === key ? '' : key })}>
+      <span>{label}</span><b>{shortMoney(value) || '0'}</b><small>{note}</small>
     </button>
   )
 
   return (
     <section className="screen active" id="contracts">
       <div className="contracts-page contract-control-center">
-        <div className="project-page-head">
+        <div className="project-page-head contracts-head">
           <div>
             <div className="project-title-line">
               <h1>Hợp đồng &amp; công nợ</h1>
               <button className="project-help" aria-label="Quy tắc hợp đồng" onClick={() => showModal(<InfoModal title="Quy tắc hợp đồng & công nợ" message={RULES} contract />)}>?</button>
             </div>
-            <p>Theo dõi từng đợt thanh toán. Khoản chưa đến hạn là phải thu, không phải công nợ.</p>
           </div>
           <button className="primary" onClick={() => showModal(<ContractFormModal />)}><Icon name="file-plus-2" /> Tạo hợp đồng</button>
         </div>
 
         <section className="contract-kpis">
-          {card('overdue', 'Quá hạn', summary.overdue, summary.overdueCount ? summary.overdueCount + ' đợt cần xử lý' : 'Không có đợt quá hạn', 'attention')}
-          {card('due', 'Đến hạn hôm nay', summary.dueToday, summary.dueCount ? summary.dueCount + ' đợt cần xác nhận' : 'Không có đợt đến hạn')}
-          {card('future', 'Chưa đến hạn', summary.future, 'Theo lịch điều khoản hợp đồng')}
-          {card('settled', 'Đã ghi nhận', summary.collected, 'Tổng tiền đã thu thực tế')}
+          {card('overdue', 'Quá hạn', summary.overdue, overdue.length ? overdue.length + ' đợt cần nhắc thu' : 'Không có đợt quá hạn', summary.overdue ? 'attention' : '')}
+          {card('soon', 'Sắp thu · 30 ngày', summary.soon, soon.length ? soon.length + ' đợt đến hạn' : 'Không có đợt sắp đến hạn')}
+          <div className="contract-kpi static"><span>Đã thu tháng {Number(month.slice(5))}</span><b>{shortMoney(summary.collected) || '0'}</b><small>Theo ngày ghi nhận</small></div>
+          <div className="contract-kpi static"><span>Còn phải thu</span><b>{shortMoney(summary.remaining) || '0'}</b><small>{active.length} hợp đồng hiệu lực</small></div>
         </section>
 
         <section className="project-list-shell contract-list-shell">
-          <div className="contract-list-heading">
-            <div><h2>Danh sách hợp đồng</h2><p>Chọn hợp đồng để xem lịch thu, chứng từ và ghi nhận khoản thu.</p></div>
-            <span>{list.length} hợp đồng</span>
-          </div>
           <div className="project-toolbar-new contract-toolbar">
             <label className="project-search-new">
               <Icon name="search" />
-              <input type="search" value={filters.query} placeholder="Tìm mã HĐ, khách hàng, gói dịch vụ…" onChange={(event) => change({ query: event.target.value })} />
+              <input type="search" value={filters.query} placeholder="Tìm mã HĐ, khách hàng, gói…" onChange={(event) => change({ query: event.target.value })} />
             </label>
-            <select value={filters.status} onChange={(event) => change({ status: event.target.value })}>
-              <option value="">Tất cả trạng thái HĐ</option><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option>
+            <select value={filters.collection} onChange={(event) => change({ collection: event.target.value as Collection })} aria-label="Tình trạng thu">
+              <option value="">Mọi tình trạng thu</option><option value="overdue">Quá hạn</option><option value="soon">Sắp thu 30 ngày</option><option value="settled">Đã thu đủ</option>
             </select>
-            <select value={filters.collection} onChange={(event) => change({ collection: event.target.value as Collection })}>
-              <option value="">Tất cả tình trạng thu</option><option value="overdue">Quá hạn</option><option value="due">Đến hạn hôm nay</option><option value="future">Chưa đến hạn</option><option value="settled">Đã thu đủ</option>
+            <select value={filters.status} onChange={(event) => change({ status: event.target.value })} aria-label="Trạng thái hợp đồng">
+              <option value="">Mọi trạng thái</option><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option>
             </select>
           </div>
           <div className="project-table-wrap">
-            <table className="project-table-new contract-table contract-control-table">
-              <thead><tr><th>Hợp đồng</th><th>Khách hàng</th><th>Đợt cần xử lý</th><th>Giá trị &amp; thời hạn</th><th>Đã thu / còn lại</th><th>Trạng thái HĐ</th><th /></tr></thead>
+            <table className="project-table-new contract-table contract-v2">
+              <thead><tr><th>Hợp đồng</th><th>Gói · thời hạn</th><th>Đã thu</th><th>Cần thu</th><th>Trạng thái</th></tr></thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} onClick={() => showModal(<ContractDetailModal contractId={row.id} />)}>
-                    <td><b>{row.code}</b><span className="project-record-meta">{row.isPrimary ? 'Hợp đồng chính' : row.type} · {row.cycles} chu kỳ</span></td>
-                    <td><span className="project-record-name">{row.customer}</span><span className="project-record-meta">{row.service || 'Chưa có dịch vụ áp dụng'}</span></td>
-                    <td className="contract-next-payment"><NextPayment row={row} /></td>
-                    <td><b>{money(row.value)}</b><span className="project-record-meta">{formatDate(parseInput(row.start))} – {row.end}</span></td>
-                    <td><b>{money(row.paid)}</b><span className="project-record-meta">Còn {money(paymentMetrics(row).remaining)}</span></td>
-                    <td><span className={'pill ' + contractTone(row.status)}>{row.status}</span></td>
-                    <td><button className="project-open" aria-label={'Mở ' + row.code}>›</button></td>
-                  </tr>
-                ))}
-                {!list.length && <tr><td colSpan={7} className="contract-empty">Không có hợp đồng phù hợp với bộ lọc.</td></tr>}
+                {rows.map(({ main, appendices }) => {
+                  const group = [main, ...appendices]
+                  const value = group.reduce((total, row) => total + row.value, 0)
+                  const paid = group.reduce((total, row) => total + row.paid, 0)
+                  const next = actionable(group)
+                  const owner = next ? group.find((row) => row.payments.includes(next))! : main
+                  const late = next && next.due < TODAY
+                  const pct = value ? Math.min(100, Math.round((paid / value) * 100)) : 0
+                  return (
+                    <tr key={main.id} onClick={() => showModal(<ContractDetailModal contractId={main.id} />)}>
+                      <td>
+                        <b className="project-record-name">{main.customer}</b>
+                        <span className="project-record-meta">{main.code}{appendices.length ? ' · +' + appendices.length + ' phụ lục' : ''}</span>
+                      </td>
+                      <td>
+                        <span className="cv-service" title={main.service}>{main.service}</span>
+                        <span className="project-record-meta">{shortDate(main.start)} – {main.end} · {main.cycles} chu kỳ</span>
+                      </td>
+                      <td>
+                        <span className="pace-bar cv-bar" aria-hidden="true"><i className={late ? 'behind' : 'ahead'} style={{ width: pct + '%' }} /></span>
+                        <span className="project-record-meta">{shortMoney(paid) || '0'} / {shortMoney(value)}</span>
+                      </td>
+                      <td>
+                        {next ? (
+                          <>
+                            <b className={late ? 'is-late' : ''}>{shortMoney(next.amount - next.paid)}</b>
+                            <span className={'project-record-meta' + (late ? ' is-late' : '')}>
+                              {owner !== main ? owner.code + ' · ' : ''}Đợt {next.installment} · {late ? 'quá ' + diffDays(next.due, TODAY) + ' ngày' : next.due === TODAY ? 'hôm nay' : 'hạn ' + shortDate(next.due)}
+                              {paymentState(next) === 'Thu một phần' ? ' · đã thu một phần' : ''}
+                            </span>
+                            {late && <button type="button" className="text-btn cv-remind" onClick={(event) => { event.stopPropagation(); remind(owner, next) }}>Nhắc khách</button>}
+                          </>
+                        ) : <span className="project-record-meta">{paymentMetrics(main).remaining ? 'Chưa tới hạn' : 'Đã thu đủ'}</span>}
+                      </td>
+                      <td><span className={'pill ' + contractTone(main.status)}>{main.status}</span></td>
+                    </tr>
+                  )
+                })}
+                {!list.length && <tr><td colSpan={5} className="contract-empty">Không có hợp đồng phù hợp.</td></tr>}
               </tbody>
             </table>
           </div>

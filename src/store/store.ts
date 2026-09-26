@@ -9,12 +9,12 @@ import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 18
+const DATA_VERSION = 19
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)
   const projects = seedProjects(packages)
-  const contracts = seedContracts(projects)
+  const contracts = seedContracts(projects, packages)
   return {
     version: DATA_VERSION,
     customers: seedCustomers(),

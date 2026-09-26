@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { contractTone, coversProject, paymentMetrics, paymentState, syncProjectContract, totalPaid } from '../../data/contracts'
+import { contractTone, coversProject, VAT_RATE, paymentMetrics, paymentState, syncProjectContract, totalPaid } from '../../data/contracts'
 import { runningCycle } from '../../lib/sop'
 import { contractEnd, diffDays, money, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
@@ -10,9 +10,6 @@ import type { Contract, ContractStatus, Payment } from '../../store/types'
 import { field } from '../../lib/form'
 import { Modal, Req } from '../../ui/Modal'
 import { MoneyInput } from '../../ui/MoneyInput'
-
-/** VAT on service contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
-const VAT_RATE = 0.08
 
 interface PlanRow {
   key: number
@@ -252,6 +249,7 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
   const left = selected ? Math.max(0, selected.amount - selected.paid) : 0
   const project = projects.find((item) => item.id === row.projectId)
   const cycle = project ? project.cycles.length : 0
+  const appendices = row.isPrimary ? contracts.filter((item) => !item.isPrimary && item.projectId === row.projectId && item.status !== 'Đã hủy') : []
 
   const record = (form: HTMLFormElement) => {
     const amount = Number(field(form, 'payment') || 0)
@@ -309,6 +307,16 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
             )
           })}
         </ol>
+
+        {appendices.length > 0 && (
+          <div className="contract-others">
+            {appendices.map((item) => (
+              <button key={item.id} type="button" className="contract-other" onClick={() => showModal(<ContractDetailModal contractId={item.id} />)}>
+                <span>Phụ lục · <b>{item.code}</b></span><small>{money(item.value)} · {item.paid >= item.value ? 'đã thu đủ' : 'còn ' + money(item.value - item.paid)}</small><Icon name="chevron-right" />
+              </button>
+            ))}
+          </div>
+        )}
 
         {unpaid.length > 0 && (
           <section className="cd-record">

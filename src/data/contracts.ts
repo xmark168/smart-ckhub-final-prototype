@@ -1,5 +1,5 @@
-import { contractEnd, TODAY } from '../lib/format'
-import type { Contract, Payment, Project } from '../store/types'
+import { addDaysIso, contractEnd, TODAY, toIso } from '../lib/format'
+import type { Contract, Payment, Project, ServicePackage } from '../store/types'
 import { COM_TAM_TAI_CONTRACT, COM_TAM_TAI_CONTRACT_FOLDER, COM_TAM_TAI_ID } from './comTamTai'
 
 export type PaymentState = 'Đã thu đủ' | 'Thu một phần' | 'Quá hạn' | 'Đến hạn' | 'Chưa đến hạn'
@@ -63,17 +63,54 @@ export function syncProjectContract(project: Project, contracts: Contract[]): vo
   project.total = primary ? primary.cycles : 0
 }
 
-export function seedContracts(projects: Project[]): Contract[] {
+/** VAT on service contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
+export const VAT_RATE = 0.08
+
+function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return toIso(new Date(y, m - 1 + months, d))
+}
+
+/** Installment split by contract length: 6+ cycles 40/30/30, shorter 50/50, one-off 100%. */
+function splitFor(cycles: number): number[] {
+  return cycles >= 6 ? [40, 30, 30] : cycles >= 2 ? [50, 50] : [100]
+}
+
+/**
+ * Demo schedule: installments spread over the term; past-due ones are paid except on a few
+ * projects (overdue or partly paid) so the debt view has realistic cases.
+ */
+function seedPayments(value: number, start: string, cycles: number, index: number): Payment[] {
+  const split = splitFor(cycles)
+  const step = split.length > 1 ? Math.max(1, Math.floor(cycles / split.length)) : 0
+  let left = value
+  return split.map((percent, n) => {
+    const amount = n === split.length - 1 ? left : Math.round((value * percent) / 100 / 1000) * 1000
+    left -= amount
+    const due = addMonthsIso(start, n * step)
+    const past = due <= TODAY
+    // Only a recent installment (last 45 days) is left unpaid in the demo.
+    const last = (n === split.length - 1 || addMonthsIso(start, (n + 1) * step) > TODAY) && due > addDaysIso(TODAY, -45)
+    const overdue = past && last && index % 7 === 2
+    const partial = past && last && index % 9 === 4
+    const paid = !past || overdue ? 0 : partial ? Math.round(amount / 2 / 1000) * 1000 : amount
+    return { installment: n + 1, percent, amount, due, paid, paidAt: paid ? due : undefined, evidence: paid ? 'UNC-' + due.slice(2, 7).replace('-', '') + '-' + String(index + 1).padStart(3, '0') : '' }
+  })
+}
+
+export function seedContracts(projects: Project[], packages: ServicePackage[] = []): Contract[] {
   const records: Contract[] = []
   projects.forEach((project, index) => {
     if (project.state === 'draft' || SHARED_CONTRACT[project.id]) return
     const cycles = project.total || (index % 4 === 0 ? 3 : 6)
     const comTamTai = project.id === COM_TAM_TAI_ID
-    const value = comTamTai ? COM_TAM_TAI_CONTRACT.value : project.servicePrice || (index % 3 === 0 ? 9000000 : 2000000)
-    const paid = index % 5 === 0 ? 0 : index % 4 === 0 ? 1000000 : project.servicePrice || 2000000
-    const payments: Payment[] = comTamTai
-      ? COM_TAM_TAI_CONTRACT.payments.map((payment) => ({ ...payment }))
-      : [{ installment: 1, percent: 100, amount: value, paid, paidAt: paid ? '2026-09-10' : '', due: '2026-09-25', evidence: paid ? 'UNC-2026-' + String(index + 1).padStart(3, '0') : '' }]
+    const monthly = packages.find((item) => item.id === project.servicePackageId)?.unit === 'Tháng'
+    const price = project.servicePrice || 2000000
+    // Monthly packages bill every cycle; one-off packages (setup, website) once.
+    const value = comTamTai ? COM_TAM_TAI_CONTRACT.value : Math.round((price * (monthly ? cycles : 1) * (1 + VAT_RATE)) / 1000) * 1000
+    const start = comTamTai ? COM_TAM_TAI_CONTRACT.start : project.cycles[0]?.start ?? '2026-09-01'
+    const payments: Payment[] = comTamTai ? COM_TAM_TAI_CONTRACT.payments.map((payment) => ({ ...payment })) : seedPayments(value, start, monthly ? cycles : 1, index)
+    const settled = payments.every((payment) => payment.paid >= payment.amount)
     records.push({
       id: 'contract-' + (index + 1),
       code: project.contractCode || 'HĐ-2026-' + String(index + 1).padStart(3, '0'),
@@ -85,17 +122,18 @@ export function seedContracts(projects: Project[]): Contract[] {
       service: project.service,
       scope: project.serviceScope,
       cycles,
-      start: comTamTai ? COM_TAM_TAI_CONTRACT.start : '2026-09-01',
-      end: contractEnd(comTamTai ? COM_TAM_TAI_CONTRACT.start : '2026-09-01', cycles),
+      start,
+      end: contractEnd(start, cycles),
       value,
       paid: totalPaid(payments),
       payments,
-      status: comTamTai ? 'Hiệu lực' : index % 13 === 0 ? 'Kết thúc' : 'Hiệu lực',
+      status: comTamTai ? 'Hiệu lực' : project.state === 'stopped' && settled ? 'Kết thúc' : 'Hiệu lực',
       evidence: comTamTai ? COM_TAM_TAI_CONTRACT_FOLDER : '',
       folderUrl: comTamTai ? COM_TAM_TAI_CONTRACT_FOLDER : '',
       activity: [comTamTai ? 'Đã tạo hợp đồng, lịch 3 đợt thanh toán 40/30/30' : 'Đã tạo từ dữ liệu mẫu'],
     })
     if (index % 11 === 3) {
+      const due = addMonthsIso(start, 1)
       records.push({
         id: 'appendix-' + (index + 1),
         code: 'PL-2026-' + String(index + 1).padStart(3, '0'),
@@ -107,11 +145,11 @@ export function seedContracts(projects: Project[]): Contract[] {
         service: project.service,
         scope: 'Bổ sung phạm vi theo phụ lục.',
         cycles: 1,
-        start: '2026-09-15',
-        end: '14.10.2026',
-        value: 1000000,
+        start: due,
+        end: contractEnd(due, 1),
+        value: 1080000,
         paid: 0,
-        payments: [{ installment: 1, percent: 100, amount: 1000000, paid: 0, due: '2026-09-25', evidence: '' }],
+        payments: [{ installment: 1, percent: 100, amount: 1080000, paid: 0, due, evidence: '' }],
         status: 'Hiệu lực',
         evidence: '',
         folderUrl: '',
@@ -127,8 +165,13 @@ export function seedContracts(projects: Project[]): Contract[] {
     if (!extra || !contract) return
     contract.extraProjectIds = [...(contract.extraProjectIds ?? []), extraId]
     contract.service += ' + ' + extra.service
-    contract.value += extra.servicePrice
-    contract.payments = contract.payments.map((payment) => ({ ...payment, amount: Math.round((contract.value * payment.percent) / 100) }))
+    contract.value += Math.round((extra.servicePrice * contract.cycles * (1 + VAT_RATE)) / 1000) * 1000
+    contract.payments = contract.payments.map((payment) => {
+      const amount = Math.round((contract.value * payment.percent) / 100 / 1000) * 1000
+      // A fully paid installment stays fully paid at the combined amount.
+      return { ...payment, amount, paid: payment.paid >= payment.amount ? amount : Math.min(payment.paid, amount) }
+    })
+    contract.paid = totalPaid(contract.payments)
     contract.activity.unshift('Hợp đồng gồm 2 gói: ' + contract.service)
     syncProjectContract(extra, records)
   })
