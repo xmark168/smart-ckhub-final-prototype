@@ -35,9 +35,6 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
   // Closing is the primary action only when the cycle is near or past its end.
   const closeIsPrimary = active && days !== null && days <= params.cycleEndWarningDays
   const badge = active ? { cls: 'health-' + (HEALTH_CLASS[health.level] ?? 'ok'), label: health.label } : { cls: 'state-' + project.state, label: projectLabel(project) }
-  const partners = new Set<string>()
-  runningCycle(project)?.shootings.forEach((shoot) => shoot.media.forEach((name) => partners.add(name)))
-  runningCycle(project)?.tasks.forEach((task) => task.owner && task.owner !== project.owner && task.owner !== 'Content nội bộ' && partners.add(task.owner))
 
   const menu: Array<[string, string, () => void]> = []
   if (active && runningCycle(project) && !closeIsPrimary) menu.push(['calendar-check-2', 'Chốt chu kỳ', actions.closeCycle])
@@ -58,9 +55,7 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
           </div>
           <p className="project-subtitle">{project.service}</p>
           <p className="project-meta-line">
-            <span>{project.code}</span>
             <span>Account {project.owner}</span>
-            {partners.size > 0 && <span>Partner {[...partners].join(', ')}</span>}
             <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>Hồ sơ khách hàng ›</button>
           </p>
         </div>
