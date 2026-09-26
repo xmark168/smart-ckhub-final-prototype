@@ -1,13 +1,12 @@
 import { useApp } from '../../../app/context'
 import { shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
-import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type Milestone, type MilestoneState } from '../../../lib/sop'
+import { cycleMilestones, cycleProgress, MILESTONE_LABEL, MILESTONE_TONE, runningCycle, type MilestoneState } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Cycle, Project } from '../../../store/types'
 import { KeyNoteModal } from '../ContentModals'
 import { CycleTaskModal, DemoModal, ExceptionModal, PlanModal, ShootingModal, ShootingPlanModal } from '../CycleModals'
 import { planLabel, resolveException, statusTone } from '../projectLogic'
-import { AddStepModal, StepModal } from '../TimelineModals'
 import { useProjectActions } from '../useProjectActions'
 
 /** Short outcome for the history row; the full note stays in the tooltip. */
@@ -47,47 +46,6 @@ function History({ project }: { project: Project }) {
       })}
       {future > 0 && <p className="project-tab-note">Còn {future} chu kỳ theo hợp đồng chưa bắt đầu. Chu kỳ kế tiếp được mở khi Account chốt chu kỳ hiện tại.</p>}
       {!project.cycles.length && <p className="project-tab-note">Chưa có chu kỳ. Chu kỳ 1 được tạo khi bắt đầu triển khai.</p>}
-    </section>
-  )
-}
-
-/** Due text of a step: "~dd.mm" while it is an estimate, "xong dd.mm" once done. */
-function dueText(item: Milestone): string {
-  if (item.state === 'skipped') return '—'
-  if (item.done) return 'xong ' + shortDate(item.done)
-  return item.due ? (item.projected ? '~' : '') + shortDate(item.due) : '—'
-}
-
-/** The cycle's own copy of the package timeline; Account adjusts it with a reason per change. */
-function TimelinePanel({ project, cycle }: { project: Project; cycle: Cycle }) {
-  const { showModal } = useApp()
-  const { params } = useData()
-  const items = cycleMilestones(cycle, project.quota, params)
-  const custom = cycle.timeline.filter((step) => step.kind === 'custom').length
-  const changed = cycle.timeline.filter((step) => step.log.length && step.kind !== 'custom').length
-  return (
-    <section className="panel timeline-panel">
-      <div className="panel-head">
-        <div>
-          <h2>Timeline chu kỳ {cycle.no}</h2>
-          <p className="subline">Sinh từ mẫu của gói {project.service}{changed || custom ? ' · đã điều chỉnh ' + changed + ' bước' + (custom ? ', thêm ' + custom + ' mốc' : '') : ''}. Ngày có dấu ~ là dự kiến, chạy theo bước trước.</p>
-        </div>
-        <button className="text-btn" onClick={() => showModal(<AddStepModal project={project} />)}>+ Mốc</button>
-      </div>
-      <ol className="tl-list">
-        {items.map((item) => (
-          <li key={item.key} className={'tl-row is-' + item.state}>
-            <i className="tl-dot" aria-hidden="true" />
-            <span className="tl-main"><b>{item.label}{item.moved && <em className="tl-moved">đã dời</em>}</b><small>{item.detail}</small></span>
-            <span className="tl-owner">{item.owner}</span>
-            <span className={'tl-due' + (item.projected ? ' is-projected' : '')}>{dueText(item)}</span>
-            <span className={'pill ' + MILESTONE_TONE[item.state]}>{item.kind === 'end' && item.state === 'due' && !item.done ? 'Sẵn sàng chốt' : MILESTONE_LABEL[item.state]}</span>
-            {item.kind === 'end'
-              ? <span className="tl-action" />
-              : <button type="button" className="text-btn tl-action" onClick={() => showModal(<StepModal project={project} stepId={item.key} />)} aria-label={'Điều chỉnh ' + item.label}>Điều chỉnh</button>}
-          </li>
-        ))}
-      </ol>
     </section>
   )
 }
@@ -240,7 +198,6 @@ export function CyclesTab({ project }: { project: Project }) {
       {cycle && project.state !== 'stopped' ? (
         <>
           <div className="project-tab-heading cycle-work-heading"><div><h2>Chu kỳ {cycle.no} đang chạy</h2><p>{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}{project.state === 'pending' ? ' · dự án đang tạm dừng' : ''}</p></div></div>
-          <TimelinePanel project={project} cycle={cycle} />
           <Workspace project={project} cycle={cycle} />
         </>
       ) : null}
