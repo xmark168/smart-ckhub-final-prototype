@@ -106,7 +106,8 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
   const contract = primaryContract(contracts, project.id)
   const metrics = contract ? paymentMetrics(contract) : null
   const open = nextActions(project, params)
-  const urgent = open.filter((item) => item.state === 'late' || item.state === 'due').slice(0, 3)
+  // The posting cadence is shown by the pace bars below, so it is not repeated as a to-do.
+  const urgent = open.filter((item) => item.key !== 'cadence' && (item.state === 'late' || item.state === 'due')).slice(0, 3)
   const upcoming = open.find((item) => item.state === 'upcoming')
   const tone = project.state === 'active' ? HEALTH_CLASS[health.level] ?? 'ok' : 'muted'
 

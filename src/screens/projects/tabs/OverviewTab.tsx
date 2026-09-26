@@ -71,7 +71,7 @@ export function OverviewTab({ project }: { project: Project }) {
           const all = cycleMilestones(cycle, quota, params)
           const done = all.filter((item) => item.state === 'done' || item.state === 'doneLate')
           // Late / due milestones are already the chips in the header band; list what comes next here.
-          const urgentCount = next.filter((item) => item.state === 'late' || item.state === 'due').length
+          const urgentCount = next.filter((item) => item.key !== 'cadence' && (item.state === 'late' || item.state === 'due')).length
           const later = next.filter((item) => item.state !== 'late' && item.state !== 'due')
           return (
             <section className="panel">
