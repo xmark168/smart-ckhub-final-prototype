@@ -45,6 +45,7 @@ export interface SopParams {
   cycleMonths: number
   planLeadBusinessDays: number
   shootingPlanAfterApprovalDays: number
+  shootingPlanBeforeShootDays: number
   postDemoAfterShootBusinessDays: number
   postsPerWeekMin: number
   postsPerWeekMax: number
@@ -100,13 +101,15 @@ export interface ContentItem {
 
 export interface Shooting {
   id: string
-  /** yyyy-mm-dd */
+  /** yyyy-mm-dd; '' while the date is not fixed yet. */
   date: string
   time: string
   location: string
   media: string[]
   status: 'Chờ xác nhận' | 'Đã xác nhận' | 'Đã hoàn thành'
   checklist: string
+  /** The Shooting Plan of this shoot (one per shoot). */
+  plan: { sentAt: string; link: string }
 }
 
 /**
@@ -118,10 +121,10 @@ export type StepOwner = 'Account' | 'Planner/Content' | 'Media' | 'Khách'
 
 /** When a step is due: `offset` days (working or calendar) after T0 or after another step. */
 export interface StepAnchor {
-  /** 'T0', 'shoot' (the cycle's first shooting) or the id of an earlier step. */
+  /** 'T0', 'shoot' / 'shoot:N' (a shooting of the cycle) or the id of an earlier step. */
   after: string
-  /** 'approved' waits for the customer to approve that step (Content Plan, Post Demo). */
-  event: 'done' | 'approved'
+  /** 'approved' waits for the customer to approve that step; 'scheduled' uses a shoot's planned date. */
+  event: 'done' | 'approved' | 'scheduled'
   offset: number
   unit: 'bd' | 'd'
 }
@@ -166,7 +169,6 @@ export interface Cycle {
   /** Filled when the cycle is closed; history rows read it instead of the content list. */
   result?: { published: number; planned: number; note: string }
   plan: { status: PlanStatus; link: string; sentAt: string; approvedAt: string; feedback: string }
-  shootingPlan: { sentAt: string; link: string }
   shootings: Shooting[]
   demo: { status: 'Chưa gửi' | 'Đã gửi' | 'Cần chỉnh sửa' | 'Đã duyệt'; link: string; sentAt: string; approvedAt: string }
   contents: ContentItem[]
@@ -289,13 +291,10 @@ export interface ServicePackage {
   timeline: TimelineStepTemplate[]
 }
 
-/** [code, title, project, time, partner, input, status] */
-export type ShootingRow = [string, string, string, string, string, string, string]
 /** [code, title, project, owner, deadline, output, status] */
 export type TaskRow = [string, string, string, string, string, string, string]
 
 export interface Operations {
-  shootings: ShootingRow[]
   tasks: TaskRow[]
 }
 

@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { inputToDisplay, newId, TODAY } from '../../lib/format'
 import { field } from '../../lib/form'
+import { allShootings, mediaClashes } from '../../data/shootings'
+import { inScope } from '../../lib/scope'
 import { runningCycle } from '../../lib/sop'
+import { useData } from '../../store/store'
 import type { Cycle, PlanStatus, Project, Shooting } from '../../store/types'
-import { FormActions, Modal, Req } from '../../ui/Modal'
+import { FormActions, Modal } from '../../ui/Modal'
 import { MEDIA_PEOPLE, planLabel, updateProject, withCycle } from './projectLogic'
 
 function saveCycle(project: Project, change: Parameters<typeof withCycle>[1]) {
@@ -60,71 +63,92 @@ export function PlanModal({ project }: { project: Project }) {
   )
 }
 
-export function ShootingPlanModal({ project }: { project: Project }) {
-  const { closeModal } = useApp()
-  const plan = cycleOf(project).shootingPlan
-  return (
-    <Modal
-      title="Shooting Plan"
-      onSubmit={(form) => {
-        saveCycle(project, (cycle) => {
-          cycle.shootingPlan = { sentAt: field(form, 'sentAt'), link: field(form, 'link') }
-          return ['Shooting Plan đã gửi khách', cycle.shootingPlan.link || 'Không có link']
-        })
-        closeModal()
-      }}
-    >
-      <div className="form">
-        <label className="field">Ngày gửi khách<Req /><input name="sentAt" type="date" required defaultValue={plan.sentAt || TODAY} max={TODAY} /></label>
-        <label className="field">Link Shooting Plan <small>(không bắt buộc)</small><input name="link" type="url" defaultValue={plan.link} placeholder="https://docs.google.com/..." /></label>
-        <FormActions submit="Lưu Shooting Plan" />
-      </div>
-    </Modal>
-  )
-}
+/**
+ * One shoot and its Shooting Plan. Account schedules it; opened from the project's Chu kỳ tab
+ * (project fixed) or from Lịch shooting (project chosen here). Warns when a Media is already
+ * booked on another shoot that day.
+ */
+export function ShootingModal({ project, shooting }: { project?: Project; shooting?: Shooting }) {
+  const { closeModal, toast, role, account } = useApp()
+  const { projects } = useData()
+  const choices = projects.filter((entry) => entry.state === 'active' && entry.quota.shoots > 0 && runningCycle(entry) && inScope(role, account, entry))
+  const [projectId, setProjectId] = useState(project?.id ?? choices[0]?.id ?? '')
+  const target = projects.find((entry) => entry.id === projectId)
+  const current: Shooting = shooting ?? { id: '', date: '', time: '', location: '', media: [], status: 'Chờ xác nhận', checklist: '', plan: { sentAt: '', link: '' } }
+  const [date, setDate] = useState(current.date)
+  const [media, setMedia] = useState<string[]>(current.media)
+  const clashes = mediaClashes(allShootings(projects), date, media, current.id)
 
-export function ShootingModal({ project, shooting }: { project: Project; shooting?: Shooting }) {
-  const { closeModal } = useApp()
-  const people = MEDIA_PEOPLE
-  const current: Shooting = shooting ?? { id: '', date: '', time: '', location: '', media: [], status: 'Chờ xác nhận', checklist: '' }
+  if (!target || !runningCycle(target)) {
+    return (
+      <Modal title="Tạo lịch shooting">
+        <div className="customer-data-rules"><p>Không có dự án đang triển khai có buổi shoot trong gói.</p></div>
+        <div className="form-actions"><button className="primary" type="button" onClick={closeModal}>Đóng</button></div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal
-      title={shooting ? 'Cập nhật lịch shooting' : 'Tạo lịch shooting'}
+      title={shooting ? 'Buổi shoot' : 'Tạo lịch shooting'}
       onSubmit={(form) => {
-        const media = people.filter((name) => (form.elements.namedItem('media-' + name) as HTMLInputElement | null)?.checked)
+        const status = field(form, 'status') as Shooting['status']
+        if (status !== 'Chờ xác nhận' && !date) return toast('Cần ngày shoot khi đã xác nhận hoặc đã quay.')
         const next: Shooting = {
           id: current.id || newId('shoot'),
-          date: field(form, 'date'),
+          date,
           time: field(form, 'time'),
           location: field(form, 'location'),
           media,
-          status: field(form, 'status') as Shooting['status'],
+          status,
           checklist: field(form, 'checklist'),
+          plan: { sentAt: field(form, 'planSentAt'), link: field(form, 'planLink') },
         }
-        saveCycle(project, (cycle) => {
+        saveCycle(target, (cycle) => {
           const index = cycle.shootings.findIndex((entry) => entry.id === next.id)
           if (index >= 0) cycle.shootings[index] = next
           else cycle.shootings.push(next)
-          return [shooting ? 'Lịch shooting đã cập nhật' : 'Lịch shooting đã tạo', inputToDisplay(next.date) + ' · ' + next.status]
+          return [shooting ? 'Cập nhật buổi shoot' : 'Tạo lịch shooting', (next.date ? inputToDisplay(next.date) : 'chưa chốt ngày') + ' · ' + next.status]
         })
         closeModal()
       }}
     >
       <div className="form">
-        <label className="field">Ngày shoot<Req /><input name="date" type="date" required defaultValue={current.date} /></label>
-        <label className="field">Khung giờ<input name="time" defaultValue={current.time} placeholder="Ví dụ: 11:00–15:00" /></label>
+        {!project && (
+          <label className="field">Dự án
+            <select value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={Boolean(shooting)}>
+              {choices.map((entry) => <option key={entry.id} value={entry.id}>{entry.customer} · chu kỳ {runningCycle(entry)?.no}</option>)}
+            </select>
+          </label>
+        )}
+        <div className="form-grid">
+          <label className="field">Ngày shoot<input name="date" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+          <label className="field">Khung giờ<input name="time" defaultValue={current.time} placeholder="11:00–15:00" /></label>
+        </div>
         <label className="field">Địa điểm<input name="location" defaultValue={current.location} placeholder="Địa chỉ quán hoặc studio" /></label>
         <fieldset className="field">
           <legend>Media</legend>
-          {people.map((name) => (
-            <label className="filter-check" key={name}><input name={'media-' + name} type="checkbox" defaultChecked={current.media.includes(name)} /> {name}</label>
+          {MEDIA_PEOPLE.map((name) => (
+            <label className="filter-check" key={name}>
+              <input type="checkbox" checked={media.includes(name)} onChange={(event) => setMedia(event.target.checked ? [...media, name] : media.filter((entry) => entry !== name))} /> {name}
+            </label>
           ))}
         </fieldset>
+        {clashes.length > 0 && (
+          <div className="customer-data-rules warn">
+            <b>Trùng lịch Media</b>
+            <p>{clashes.map(({ name, row }) => name + ' đã có buổi shoot ' + row.project.customer + (row.shooting.time ? ' (' + row.shooting.time + ')' : '')).join('; ')}.</p>
+          </div>
+        )}
         <label className="field">Trạng thái
           <select name="status" defaultValue={current.status}><option>Chờ xác nhận</option><option>Đã xác nhận</option><option>Đã hoàn thành</option></select>
         </label>
-        <label className="field">Checklist khách chuẩn bị<textarea name="checklist" defaultValue={current.checklist} placeholder="Món cần làm, props, người xuất hiện, khung giờ vắng khách…" /></label>
-        <FormActions submit="Lưu lịch shooting" />
+        <div className="form-grid">
+          <label className="field">Shooting Plan gửi khách<input name="planSentAt" type="date" defaultValue={current.plan.sentAt} max={TODAY} /></label>
+          <label className="field">Link Shooting Plan<input name="planLink" type="url" defaultValue={current.plan.link} placeholder="https://docs.google.com/..." /></label>
+        </div>
+        <label className="field">Checklist khách chuẩn bị<textarea name="checklist" defaultValue={current.checklist} placeholder="Món, props, người xuất hiện, khung giờ vắng khách…" /></label>
+        <FormActions submit="Lưu" />
       </div>
     </Modal>
   )

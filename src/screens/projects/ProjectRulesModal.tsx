@@ -9,7 +9,7 @@ export function ProjectRulesModal() {
   const sections: Array<[string, string[]]> = [
     ['Tạo và khởi động', [
       'Dự án được tạo ở trạng thái nháp: chỉ cần khách hàng, Account và gói dự kiến. Folder Drive không bắt buộc.',
-      'Chỉ Account được gắn cố định với dự án. Content là đội nội bộ dùng chung; partner (Media, Ads) gán theo từng buổi shoot và công việc.',
+      'Chỉ Account được gắn cố định với dự án. Content là đội nội bộ dùng chung, lo edit post và lên lịch đăng; Account lên lịch shooting, gửi khách duyệt và đăng lên page. Media gán theo từng buổi shoot.',
       'Bắt đầu triển khai (T0) khi Cổng khởi động đủ điều kiện: hợp đồng chính, cọc, Sales Brief' + (params.requireBriefBeforeT0 ? ' và brief khách hàng' : '') + '. Mọi mốc SOP tính từ T0.',
       'Khách không chốt thì Hủy nháp: dự án chuyển sang Đã dừng, không tạo chu kỳ, vẫn giữ lịch sử.',
     ]],
@@ -21,7 +21,7 @@ export function ProjectRulesModal() {
     ['Timeline và chu kỳ', [
       'Mỗi gói có Timeline mẫu (Administrator sửa ở Gói dịch vụ). Khi mở chu kỳ, dự án sao chép timeline của gói; sửa mẫu sau đó không đổi chu kỳ đang chạy.',
       'Mốc phụ thuộc nhau: hạn mỗi bước tính từ ngày bước trước thực sự xong hoặc được khách duyệt. Bước trước chưa xong thì hạn bước sau là dự kiến (dấu ~), không tính trễ.',
-      '5 mốc SOP: T0 (cọc + đủ brief) → Gửi Content Plan T0 + ' + params.planLeadBusinessDays + ' ngày làm việc → Gửi Shooting Plan khi khách duyệt Plan + ' + params.shootingPlanAfterApprovalDays + ' ngày → Gửi Post Demo khi shoot xong + ' + params.postDemoAfterShootBusinessDays + ' ngày làm việc → Bắt đầu đăng khi khách duyệt Demo.',
+      '5 mốc SOP: T0 (cọc + đủ brief) → Gửi Content Plan T0 + ' + params.planLeadBusinessDays + ' ngày làm việc → Gửi Shooting Plan khi khách duyệt Plan + ' + params.shootingPlanAfterApprovalDays + ' ngày (gói nhiều buổi: mỗi buổi một Shooting Plan, các buổi sau gửi trước ngày quay ' + params.shootingPlanBeforeShootDays + ' ngày) → Gửi Post Demo khi shoot xong + ' + params.postDemoAfterShootBusinessDays + ' ngày làm việc → Bắt đầu đăng khi khách duyệt Demo.',
       'Trong giai đoạn đăng: nhịp ' + params.postsPerWeekMin + '–' + params.postsPerWeekMax + ' bài/tuần (gói nhiều bài thì nhịp cao hơn); script gối đầu lô ' + params.scriptBatchSize + ' bài, gửi trước deadline dựng ' + params.scriptLeadDays + ' ngày — theo dõi ở tab Nội dung.',
       'Từng bài: Edit xong → Account gửi khách duyệt → Account đăng. Bài tặng cộng vào số bài phải đăng của chu kỳ.',
       'Account điều chỉnh timeline của chu kỳ đang chạy: dời hạn, đổi nhịp đăng, bỏ qua bước, thêm mốc sự kiện. Mọi thay đổi bắt buộc lý do và được lưu lại; không xóa được bước của mẫu.',

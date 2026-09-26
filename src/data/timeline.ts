@@ -33,6 +33,13 @@ export function cadenceFor(posts: number, params: SopParams): [number, number] {
 /** Anchors that are not steps: cycle start and the cycle's first shooting. */
 export const VIRTUAL_ANCHORS: Record<string, string> = { T0: 'T0 (bắt đầu chu kỳ)', shoot: 'Buổi shoot đầu tiên' }
 
+/** 'shoot' / 'shoot:N' → N (1-based), else 0. */
+export function shootAnchor(after: string): number {
+  if (after === 'shoot') return 1
+  const match = /^shoot:(\d+)$/.exec(after)
+  return match ? Number(match[1]) : 0
+}
+
 /**
  * The 5 milestones of the SOP: T0 → Content Plan (T0 + 3 ngày LV) → Shooting Plan (khách duyệt
  * Plan + 1 ngày) → Post Demo (shoot + 1 ngày LV) → bắt đầu đăng đều (khách duyệt Demo). Script
@@ -46,8 +53,12 @@ export function defaultTimeline(quota: PackageQuota, params: SopParams): Timelin
   const approved = quota.plans ? { after: 'plan', event: 'approved' as const } : { after: 't0', event: 'done' as const }
   if (quota.plans) steps.push({ id: 'plan', kind: 'plan', name: 'Gửi Content Plan', owner: 'Planner/Content', anchor: { after: 't0', event: 'done', offset: params.planLeadBusinessDays, unit: 'bd' } })
   if (quota.shoots) {
-    steps.push({ id: 'shootingPlan', kind: 'shootingPlan', name: 'Gửi Shooting Plan', owner: 'Planner/Content', anchor: { ...approved, offset: params.shootingPlanAfterApprovalDays, unit: 'd' } })
+    steps.push({ id: 'shootingPlan', kind: 'shootingPlan', name: quota.shoots > 1 ? 'Gửi Shooting Plan 1' : 'Gửi Shooting Plan', owner: 'Planner/Content', shootNo: 1, anchor: { ...approved, offset: params.shootingPlanAfterApprovalDays, unit: 'd' } })
     if (quota.posts) steps.push({ id: 'demo', kind: 'demo', name: 'Gửi Post Demo', owner: 'Media', firstCycleOnly: true, anchor: { after: 'shoot', event: 'done', offset: params.postDemoAfterShootBusinessDays, unit: 'bd' } })
+  }
+  // Later shoots: each has its own Shooting Plan, due a few days before that shoot.
+  for (let no = 2; no <= quota.shoots; no++) {
+    steps.push({ id: 'shootingPlan-' + no, kind: 'shootingPlan', name: 'Gửi Shooting Plan ' + no, owner: 'Planner/Content', shootNo: no, anchor: { after: 'shoot:' + no, event: 'scheduled', offset: -params.shootingPlanBeforeShootDays, unit: 'd' } })
   }
   if (quota.posts) {
     steps.push({

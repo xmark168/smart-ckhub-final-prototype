@@ -1,5 +1,5 @@
 import { addBusinessDaysIso, addDaysIso, parseInput, periodEndIso, TODAY, toIso } from '../lib/format'
-import type { ContentItem, ContentStage, Cycle, PackageQuota, Project, ProjectState, ServicePackage } from '../store/types'
+import type { ContentItem, ContentStage, Cycle, PackageQuota, Project, ProjectState, ServicePackage, Shooting } from '../store/types'
 import { comTamTaiProject } from './comTamTai'
 import { channelsFor } from './cycles'
 import { DEFAULT_PARAMS } from './params'
@@ -77,14 +77,33 @@ function workCycle(no: number, start: string, quota: PackageQuota, index: number
       approvedAt,
       feedback: changes && sentAt ? 'Cần điều chỉnh ưu tiên nội dung tuần đầu.' : '',
     },
-    shootingPlan: { sentAt: shootingPlanSent, link: '' },
-    shootings: shootDate
-      ? [{ id: 'shoot-' + index + '-' + no, date: shootDate, time: '09:00–13:00', location: 'Tại quán', media: [media], status: shootDone ? 'Đã hoàn thành' : 'Đã xác nhận', checklist: '' }]
-      : [],
+    shootings: shootDate ? shootsFor(quota.shoots, index, no, shootDate, shootingPlanSent, media) : [],
     demo: { status: demoApproved ? 'Đã duyệt' : demoSent ? 'Đã gửi' : 'Chưa gửi', link: '', sentAt: demoSent, approvedAt: demoApproved },
     contents,
     activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: start.split('-').reverse().join('.') }],
   }
+}
+
+/** Shoot 1 on `date`; 2-shoot packages get a second one (plan sent 3 days before it, if already due). */
+function shootsFor(count: number, index: number, no: number, date: string, planSent: string, media: string): Shooting[] {
+  const list: Shooting[] = []
+  for (let n = 1; n <= count; n++) {
+    // Later shoots land in the coming days so the shared calendar has upcoming (and clashing) bookings.
+    const later = addDaysIso(date, (n - 1) * 14)
+    const soon = addDaysIso(TODAY, 1 + (index % 4))
+    const day = n === 1 || later > soon ? later : soon
+    list.push({
+      id: 'shoot-' + index + '-' + no + '-' + n,
+      date: day,
+      time: n === 1 ? '09:00–13:00' : '14:00–17:00',
+      location: 'Tại quán',
+      media: [media],
+      status: day < TODAY ? 'Đã hoàn thành' : 'Đã xác nhận',
+      checklist: '',
+      plan: { sentAt: n === 1 ? planSent : past(addDaysIso(day, -3)), link: '' },
+    })
+  }
+  return list
 }
 
 function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
@@ -99,7 +118,6 @@ function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
     timeline: [],
     result: { published: Math.max(0, quota.posts - (late ? 1 : 0)), planned: quota.posts, note: late ? 'Chốt trễ 2 ngày, bù 1 bài.' : 'Đủ đầu ra.' },
     plan: { status: 'approved', link: '', sentAt: '', approvedAt: '', feedback: '' },
-    shootingPlan: { sentAt: '', link: '' },
     shootings: [],
     demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
     contents: [],

@@ -101,7 +101,6 @@ function closedCycle(no: number, start: string, plannedEnd: string, actualEnd: s
     timeline: [],
     result: { published, planned: 12, note },
     plan: { status: 'approved', link: COM_TAM_TAI_LINKS.contentPlan, sentAt: '', approvedAt: '', feedback: '' },
-    shootingPlan: { sentAt: '', link: '' },
     shootings: [],
     demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
     contents: [],
@@ -119,7 +118,6 @@ export function comTamTaiProject(): Project {
     status: 'running',
     timeline: [],
     plan: { status: 'approved', link: COM_TAM_TAI_LINKS.contentPlan, sentAt: '2026-08-14', approvedAt: '2026-08-16', feedback: 'Khách muốn đẩy mạnh nội dung viral TikTok.' },
-    shootingPlan: { sentAt: '2026-08-17', link: COM_TAM_TAI_LINKS.contentPlan },
     shootings: [
       {
         id: 'ctt-shoot-t9',
@@ -128,6 +126,7 @@ export function comTamTaiProject(): Project {
         location: '100 Nguyễn Văn Nghi',
         media: ['Hải', 'Như'],
         status: 'Đã hoàn thành',
+        plan: { sentAt: '2026-08-17', link: COM_TAM_TAI_LINKS.contentPlan },
         checklist: 'Cơm tấm sườn nướng mỡ hành, cơm tấm sườn size L, size L thêm chả trứng muối, chả hấp trứng muối, cafe muối, cafe kem dẻo, trà tắc, dừa tắc, trà trái cây, trà bí đao thạch dừa.',
       },
     ],

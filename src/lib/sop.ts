@@ -1,4 +1,4 @@
-import { STEP_KINDS, postsLabel } from '../data/timeline'
+import { STEP_KINDS, postsLabel, shootAnchor } from '../data/timeline'
 import type { ContentItem, ContentStage, Cycle, PackageQuota, Project, SopParams, StepKind, TimelineStep } from '../store/types'
 import { addBusinessDaysIso, addDaysIso, diffDays, shortDate, TODAY } from './format'
 
@@ -141,27 +141,36 @@ interface StepResult {
 /** "T0 + 3 ngày làm việc", "Khách duyệt Gửi Content Plan + 1 ngày", "Shoot xong + 3 ngày". */
 export function anchorText(step: Pick<TimelineStep, 'anchor'>, nameOf: (id: string) => string): string {
   const { after, event, offset, unit } = step.anchor
-  const base = after === 'T0' ? 'T0' : after === 'shoot' ? 'Shoot xong' : event === 'approved' ? 'Khách duyệt ' + nameOf(after) : nameOf(after) + ' xong'
-  return offset ? base + ' + ' + offset + (unit === 'bd' ? ' ngày làm việc' : ' ngày') : base
+  const shootNo = shootAnchor(after)
+  const base = after === 'T0' ? 'T0' : shootNo ? (event === 'scheduled' ? 'Ngày shoot ' + shootNo : 'Shoot ' + (shootNo > 1 ? shootNo + ' ' : '') + 'xong') : event === 'approved' ? 'Khách duyệt ' + nameOf(after) : nameOf(after) + ' xong'
+  return offset ? base + (offset < 0 ? ' − ' : ' + ') + Math.abs(offset) + (unit === 'bd' ? ' ngày làm việc' : ' ngày') : base
 }
 
 export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopParams, today = TODAY): Milestone[] {
   const results = new Map<string, StepResult>()
   const list: Milestone[] = []
-  const shootings = [...cycle.shootings].sort((a, b) => a.date.localeCompare(b.date))
+  const shootings = [...cycle.shootings].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
+  // Planned date of shoot N: its own date, else estimated from the previous shoot or its Shooting Plan.
+  const shootDate = (no: number): { date: string; fixed: boolean } => {
+    const shoot = shootings[no - 1]
+    if (shoot?.date) return { date: shoot.date, fixed: true }
+    if (no > 1) return { date: addDaysIso(shootDate(no - 1).date, 14), fixed: false }
+    const plan = results.get('shootingPlan')
+    return { date: plan ? addDaysIso(plan.done || plan.due, 3) : addDaysIso(cycle.start, 7), fixed: false }
+  }
   const nameOf = (id: string) => (cycle.timeline.find((step) => step.id === id)?.name ?? id).replace(/^Gửi /, '')
 
   for (const step of cycle.timeline) {
     // Anchor: T0, or when the step it waits for happened (estimated from its due date if not yet).
     let anchor = cycle.start
     let projected = false
-    const prev = step.anchor.after === 'T0' || step.anchor.after === 'shoot' ? undefined : results.get(step.anchor.after)
-    if (step.anchor.after === 'shoot') {
-      // Virtual anchor: the first shooting of the cycle (scheduled date is an estimate until it is done).
-      const first = shootings[0]
-      const plan = results.get('shootingPlan')
-      anchor = first ? first.date : plan ? plan.done || plan.due : cycle.start
-      projected = first?.status !== 'Đã hoàn thành'
+    const shootNo = shootAnchor(step.anchor.after)
+    const prev = step.anchor.after === 'T0' || shootNo ? undefined : results.get(step.anchor.after)
+    if (shootNo) {
+      // Virtual anchor on shoot N: its planned date ('scheduled') or the day it was shot ('done').
+      const planned = shootDate(shootNo)
+      anchor = planned.date
+      projected = step.anchor.event === 'scheduled' ? !planned.fixed : shootings[shootNo - 1]?.status !== 'Đã hoàn thành'
     } else if (prev) {
       if (step.anchor.event === 'approved') {
         anchor = prev.approvedAt || addDaysIso(prev.done || prev.due, REVIEW_DAYS)
@@ -189,9 +198,13 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
         approvedAt = cycle.plan.approvedAt
         detail = approvedAt ? 'Khách duyệt ' + shortDate(approvedAt) : done ? 'Đã gửi, chờ khách duyệt' : ''
         break
-      case 'shootingPlan':
-        done = cycle.shootingPlan.sentAt
+      case 'shootingPlan': {
+        const shoot = shootings[(step.shootNo ?? 1) - 1]
+        done = shoot?.plan.sentAt ?? ''
+        const date = shootDate(step.shootNo ?? 1)
+        detail = done ? (date.fixed ? 'Gửi trước ngày quay ' + diffDays(done, date.date) + ' ngày' : 'Đã gửi') : ''
         break
+      }
       case 'shoot': {
         const shoot = shootings[(step.shootNo ?? 1) - 1]
         if (shoot) {

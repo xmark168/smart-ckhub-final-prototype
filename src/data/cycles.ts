@@ -12,7 +12,6 @@ export function newCycle(no: number, start: string, params: SopParams, template:
     status: 'running',
     timeline: instantiateTimeline(template, no),
     plan: { status: 'draft', link: '', sentAt: '', approvedAt: '', feedback: '' },
-    shootingPlan: { sentAt: '', link: '' },
     shootings: [],
     demo: { status: 'Chưa gửi', link: '', sentAt: '', approvedAt: '' },
     contents: [],

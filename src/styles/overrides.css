@@ -997,3 +997,9 @@ em.pill { font-style: normal; }
 .tag-carry { background: rgb(254, 243, 199); color: #7a4200; }
 .content-table .c-post { width: 78px; }
 @media (max-width: 760px) { .content-table .c-post { display: table-cell; } .content-table .c-due { display: none; } }
+
+/* ---- Shootings: per-shoot Shooting Plan, clash flag ---- */
+.cw-shoot small.is-late { color: var(--late); font-weight: 700; }
+.cw-shoot.is-empty { background: transparent; border: 1px dashed rgb(226, 216, 206); }
+.shoot-clash { display: inline-block; margin-left: 6px; }
+.muted-text { color: var(--muted); }
