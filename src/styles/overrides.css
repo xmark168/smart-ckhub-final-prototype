@@ -618,3 +618,7 @@ div.project-kpi { cursor: default; }
   #projectWorkspaceDetail .project-overview-stat:nth-child(2) { border-left: 0; }
   #projectWorkspaceDetail .project-overview-stat strong { font-size: 19px; }
 }
+#projectWorkspaceDetail .meta-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px 0 7px; border: 1px solid rgb(227, 216, 206); border-radius: 99px; background: #fff; color: #44342b; font: 650 11px var(--font-body); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+#projectWorkspaceDetail .meta-chip svg { width: 13px; height: 13px; color: #9a3412; }
+#projectWorkspaceDetail .meta-chip svg:last-child { width: 12px; height: 12px; color: var(--muted); }
+#projectWorkspaceDetail .meta-chip:hover { border-color: #c43d0c; background: var(--orange-pale); color: #9a3412; }

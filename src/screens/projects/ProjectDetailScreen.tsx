@@ -48,7 +48,9 @@ function Header({ project, readOnly }: { project: Project; readOnly: boolean }) 
           <p className="project-meta-line">
             <span className="mono">{project.code}</span>
             <span>Account <b>{project.owner}</b></span>
-            <button type="button" className="inline-link" onClick={() => openCustomer(project.customerId)}>Xem khách hàng ›</button>
+            <button type="button" className="meta-chip" onClick={() => openCustomer(project.customerId)} aria-label={'Mở hồ sơ khách hàng ' + project.customer}>
+              <Icon name="users-round" /> Hồ sơ khách hàng <Icon name="chevron-right" />
+            </button>
           </p>
         </div>
         <div className="project-detail-actions" hidden={readOnly}>
