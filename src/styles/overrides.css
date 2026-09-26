@@ -476,3 +476,49 @@ div.project-kpi { cursor: default; }
   #projects .project-table-new tbody tr { grid-template-columns: 1fr 1fr; }
   #projects .project-table-new td:nth-child(5), #projects .project-table-new td:nth-child(7) { grid-column: 1 / -1; }
 }
+
+/* ================= Colour semantics: projects dashboard & list ================= */
+:root { --ok: #15803d; --ok-bg: #dcfce7; --watch: #b45309; --watch-bg: #fef3c7; --late: #b42318; --late-bg: #fee2e2; --info: #1d4ed8; --info-bg: #dbeafe; }
+.dot { display: inline-block; width: 8px; height: 8px; margin: 0 4px 0 8px; border-radius: 50%; vertical-align: 0; }
+.dot:first-child { margin-left: 0; }
+.dot.ok { background: #4ade80; } .dot.watch { background: #fbbf24; } .dot.late { background: #f87171; }
+.project-kpi:not(.hero) .dot.ok { background: var(--ok); }
+.project-kpi:not(.hero) .dot.watch { background: #d97706; }
+.project-kpi:not(.hero) .dot.late { background: var(--late); }
+.health-legend { display: block; }
+.health-bar { position: relative; z-index: 1; display: flex; gap: 2px; height: 6px; margin: 2px 0 8px; overflow: hidden; border-radius: 99px; background: rgba(255, 255, 255, 0.12); }
+.health-bar i { display: block; min-width: 0; }
+.health-bar i.ok { background: #4ade80; } .health-bar i.watch { background: #fbbf24; } .health-bar i.late { background: #f87171; }
+
+/* Card accents */
+.project-dashboard-3 .project-kpi.risk { border-color: #f5c2b8; background: linear-gradient(180deg, #fff5f2, #fff); box-shadow: inset 4px 0 0 var(--late); }
+.project-dashboard-3 .project-kpi.risk strong { color: var(--late); }
+.project-dashboard-3 .project-kpi.money { border-color: #f3dfb3; background: linear-gradient(180deg, #fffbeb, #fff); box-shadow: inset 4px 0 0 #d97706; }
+.project-dashboard-3 .project-kpi.money strong { color: #92400e; }
+.project-dashboard-3 .project-kpi.selected { outline: 2px solid #c43d0c; outline-offset: 1px; }
+.project-dashboard-3 .project-kpi:not(.hero):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(60, 30, 10, 0.08); }
+.project-dashboard-3 .project-kpi.risk:hover { box-shadow: inset 4px 0 0 var(--late), 0 6px 16px rgba(60, 30, 10, 0.08); }
+.project-dashboard-3 .project-kpi.money:hover { box-shadow: inset 4px 0 0 #d97706, 0 6px 16px rgba(60, 30, 10, 0.08); }
+.kpi-chip.debt { border-color: #f5b8ae; background: var(--late-bg); color: #991b1b; }
+.kpi-chip.renew { border-color: #f6d58a; background: var(--watch-bg); color: #92400e; }
+.kpi-chip.debt.on { background: #fecaca; border-color: var(--late); }
+.kpi-chip.renew.on { background: #fde68a; border-color: #d97706; }
+
+/* List rows: health stripe on the left */
+#projects .project-table-new tbody tr > td:first-child { box-shadow: inset 3px 0 0 transparent; }
+#projects .project-table-new tbody tr.health-late > td:first-child { box-shadow: inset 3px 0 0 var(--late); }
+#projects .project-table-new tbody tr.health-watch > td:first-child { box-shadow: inset 3px 0 0 #d97706; }
+#projects .project-table-new tbody tr.health-ok > td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
+#projects .project-table-new tbody tr.health-late { background: #fffafa; }
+@media (max-width: 900px) {
+  #projects .project-table-new tbody tr > td:first-child { box-shadow: none; }
+  #projects .project-table-new tbody tr.health-late { box-shadow: inset 3px 0 0 var(--late); }
+  #projects .project-table-new tbody tr.health-watch { box-shadow: inset 3px 0 0 #d97706; }
+  #projects .project-table-new tbody tr.health-ok { box-shadow: inset 3px 0 0 #22c55e; }
+}
+@media (prefers-reduced-motion: reduce) { .project-dashboard-3 .project-kpi:hover { transform: none; } }
+@media (max-width: 900px) {
+  #projects .project-table-new tbody tr.health-late > td:first-child,
+  #projects .project-table-new tbody tr.health-watch > td:first-child,
+  #projects .project-table-new tbody tr.health-ok > td:first-child { box-shadow: none; }
+}

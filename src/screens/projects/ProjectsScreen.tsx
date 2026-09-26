@@ -89,7 +89,7 @@ function ProjectRow({ row, params, onOpen }: { row: Row; params: SopParams; onOp
   const posts = postProgress(item)
   const next = nextActions(item, params)[0]
   return (
-    <tr onClick={onOpen}>
+    <tr onClick={onOpen} className={'health-' + health.level}>
       <td><span className="project-record-name">{item.customer}</span><span className="project-record-meta">{item.code} · {item.service}</span></td>
       <td>{item.owner}</td>
       <td><b>{cycleCounter(item)}</b><span className="project-record-meta">{cycleRange(item)}</span></td>
@@ -187,7 +187,12 @@ export function ProjectsScreen() {
               <span className="kpi-label">Đang triển khai</span>
               <strong>{active.length}</strong>
             </button>
-            <small className="kpi-line">{levels.ok} đúng tiến độ · {levels.watch} cần theo dõi · {levels.late} chậm</small>
+            <span className="health-bar" aria-hidden="true">
+              <i className="ok" style={{ flexGrow: levels.ok }} /><i className="watch" style={{ flexGrow: levels.watch }} /><i className="late" style={{ flexGrow: levels.late }} />
+            </span>
+            <small className="kpi-line health-legend">
+              <span className="dot ok" />{levels.ok} đúng tiến độ <span className="dot watch" />{levels.watch} cần theo dõi <span className="dot late" />{levels.late} chậm
+            </small>
             <span className="kpi-chips">
               <button type="button" className={'kpi-delta' + (on('draft') ? ' on' : '')} aria-pressed={on('draft')} onClick={() => toggleKpi('draft')}>{drafts} chờ khởi động</button>
               <button type="button" className={'kpi-delta' + (on('paused') ? ' on' : '')} aria-pressed={on('paused')} onClick={() => toggleKpi('paused')}>{paused} tạm dừng</button>
@@ -196,16 +201,16 @@ export function ProjectsScreen() {
           <button type="button" className={'project-kpi risk' + (on('week') ? ' selected' : '')} aria-pressed={on('week')} onClick={() => toggleKpi('week')}>
             <span className="kpi-label">Cần xử lý trong 7 ngày</span>
             <strong>{week.length}</strong>
-            <small>{week.length ? weekLate + ' mốc trễ · ' + weekDue + ' mốc sắp đến hạn' : 'Không có mốc trễ hay đến hạn'}</small>
+            <small className="health-legend">{week.length ? <><span className="dot late" />{weekLate} mốc trễ <span className="dot watch" />{weekDue} sắp đến hạn</> : <><span className="dot ok" />Không có mốc trễ hay đến hạn</>}</small>
           </button>
-          <div className={'project-kpi' + (on('money') || on('debt') || on('renew') ? ' selected' : '')}>
+          <div className={'project-kpi money' + (on('money') || on('debt') || on('renew') ? ' selected' : '')}>
             <button type="button" className="kpi-main" aria-pressed={on('money')} onClick={() => toggleKpi('money')}>
               <span className="kpi-label">Công nợ &amp; tái ký</span>
               <strong>{moneyCount}</strong>
             </button>
             <span className="kpi-chips">
-              <button type="button" className={'kpi-chip' + (on('debt') ? ' on' : '')} aria-pressed={on('debt')} onClick={() => toggleKpi('debt')}>{debtRows.length} quá hạn{debtSum ? ' · ' + shortMoney(debtSum) : ''}</button>
-              <button type="button" className={'kpi-chip' + (on('renew') ? ' on' : '')} aria-pressed={on('renew')} onClick={() => toggleKpi('renew')}>{renewCount} sắp hết HĐ</button>
+              <button type="button" className={'kpi-chip debt' + (on('debt') ? ' on' : '')} aria-pressed={on('debt')} onClick={() => toggleKpi('debt')}>{debtRows.length} quá hạn{debtSum ? ' · ' + shortMoney(debtSum) : ''}</button>
+              <button type="button" className={'kpi-chip renew' + (on('renew') ? ' on' : '')} aria-pressed={on('renew')} onClick={() => toggleKpi('renew')}>{renewCount} sắp hết HĐ</button>
             </span>
           </div>
         </section>
