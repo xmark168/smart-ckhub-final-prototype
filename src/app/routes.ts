@@ -12,7 +12,7 @@ export interface PageMeta {
   parent?: ScreenId
 }
 
-const ALL: Role[] = ['account', 'partner', 'admin', 'bods']
+const ALL: Role[] = ['account', 'accountant', 'partner', 'admin', 'bods']
 /** Business data: Account works on it, BODs and Administrator can view everything. Never Partner. */
 const BUSINESS: Role[] = ['account', 'admin', 'bods']
 
@@ -24,7 +24,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   projects: { title: 'Dự án', access: BUSINESS, nav: { label: 'Dự án', icon: 'folder-kanban', roles: ['account', 'bods'] } },
   projectDetail: { title: 'Chi tiết dự án', access: BUSINESS, parent: 'projects' },
   cycleWorkspace: { title: 'Chu kỳ', access: BUSINESS, parent: 'projects' },
-  contracts: { title: 'Hợp đồng & công nợ', access: BUSINESS, nav: { label: 'Hợp đồng & công nợ', icon: 'file-text', roles: ['account', 'bods'], badge: '2' } },
+  contracts: { title: 'Hợp đồng & công nợ', access: [...BUSINESS, 'accountant'], nav: { label: 'Hợp đồng & công nợ', icon: 'file-text', roles: ['account', 'accountant', 'bods'], badge: '2' } },
   posts: { title: 'Bài đăng', access: BUSINESS, nav: { label: 'Bài đăng', icon: 'file-pen-line', roles: ['account', 'bods'] } },
   shootings: { title: 'Lịch shooting', access: BUSINESS, nav: { label: 'Lịch shooting', icon: 'calendar-clock', roles: ['account', 'bods'] } },
   tasks: { title: 'Công việc', access: BUSINESS, nav: { label: 'Công việc', icon: 'list-checks', roles: ['account'], badge: '2' } },

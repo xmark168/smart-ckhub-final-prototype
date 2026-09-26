@@ -1087,3 +1087,8 @@ em.pill { font-style: normal; }
   .contract-v2 th:nth-child(4) { width: 34%; }
 }
 @media (max-width: 520px) { .contract-v2 th:nth-child(3), .contract-v2 td:nth-child(3) { display: none; } }
+
+.percent-input { position: relative; display: block; max-width: 140px; }
+.percent-input input { width: 100%; padding-right: 30px; text-align: right; }
+.percent-input em { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font: 700 13px var(--font-body); font-style: normal; }
+.cd-note { margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; }

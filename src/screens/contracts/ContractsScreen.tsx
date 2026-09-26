@@ -25,7 +25,7 @@ const PAGE_SIZE = 10
 const SOON = addDaysIso(TODAY, 30)
 
 const RULES =
-  'Một dự án có thể có hợp đồng chính và phụ lục; một hợp đồng có thể gồm nhiều gói. Công nợ là phần chưa thu của đợt đã quá hạn; đợt chưa tới hạn là phải thu. Mỗi khoản thu cần mã chứng từ. Account chỉ thấy hợp đồng của dự án mình phụ trách.'
+  'Một dự án có thể có hợp đồng chính và phụ lục; một hợp đồng có thể gồm nhiều gói. Công nợ là phần chưa thu của đợt đã quá hạn; đợt chưa tới hạn là phải thu. Kế toán ghi nhận khoản thu (cần mã chứng từ); thu đợt 1 là xác nhận cọc. Account chỉ thấy hợp đồng của dự án mình phụ trách.'
 
 const unpaid = (payment: Payment) => payment.paid < payment.amount
 /** The installment to act on: the oldest overdue one, else the next due within 30 days. */
@@ -104,7 +104,7 @@ export function ContractsScreen() {
               <button className="project-help" aria-label="Quy tắc hợp đồng" onClick={() => showModal(<InfoModal title="Quy tắc hợp đồng & công nợ" message={RULES} contract />)}>?</button>
             </div>
           </div>
-          <button className="primary" onClick={() => showModal(<ContractFormModal />)}><Icon name="file-plus-2" /> Tạo hợp đồng</button>
+          {role !== 'accountant' && <button className="primary" onClick={() => showModal(<ContractFormModal />)}><Icon name="file-plus-2" /> Tạo hợp đồng</button>}
         </div>
 
         <section className="contract-kpis">

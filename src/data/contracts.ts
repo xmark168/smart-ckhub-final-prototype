@@ -63,7 +63,7 @@ export function syncProjectContract(project: Project, contracts: Contract[]): vo
   project.total = primary ? primary.cycles : 0
 }
 
-/** VAT on service contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
+/** VAT used by the demo contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
 export const VAT_RATE = 0.08
 
 function addMonthsIso(iso: string, months: number): string {
@@ -125,6 +125,7 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
       start,
       end: contractEnd(start, cycles),
       value,
+      vatRate: VAT_RATE * 100,
       paid: totalPaid(payments),
       payments,
       status: comTamTai ? 'Hiệu lực' : project.state === 'stopped' && settled ? 'Kết thúc' : 'Hiệu lực',

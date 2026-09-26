@@ -8,6 +8,7 @@ export type ScreenId =
 
 export const ROLES: Record<Role, { initial: string; label: string; note: string; home: ScreenId }> = {
   account: { initial: 'AC', label: 'Account', note: 'Điều phối dự án, timeline và Partner.', home: 'overview' },
+  accountant: { initial: 'KT', label: 'Kế toán', note: 'Ghi nhận tiền thu và chứng từ.', home: 'contracts' },
   partner: { initial: 'PT', label: 'Partner', note: 'Xem công việc và dự án được giao.', home: 'partnerWork' },
   admin: { initial: 'AD', label: 'Administrator', note: 'Quản trị dữ liệu, quyền và cấu hình.', home: 'poc' },
   bods: { initial: 'BD', label: 'BODs', note: 'Theo dõi chỉ số, rủi ro và phê duyệt.', home: 'reviews' },

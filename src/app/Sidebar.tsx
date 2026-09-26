@@ -6,7 +6,7 @@ import type { Role } from '../store/types'
 import { ROLES, useApp, type ScreenId } from './context'
 import { PAGES, sectionOf, type PageMeta } from './routes'
 
-const ALL_ROLES: Role[] = ['account', 'partner', 'admin', 'bods']
+const ALL_ROLES: Role[] = ['account', 'accountant', 'partner', 'admin', 'bods']
 
 const NAV = (Object.entries(PAGES) as Array<[ScreenId, PageMeta]>).filter(([, page]) => page.nav)
 

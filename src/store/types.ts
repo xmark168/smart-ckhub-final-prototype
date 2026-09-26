@@ -1,4 +1,4 @@
-export type Role = 'account' | 'partner' | 'admin' | 'bods'
+export type Role = 'account' | 'accountant' | 'partner' | 'admin' | 'bods'
 
 export interface Activity {
   icon: string
@@ -53,6 +53,8 @@ export interface SopParams {
   scriptLeadDays: number
   editLeadDays: number
   cycleEndWarningDays: number
+  /** Default VAT % for new contracts. */
+  vatRate: number
   requireBriefBeforeT0: boolean
 }
 
@@ -260,6 +262,8 @@ export interface Contract {
   evidence: string
   folderUrl: string
   activity: string[]
+  /** VAT % of this contract (entered per contract; the rate changes over the years). */
+  vatRate?: number
   /** Other projects of the same customer billed in this contract (one contract, several packages). */
   extraProjectIds?: string[]
   /** Phụ lục only: the package it switches to and the first cycle it applies to. */

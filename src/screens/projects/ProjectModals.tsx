@@ -317,7 +317,6 @@ export function OnboardingModal({ project }: { project: Project }) {
   const { closeModal, toast, go, showModal } = useApp()
   const { params } = useData()
   const data = project.onboarding
-  const [financeChecked, setFinanceChecked] = useState(Boolean(data?.financeVerified))
   const [briefChecked, setBriefChecked] = useState(Boolean(data?.briefReady))
   const required = onboardingItems(project, params).filter((entry) => entry.required)
   const completed = required.filter((entry) => entry.ready).length
@@ -342,11 +341,10 @@ export function OnboardingModal({ project }: { project: Project }) {
       title="Cổng khởi động"
       className="onboarding-modal onboarding-lean-modal"
       onSubmit={(form) => {
-        if (checked(form, 'financeVerified') && !field(form, 'financeRef')) { toast('Cần mã chứng từ trước khi xác nhận thanh toán.'); return }
         if (briefRequired && checked(form, 'briefReady') && !field(form, 'briefLink')) { toast('Cần link brief form trước khi xác nhận brief.'); return }
         const onboarding: Onboarding = {
-          financeVerified: checked(form, 'financeVerified'),
-          financeRef: field(form, 'financeRef'),
+          financeVerified: data?.financeVerified ?? false,
+          financeRef: data?.financeRef ?? '',
           handoverReady: data?.handoverReady ?? false,
           handoverLink: data?.handoverLink ?? '',
           briefReady: checked(form, 'briefReady'),
@@ -391,11 +389,14 @@ export function OnboardingModal({ project }: { project: Project }) {
 
         <section className="onboarding-form-section onboarding-gate">
           <div className="onboarding-section-head">
-            <div><span className="onboarding-owner">2. Kế toán</span><b>Xác nhận cọc / đợt thanh toán đầu</b><p>Chỉ xác nhận khi đã có thanh toán hoặc chứng từ hợp lệ.</p></div>
+            <div><span className="onboarding-owner">2. Kế toán</span><b>Xác nhận cọc / đợt thanh toán đầu</b><p>Kế toán ghi nhận tiền cọc trong hợp đồng.</p></div>
             <GateStatus ready={Boolean(data?.financeVerified)} />
           </div>
-          <label className="onboarding-check"><input name="financeVerified" type="checkbox" checked={financeChecked} onChange={(event) => setFinanceChecked(event.target.checked)} /><span>Kế toán đã xác nhận đợt đầu</span></label>
-          <label className="field onboarding-field"><span>Mã chứng từ</span><input name="financeRef" defaultValue={data?.financeRef} placeholder="Ví dụ: UNC-0926-018" autoComplete="off" disabled={!financeChecked} /></label>
+          {data?.financeVerified
+            ? <p className="cd-note">Đã xác nhận: {data.financeRef}</p>
+            : <p className="cd-note">Tự xác nhận khi Kế toán ghi nhận thu đợt 1 của hợp đồng.</p>}
+          <input type="hidden" name="financeVerified" value={data?.financeVerified ? 'on' : ''} />
+          <input type="hidden" name="financeRef" value={data?.financeRef ?? ''} />
         </section>
 
 
