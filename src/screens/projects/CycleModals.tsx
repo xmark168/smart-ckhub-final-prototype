@@ -229,28 +229,3 @@ export function CycleTaskModal({ project, task }: { project: Project; task?: Cyc
     </Modal>
   )
 }
-
-export function ExceptionModal({ project }: { project: Project }) {
-  const { closeModal } = useApp()
-  return (
-    <Modal
-      title="Ghi nhận ngoại lệ"
-      onSubmit={(form) => {
-        const type = field(form, 'type')
-        saveCycle(project, (cycle) => {
-          cycle.exceptions.push({ id: 'ex-' + Date.now(), type, reason: field(form, 'reason'), resolved: false })
-          return ['Ngoại lệ đã ghi nhận', type]
-        })
-        closeModal()
-      }}
-    >
-      <div className="form">
-        <label className="field">Loại ngoại lệ
-          <select name="type"><option>Chờ khách duyệt</option><option>Khách chậm cung cấp brief</option><option>Có nguy cơ trễ</option><option>Đổi lịch shoot</option><option>Media quá tải</option></select>
-        </label>
-        <label className="field">Lý do và hành động tiếp theo<Req /><textarea name="reason" required placeholder="Nguyên nhân, người xử lý và mốc theo dõi" /></label>
-        <FormActions submit="Lưu ngoại lệ" />
-      </div>
-    </Modal>
-  )
-}

@@ -86,7 +86,6 @@ function workCycle(no: number, start: string, quota: PackageQuota, index: number
     tasks: [
       { id: 'plan', name: 'Hoàn thiện Content Plan', owner, deadline: addBusinessDaysIso(start, 3).split('-').reverse().join('.'), status: sentAt ? 'Đã hoàn thành' : 'Việc cần làm', type: 'Plan' },
     ],
-    exceptions: [],
     activity: [{ title: 'Chu kỳ ' + no + ' được tạo', detail: 'T0 ' + start.split('-').reverse().join('.'), time: start.split('-').reverse().join('.') }],
   }
 }
@@ -108,7 +107,6 @@ function closedCycle(no: number, start: string, quota: PackageQuota): Cycle {
     demo: { status: 'Đã duyệt', link: '', sentAt: '', approvedAt: '' },
     contents: [],
     tasks: [],
-    exceptions: [],
     activity: [],
   }
 }

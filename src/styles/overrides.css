@@ -973,3 +973,11 @@ em.pill { font-style: normal; }
 }
 .cycle-history > .panel-head { padding: 16px 18px 10px; margin: 0; }
 .cw-step-action a.text-btn { text-decoration: none; }
+
+/* Cycles tab v3: one column — running cycle steps, tasks, history */
+.cw-flow { display: grid; gap: 16px; }
+.cw-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0; }
+.cw-range { color: var(--muted); font: 700 12px var(--font-body); }
+.cw-tasks .cycle-task-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+@media (max-width: 760px) { .cw-tasks .cycle-task-list { grid-template-columns: 1fr; } }
+.cw-steps { padding-top: 18px; } .cw-head { padding-bottom: 6px; }

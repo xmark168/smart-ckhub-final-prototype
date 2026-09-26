@@ -112,13 +112,3 @@ export function relativeDay(iso: string, today: string): string {
   return days > 0 ? 'còn ' + days + ' ngày' : 'quá ' + -days + ' ngày'
 }
 
-
-export function resolveException(projectId: string, id: string): void {
-  updateProject(projectId, (item) =>
-    withCycle(item, (cycle) => {
-      const entry = cycle.exceptions.find((row) => row.id === id)
-      if (entry) entry.resolved = true
-      return ['Ngoại lệ đã xử lý', entry?.type ?? '']
-    }),
-  )
-}

@@ -41,6 +41,10 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
 
   return (
     <section className="panel cw-steps">
+      <div className="panel-head cw-head">
+        <h2>Chu kỳ {cycle.no}{project.state === 'pending' ? ' · tạm dừng' : ''}</h2>
+        <span className="cw-range">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)}</span>
+      </div>
       {quota.plans > 0 && (
         <StepRow
           title="Content Plan"
@@ -110,12 +114,11 @@ function Steps({ project, cycle }: { project: Project; cycle: Cycle }) {
   )
 }
 
-function SidePanels({ project, cycle }: { project: Project; cycle: Cycle }) {
+function Tasks({ project, cycle }: { project: Project; cycle: Cycle }) {
   const { showModal } = useApp()
   const completed = cycle.tasks.filter((task) => task.status === 'Đã hoàn thành').length
   return (
-    <aside>
-      <section className="panel cycle-panel">
+      <section className="panel cycle-panel cw-tasks">
         <div className="panel-head">
           <h2>Công việc {cycle.tasks.length > 0 && <small className="cw-count">{completed}/{cycle.tasks.length}</small>}</h2>
           <button className="text-btn" onClick={() => showModal(<CycleTaskModal project={project} />)}>+ Công việc</button>
@@ -130,8 +133,6 @@ function SidePanels({ project, cycle }: { project: Project; cycle: Cycle }) {
           {!cycle.tasks.length && <p className="empty-copy">Chưa có công việc.</p>}
         </div>
       </section>
-
-    </aside>
   )
 }
 
@@ -173,15 +174,10 @@ export function CyclesTab({ project }: { project: Project }) {
   return (
     <>
       {active && (
-        <>
-          <div className="project-tab-heading cycle-work-heading">
-            <h2>Chu kỳ {cycle.no} đang chạy{project.state === 'pending' ? ' · tạm dừng' : ''}</h2>
-          </div>
-          <div className="cycle-layout">
-            <main><Steps project={project} cycle={cycle} /></main>
-            <SidePanels project={project} cycle={cycle} />
-          </div>
-        </>
+        <div className="cw-flow">
+          <Steps project={project} cycle={cycle} />
+          <Tasks project={project} cycle={cycle} />
+        </div>
       )}
       {!project.cycles.length && <p className="empty-copy">Chưa có chu kỳ. Chu kỳ 1 được tạo khi bắt đầu triển khai.</p>}
       <History project={project} />

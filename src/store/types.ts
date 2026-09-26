@@ -181,7 +181,6 @@ export interface Cycle {
   demo: { status: 'Chưa gửi' | 'Đã gửi' | 'Cần chỉnh sửa' | 'Đã duyệt'; link: string; sentAt: string; approvedAt: string }
   contents: ContentItem[]
   tasks: CycleTask[]
-  exceptions: Array<{ id: string; type: string; reason: string; resolved: boolean }>
   activity: Array<{ title: string; detail: string; time: string }>
 }
 
