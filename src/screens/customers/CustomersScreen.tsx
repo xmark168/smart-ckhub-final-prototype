@@ -224,6 +224,7 @@ export function CustomersScreen() {
                     <td>
                       <button type="button" className="customer-name row-link" onClick={(event) => { event.stopPropagation(); openCustomer(item.id) }}>{item.name}</button>
                       <ServicesLine projects={own} />
+                      <span className="customer-meta meta-area">Khu vực {item.area}</span>
                     </td>
                     <td data-label="Account">
                       <button className="customer-account" type="button" aria-label={'Tóm tắt Account ' + item.owner} onClick={(event) => { event.stopPropagation(); showModal(<AccountSummaryModal owner={item.owner} />) }}>{item.owner}</button>
