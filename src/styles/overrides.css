@@ -384,3 +384,31 @@ input[aria-invalid="true"] { border-color: #b42318 !important; }
   #customerDetail .customer-account-panel { grid-template-columns: 1fr; }
   #customerDetail .customer-account-panel .customer-control { border-top: 1px solid rgb(238, 229, 221); }
 }
+
+/* KPI hero: count on its own line, then +mới / −kết thúc / period on one line */
+.kpi-deltas { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.kpi-deltas .kpi-sub { flex-basis: 100%; }
+.kpi-deltas .kpi-delta { white-space: nowrap; }
+.kpi-deltas .kpi-period { white-space: nowrap; }
+
+/* Phone top menu: scroll sideways instead of squeezing icons to the edge */
+@media (max-width: 650px) {
+  aside .nav { min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  aside .nav::-webkit-scrollbar { display: none; }
+  aside .nav button { flex: 0 0 auto; }
+  aside .nav { mask-image: linear-gradient(90deg, #000 88%, transparent); }
+}
+.customer-kpi small.kpi-deltas { display: flex; }
+
+@media (max-width: 650px) {
+  /* Header: title on top, period + create side by side */
+  #customers .page-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+  #customers .page-head > div:first-child { grid-column: 1 / -1; }
+  #customers .page-head .period-chip-wrap, #customers .page-head .period-chip { justify-self: start; }
+  #customers .page-head > .primary { justify-self: end; width: auto; }
+  /* KPI: hero full width, the two others side by side */
+  #customers .customer-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #customers .customer-dashboard .hero { grid-column: 1 / -1; }
+  #customers .customer-dashboard .customer-kpi:not(.hero) { min-height: 0; padding: 12px; }
+  #customers .customer-dashboard .customer-kpi:not(.hero) strong { font-size: 24px; }
+}

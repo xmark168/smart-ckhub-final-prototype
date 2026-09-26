@@ -132,10 +132,10 @@ export function CustomersScreen() {
             <strong>{working.length}</strong>
           </button>
           <small className="kpi-deltas">
-            {working.filter((row) => row.status === 'active').length} đang hợp tác ·{' '}
+            <span className="kpi-sub">{working.filter((row) => row.status === 'active').length} đang hợp tác</span>
             <button type="button" className={'kpi-delta positive' + (filters.kpi === 'new' ? ' on' : '')} aria-pressed={filters.kpi === 'new'} aria-label={fresh + ' khách mới ' + periodLabel(period) + ', lọc danh sách'} onClick={() => toggleKpi('new')}>+{fresh} mới</button>{' '}
             <button type="button" className={'kpi-delta negative' + (filters.kpi === 'endedPeriod' ? ' on' : '')} aria-pressed={filters.kpi === 'endedPeriod'} aria-label={endedNow + ' khách kết thúc ' + periodLabel(period) + ', lọc danh sách'} onClick={() => toggleKpi('endedPeriod')}>−{endedNow} kết thúc</button>{' '}
-            {periodLabel(period)}
+            <span className="kpi-period">{periodLabel(period)}</span>
           </small>
         </div>
         <div className={'customer-kpi' + (filters.kpi === 'endedPeriod' ? ' selected' : '')}>
