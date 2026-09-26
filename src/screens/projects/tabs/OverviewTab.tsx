@@ -1,11 +1,11 @@
-import { initials, money, shortDate, TODAY } from '../../../lib/format'
+import { initials, money, shortDate } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
-import { cycleMilestones, MILESTONE_TONE, nextActions, runningCycle } from '../../../lib/sop'
+import { cycleMilestones, runningCycle } from '../../../lib/sop'
 import { useData } from '../../../store/store'
 import type { Project } from '../../../store/types'
-import { onboardingItems, relativeDay, type OnboardingItem } from '../projectLogic'
+import { onboardingItems, type OnboardingItem } from '../projectLogic'
 import { useProjectActions } from '../useProjectActions'
-import { MilestoneList } from './Milestones'
+import { CycleTimeline } from './CycleTimeline'
 
 function OnboardingRow({ entry }: { entry: OnboardingItem }) {
   return (
@@ -51,7 +51,6 @@ export function OverviewTab({ project }: { project: Project }) {
   const { params } = useData()
   const actions = useProjectActions(project)
   const cycle = runningCycle(project)
-  const next = nextActions(project, params)
   const quota = project.quota
   // People working this cycle, gathered from shootings (Media) and cycle tasks (Owner).
   const roles = new Map<string, string[]>()
@@ -67,39 +66,12 @@ export function OverviewTab({ project }: { project: Project }) {
     <div className="project-detail-grid">
       <main>
         {project.state === 'draft' && <OnboardingPanel project={project} />}
-        {cycle && (() => {
-          const all = cycleMilestones(cycle, quota, params)
-          const done = all.filter((item) => item.state === 'done' || item.state === 'doneLate')
-          // Late / due milestones are already the chips in the header band; list what comes next here.
-          const urgentCount = next.filter((item) => item.key !== 'cadence' && (item.state === 'late' || item.state === 'due')).length
-          const later = next.filter((item) => item.state !== 'late' && item.state !== 'due')
-          return (
-            <section className="panel">
-              <div className="panel-head">
-                <div><h2>Mốc chu kỳ {cycle.no}</h2><p className="subline">{urgentCount ? urgentCount + ' mốc cần xử lý ở phần trên · ' : ''}tính từ {shortDate(cycle.start)} theo Tham số vận hành.</p></div>
-              </div>
-              {later.length ? (
-                <div className="cycle-task-list">
-                  {later.map((item) => (
-                    <div className={'cycle-task milestone-open is-' + item.state} key={item.label}>
-                      <span><b>{item.label}</b><small>{item.detail}</small></span>
-                      <span className="milestone-when">
-                        <span className={'pill ' + MILESTONE_TONE[item.state]}>{item.state === 'late' ? 'Trễ' : item.state === 'due' ? 'Đến hạn' : item.state === 'waiting' ? 'Chờ bước trước' : 'Sắp tới'}</span>
-                        {item.due && <small>{relativeDay(item.due, TODAY)} · {shortDate(item.due)}</small>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="empty-copy">{urgentCount ? 'Không có mốc sắp tới khác.' : 'Không còn mốc mở trong chu kỳ này.'}</p>}
-              {done.length > 0 && (
-                <details className="milestones-done">
-                  <summary><Icon name="check" /> {done.length} mốc đã xong{done.some((item) => item.state === 'doneLate') ? ' (có mốc xong trễ)' : ''}</summary>
-                  <MilestoneList items={done} />
-                </details>
-              )}
-            </section>
-          )
-        })()}
+        {cycle && (
+          <section className="panel">
+            <div className="panel-head"><div><h2>Tiến trình chu kỳ {cycle.no}</h2><p className="subline">{shortDate(cycle.start)} – {shortDate(cycle.plannedEnd)} · rê chuột vào từng bước để xem chi tiết.</p></div></div>
+            <CycleTimeline items={cycleMilestones(cycle, quota, params)} />
+          </section>
+        )}
         <section className="panel project-notes-panel">
           <div className="panel-head">
             <div><h2>Ghi chú dự án</h2><p className="subline">Điều cả team cần nhớ khi làm dự án này.</p></div>

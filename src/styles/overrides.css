@@ -870,3 +870,24 @@ em.pill { font-style: normal; }
 .health-band.v4 .pace-note, .health-band.v4 .pace-note.is-late { color: rgba(255, 255, 255, 0.6); font-weight: 500; }
 .health-band.v4 .hb-contract strong { color: #fff; }
 .health-band.v4 .hb-contract strong.is-late { color: #fca5a5; }
+
+/* ---- Cycle timeline (Tổng quan) ---- */
+.cycle-timeline { display: flex; margin: 4px 0 0; padding: 4px 0 2px; overflow-x: auto; list-style: none; counter-reset: none; scrollbar-width: thin; }
+.ct-step { position: relative; flex: 1 0 92px; display: grid; justify-items: center; gap: 4px; padding: 0 4px; text-align: center; }
+.ct-step::before { content: ""; position: absolute; top: 11px; left: -50%; width: 100%; height: 2px; background: rgb(226, 216, 206); z-index: 0; }
+.ct-step:first-child::before { display: none; }
+.ct-step.is-done::before, .ct-step.is-doneLate::before, .ct-step.is-late::before, .ct-step.is-due::before { background: #44342b; }
+.ct-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid rgb(214, 204, 194); border-radius: 50%; background: #fff; color: #fff; font: 800 12px var(--font-body); }
+.ct-dot svg { width: 13px; height: 13px; }
+.ct-step.is-done .ct-dot, .ct-step.is-doneLate .ct-dot { border-color: #44342b; background: #44342b; }
+.ct-step.is-late .ct-dot { border-color: var(--late); background: var(--late); }
+.ct-step.is-due .ct-dot { border-color: #c43d0c; background: #fff; box-shadow: 0 0 0 4px rgba(196, 61, 12, 0.14); }
+.ct-name { color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.25; }
+.ct-step.is-upcoming .ct-name, .ct-step.is-waiting .ct-name { color: var(--muted); font-weight: 600; }
+.ct-step.is-late .ct-name { color: var(--late); }
+.ct-date { color: var(--muted); font: 600 11px var(--font-body); }
+.ct-step.is-late .ct-date { color: var(--late); font-weight: 700; }
+.project-detail-grid > main, .project-detail-grid > aside { min-width: 0; }
+.cycle-timeline { max-width: 100%; }
+.ct-step { flex: 1 0 84px; }
+.ct-step { flex: 1 0 66px; } .ct-name { font-size: 11px; } @media (min-width: 1000px) { .ct-name { font-size: 12px; } }
