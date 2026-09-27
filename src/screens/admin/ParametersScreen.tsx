@@ -17,7 +17,7 @@ export function ParametersScreen() {
   return (
     <section className="screen active" id="parameters">
       <div className="page-head">
-        <div><h1>Tham số vận hành</h1><p>Các con số của SOP Timeline &amp; Phân công: dùng khi tạo Timeline mẫu cho gói (nút Tạo lại theo SOP) và cho các cảnh báo chung. Timeline của từng gói sửa ở Gói dịch vụ.</p></div>
+        <div><h1>Tham số vận hành</h1><p>Các con số của SOP Timeline &amp; Phân công. Mốc của các chu kỳ mở từ nay tính theo những con số này.</p></div>
         {editable && (
           <div className="top-right">
             <button

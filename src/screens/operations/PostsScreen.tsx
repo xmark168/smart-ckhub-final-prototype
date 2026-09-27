@@ -50,22 +50,22 @@ export function PostsScreen() {
   }
   const count = (test: (item: ContentItem) => boolean) => all.filter((row) => test(row.item)).length
   const published = count((item) => item.stage === 'Đã đăng')
-  const scheduled = count((item) => item.stage === 'Lên lịch')
+  const review = count((item) => item.stage === 'Chờ khách duyệt')
   const late = all.filter((row) => row.late).length
 
   return (
     <section className="screen active" id="posts">
       <div className="operations-page">
         <div className="project-page-head">
-          <div><h1>Bài đăng</h1><p>Nội dung của các chu kỳ đang chạy, lấy từ Content Plan của từng dự án.</p></div>
+          <div><h1>Bài đăng</h1><p>Bài của các chu kỳ đang chạy, từ Content Plan của từng dự án.</p></div>
           <button className="primary" onClick={() => (role !== 'account' ? toast('Vai trò này chỉ xem.') : showModal(<ContentItemModal />))}>
-            <Icon name="plus" /> Tạo nội dung
+            <Icon name="plus" /> Tạo bài
           </button>
         </div>
         <section className="operations-kpis">
           <article><span>Đã đăng</span><b>{published} / {all.length}</b><small>Trong các chu kỳ đang chạy</small></article>
-          <article><span>Đã lên lịch</span><b>{scheduled}</b><small>Chờ ngày xuất bản</small></article>
-          <article><span>Đang sản xuất</span><b>{all.length - published - scheduled}</b><small>Ý tưởng, script, dựng, chờ duyệt</small></article>
+          <article><span>Chờ khách duyệt</span><b>{review}</b><small>Account gửi khách, chờ phản hồi</small></article>
+          <article><span>Đang sản xuất</span><b>{all.length - published - review}</b><small>Ý tưởng, script, dựng, lên lịch</small></article>
           <article className={late ? 'attention' : ''}><span>Trễ hạn script / dựng</span><b>{late}</b><small>Theo hạn trong Content Plan</small></article>
         </section>
         <section className="project-list-shell operations-shell">
@@ -82,7 +82,7 @@ export function PostsScreen() {
           </div>
           <div className="project-table-wrap">
             <table className="project-table-new operations-table">
-              <thead><tr><th>Nội dung</th><th>Nhiệm vụ</th><th>Kênh</th><th>Hạn dựng</th><th>Ngày đăng</th><th>Giai đoạn</th><th /></tr></thead>
+              <thead><tr><th>Bài</th><th>Hạn dựng</th><th>Ngày đăng</th><th>Giai đoạn</th><th /></tr></thead>
               <tbody>
                 {rows.map(({ project, cycleNo, item, late: rowLate }) => (
                   <tr key={project.id + item.id} onClick={() => (role === 'account' ? showModal(<ContentItemModal project={project} item={item} />) : openProject(project.id, 'noi-dung'))}>
@@ -90,8 +90,6 @@ export function PostsScreen() {
                       <span className="content-name"><b title={item.title}>{shortText(item.title)}</b>{item.bonus && <em className="tag-bonus">Tặng</em>}</span>
                       <span className="content-sub">{project.customer} · chu kỳ {cycleNo} · #{item.stt}</span>
                     </td>
-                    <td><span className={'pill ' + (item.mission === 'Bán hàng' ? 'waiting' : 'info')}>{item.mission}</span></td>
-                    <td><span className="operation-channels">{item.channels.map((channel) => <i key={channel.platform} title={channel.status}>{channel.platform}</i>)}</span></td>
                     <td className={rowLate ? 'is-late' : ''}>{shortDate(item.deadlineEdit) || '—'}</td>
                     <td>{shortDate(item.postDate) || '—'}</td>
                     <td><span className={'pill ' + statusTone(item.stage)}>{item.stage}</span></td>
@@ -100,7 +98,7 @@ export function PostsScreen() {
                     </td>
                   </tr>
                 ))}
-                {!list.length && <tr><td colSpan={7} className="operations-empty">Không có nội dung phù hợp.</td></tr>}
+                {!list.length && <tr><td colSpan={5} className="operations-empty">Không có bài phù hợp.</td></tr>}
               </tbody>
             </table>
           </div>

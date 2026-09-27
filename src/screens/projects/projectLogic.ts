@@ -1,4 +1,4 @@
-import { cycleProgress, currentCycle, runningCycle } from '../../lib/sop'
+import { cycleProgress, currentCycle, isPublished, postTarget, runningCycle } from '../../lib/sop'
 import { formatDate, parseInput } from '../../lib/format'
 import { update } from '../../store/store'
 import { viewOnlyReason } from '../../ui/viewOnly'
@@ -36,7 +36,10 @@ export function postProgress(item: Project) {
   const cycle = currentCycle(item)
   if (!cycle || !item.quota.posts) return null
   const progress = cycleProgress(cycle, item.quota)
-  return { ...progress, percent: Math.round((progress.published / Math.max(1, progress.planned)) * 100) }
+  // Running cycle: every published post (gifted included) against quota + gifted + carried, as the header shows.
+  const published = cycle.result ? progress.published : cycle.contents.filter(isPublished).length
+  const planned = cycle.result ? progress.planned : postTarget(cycle, item.quota)
+  return { ...progress, published, planned, percent: Math.round((published / Math.max(1, planned)) * 100) }
 }
 
 export function addProjectActivity(item: Project, icon: string, title: string, detail: string): void {

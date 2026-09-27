@@ -174,7 +174,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
             </div>
             {posts && pace && (
               <div className="pace-item">
-                <div className="pace-top"><span>Bài đăng</span><b className={behind ? 'is-due' : ''}>{published} / {target}{target > posts.planned ? ' (gồm ' + (target - posts.planned) + ' tặng/bù)' : ''}</b></div>
+                <div className="pace-top"><span>Bài đăng</span><b className={behind ? 'is-due' : ''}>{published} / {target}{target > project.quota.posts ? ' (gồm ' + (target - project.quota.posts) + ' tặng/bù)' : ''}</b></div>
                 <span className="pace-bar" aria-hidden="true">
                   <i className={behind ? 'behind' : 'ahead'} style={{ width: postPct + '%' }} />
                   {expected > 0 && <b className="pace-mark" style={{ left: expectedPct + '%' }} />}

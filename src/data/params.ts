@@ -34,9 +34,7 @@ export const PARAM_META: ParamMeta[] = [
   { key: 'postDemoAfterShootBusinessDays', label: 'Gửi Post Demo sau buổi shoot', unit: 'ngày làm việc', min: 0, help: 'Bài đầu tiên để thống nhất mood & tone, hình ảnh và format dựng.' },
   { key: 'postsPerWeekMin', label: 'Nhịp đăng tối thiểu', unit: 'bài/tuần', min: 0, help: 'Sau khi duyệt Post Demo, phân phối đều 2–3 bài/tuần cho gói 12 nội dung/tháng.' },
   { key: 'postsPerWeekMax', label: 'Nhịp đăng tối đa', unit: 'bài/tuần', min: 0, help: 'Dùng để cảnh báo dồn bài vào cuối chu kỳ.' },
-  { key: 'scriptBatchSize', label: 'Script gối đầu mỗi lô', unit: 'bài', min: 1, help: 'SOP: sản xuất gối đầu 6/12 script trong một lần.' },
   { key: 'scriptLeadDays', label: 'Gửi script trước deadline dựng', unit: 'ngày', min: 0, help: 'Để Media chủ động sản xuất. SOP: tối thiểu 2 ngày.' },
-  { key: 'editLeadDays', label: 'Dựng xong trước ngày đăng', unit: 'ngày', min: 0, help: 'Dùng để gợi ý deadline edit khi chỉ có ngày đăng.' },
   { key: 'vatRate', label: 'VAT mặc định cho hợp đồng mới', unit: '%', min: 0, help: 'Áp dụng cho mọi gói. Mỗi hợp đồng vẫn sửa tay được vì thuế suất thay đổi theo năm (có năm 10%).' },
   { key: 'cycleEndWarningDays', label: 'Nhắc chốt chu kỳ trước', unit: 'ngày', min: 0, help: 'Hiện cảnh báo khi còn ít ngày đến hạn kết thúc chu kỳ.' },
 ]
