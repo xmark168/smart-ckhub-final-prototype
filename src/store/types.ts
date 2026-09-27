@@ -295,11 +295,26 @@ export interface ServicePackage {
   timeline: TimelineStepTemplate[]
 }
 
-/** [code, title, project, owner, deadline, output, status] */
-export type TaskRow = [string, string, string, string, string, string, string]
-
-export interface Operations {
-  tasks: TaskRow[]
+/**
+ * A to-do. Generated ones carry `source` (the milestone, post, installment… they come from) and
+ * are kept in sync with it; manual ones have no source and are ticked by hand.
+ */
+export interface WorkTask {
+  id: string
+  source?: string
+  projectId: string
+  title: string
+  /** Who normally does it. */
+  role: StepOwner | 'Kế toán'
+  /** Person it is given to; editable, never overwritten by the sync. */
+  assignee: string
+  /** yyyy-mm-dd */
+  due: string
+  status: 'open' | 'done' | 'cancelled'
+  doneAt?: string
+  note?: string
+  /** Project tab where the work is done. */
+  tab?: 'tong-quan' | 'quay-chup' | 'noi-dung' | 'hop-dong' | 'tai-lieu'
 }
 
 export interface Profile {
@@ -321,7 +336,7 @@ export interface AppData {
   contracts: Contract[]
   categories: ServiceCategory[]
   packages: ServicePackage[]
-  operations: Operations
+  tasks: WorkTask[]
   profile: Profile
   period: Period
   params: SopParams

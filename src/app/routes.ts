@@ -27,7 +27,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   contracts: { title: 'Hợp đồng & công nợ', access: [...BUSINESS, 'accountant'], nav: { label: 'Hợp đồng & công nợ', icon: 'file-text', roles: ['account', 'accountant', 'bods'], badge: '2' } },
   posts: { title: 'Bài đăng', access: BUSINESS, nav: { label: 'Bài đăng', icon: 'file-pen-line', roles: ['account', 'bods'] } },
   shootings: { title: 'Lịch shooting', access: BUSINESS, nav: { label: 'Lịch shooting', icon: 'calendar-clock', roles: ['account', 'bods'] } },
-  tasks: { title: 'Công việc', access: BUSINESS, nav: { label: 'Công việc', icon: 'list-checks', roles: ['account'], badge: '2' } },
+  tasks: { title: 'Việc cần làm', access: [...BUSINESS, 'accountant'], nav: { label: 'Việc cần làm', icon: 'list-checks', roles: ['account', 'accountant', 'bods'] } },
   partners: { title: 'Partner & năng lực', access: BUSINESS, nav: { label: 'Partner & năng lực', icon: 'handshake', roles: ['account'] } },
   partnerWork: { title: 'Việc của tôi', access: ['partner', 'admin'], nav: { label: 'Việc của tôi', icon: 'check-square', roles: ['partner'], badge: '1' } },
   partnerProject: { title: 'Dự án được giao', access: ['partner', 'admin'], nav: { label: 'Dự án được giao', icon: 'folder-kanban', roles: ['partner'] } },

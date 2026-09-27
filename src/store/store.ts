@@ -2,32 +2,41 @@ import { useSyncExternalStore } from 'react'
 import { seedCategories, seedPackages } from '../data/catalog'
 import { seedContracts } from '../data/contracts'
 import { seedCustomers } from '../data/customers'
-import { seedOperations } from '../data/operations'
 import { DEFAULT_PARAMS } from '../data/params'
 import { seedProjects } from '../data/projects'
+import { syncTasks } from '../data/tasks'
 import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 20
+const DATA_VERSION = 21
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)
   const projects = seedProjects(packages)
   const contracts = seedContracts(projects, packages)
-  return {
+  const seed: AppData = {
     version: DATA_VERSION,
     customers: seedCustomers(),
     projects,
     contracts,
     categories: structuredClone(seedCategories),
     packages,
-    operations: seedOperations(),
+    tasks: [],
     profile: { name: 'Tài khoản mô phỏng', email: 'account@smartckhub.local', phone: '' },
     period: { mode: 'month', month: '09', year: '2026' },
     params: { ...DEFAULT_PARAMS },
   }
+  syncTasks(seed)
+  seed.tasks.push(...SEED_MANUAL_TASKS)
+  return seed
 }
+
+/** Work outside the SOP, given by hand. */
+const SEED_MANUAL_TASKS: AppData['tasks'] = [
+  { id: 'task-m1', projectId: 'project-onboarding-01', title: 'Xin logo vector và bộ màu thương hiệu', role: 'Account', assignee: 'Hiền', due: '2026-09-28', status: 'open' },
+  { id: 'task-m2', projectId: 'project-onboarding-01', title: 'Book diễn viên cho tiểu phẩm tháng 10', role: 'Media', assignee: 'Hải', due: '2026-10-02', status: 'open', note: 'Khách muốn diễn viên nữ 25–30 tuổi.' },
+]
 
 function load(): AppData {
   try {
@@ -69,6 +78,7 @@ export function useData(): AppData {
 export function update(recipe: (draft: AppData) => void): void {
   const draft = structuredClone(data)
   recipe(draft)
+  syncTasks(draft)
   commit(draft)
 }
 
