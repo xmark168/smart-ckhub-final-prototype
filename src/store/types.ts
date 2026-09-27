@@ -65,6 +65,8 @@ export interface PackageQuota {
   plans: number
   brandPosts: number
   salesPosts: number
+  /** One-off package (setup, website): a single delivery, no monthly cycles, no renewal. */
+  once?: boolean
 }
 
 export type PlanStatus = 'draft' | 'sent' | 'changes' | 'approved'

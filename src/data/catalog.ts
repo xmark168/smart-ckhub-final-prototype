@@ -31,7 +31,10 @@ const packageRows: Array<Omit<ServicePackage, 'timeline'>> = [
 ]
 
 /** Every package starts with the SOP timeline for its quota; Administrator adjusts it per package. */
-export const seedPackages: ServicePackage[] = packageRows.map((item) => ({ ...item, timeline: defaultTimeline(item.quota, DEFAULT_PARAMS) }))
+export const seedPackages: ServicePackage[] = packageRows.map((item) => {
+  const quota = item.unit === 'Gói' ? { ...item.quota, once: true } : item.quota
+  return { ...item, quota, timeline: defaultTimeline(quota, DEFAULT_PARAMS) }
+})
 
 export function packageLabel(item: ServicePackage): string {
   return item.group + ' · ' + item.name

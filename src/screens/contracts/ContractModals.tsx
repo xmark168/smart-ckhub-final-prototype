@@ -35,10 +35,11 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   const [newPackage, setNewPackage] = useState(row?.packageChange?.packageId ?? '')
   const [fromCycle, setFromCycle] = useState(row?.packageChange?.fromCycle ?? (running ? running.no + 1 : 1))
   const activePackages = packages.filter((item) => item.status === 'Đang áp dụng')
+  const once = Boolean(project?.quota.once)
   const [cycles, setCycles] = useState<number>(row ? row.cycles : 1)
   // Suggested value: monthly price of every package in the contract × cycles + VAT.
   const monthly = [project, ...projects.filter((item) => extraIds.includes(item.id))].reduce((sum, item) => sum + (item?.servicePrice ?? 0), 0)
-  const suggested = Math.round(monthly * cycles * (1 + vat / 100))
+  const suggested = Math.round(monthly * (once ? 1 : cycles) * (1 + vat / 100))
   const [value, setValue] = useState<number>(row ? row.value : suggested)
   const [plan, setPlan] = useState<PlanRow[]>(() =>
     (row?.payments.length ? row.payments : [{ percent: 100, due: '' }]).map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due })),
@@ -72,9 +73,9 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         type: field(form, 'type') as Contract['type'],
         isPrimary: field(form, 'type') === 'Hợp đồng chính',
         code: field(form, 'code').toUpperCase(),
-        cycles,
+        cycles: once ? 1 : cycles,
         start: field(form, 'start'),
-        end: contractEnd(field(form, 'start'), cycles),
+        end: contractEnd(field(form, 'start'), once ? 1 : cycles),
         value,
         vatRate: vat,
         payments,
@@ -174,7 +175,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </fieldset>
         )}
         <label className="field">Mã hợp đồng<Req /><input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
-        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={cycles} onChange={(event) => setCycles(Math.max(1, Number(event.target.value) || 1))} /></label>
+        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={once ? 1 : cycles} disabled={once} onChange={(event) => setCycles(Math.max(1, Number(event.target.value) || 1))} />{once && <small className="field-hint">Gói trả một lần: 1 lần bàn giao.</small>}</label>
         <label className="field">Ngày bắt đầu hợp đồng<Req /><input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>
         <label className="field">VAT<Req />
           <span className="percent-input"><input type="number" min="0" max="20" step="1" required value={vat} onChange={(event) => setVat(Math.max(0, Number(event.target.value) || 0))} /><em>%</em></span>
@@ -189,7 +190,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           )}
         </label>
         <label className="field">Trạng thái<Req />
-          <select name="status" defaultValue={row ? row.status : fromOnboarding ? 'Hiệu lực' : 'Nháp'}><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option></select>
+          <select name="status" defaultValue={row ? row.status : 'Nháp'}><option>Nháp</option><option>Hiệu lực</option><option>Kết thúc</option><option>Đã hủy</option></select>
         </label>
         <label className="field">Link file HĐ đã ký trên Drive <small>(không bắt buộc)</small><input name="evidence" type="url" placeholder="https://drive.google.com/..." defaultValue={row?.evidence} /></label>
         <label className="field">Folder hợp đồng trên Drive <small>(không bắt buộc)</small><input name="folderUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." defaultValue={row?.folderUrl} /></label>
@@ -272,6 +273,11 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
       target.driveLink = field(form, 'paymentDrive')
       contract.paid = totalPaid(contract.payments)
       contract.activity.unshift('Đã ghi nhận thu ' + money(amount) + ' · Đợt ' + target.installment + ' · ' + evidence)
+      // A signed contract becomes effective with its first payment.
+      if (contract.status === 'Nháp' && target.installment === 1) {
+        contract.status = 'Hiệu lực'
+        contract.activity.unshift('Hiệu lực từ khi thu đợt 1')
+      }
       // Money on the first installment is the deposit: it clears the "Xác nhận cọc" launch gate.
       const project = draft.projects.find((item) => item.id === contract.projectId)
       if (project && target.installment === 1 && contract.isPrimary) {

@@ -134,9 +134,10 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
     const state: ProjectState = index === 20 ? 'stopped' : index % 13 === 0 || index === DEMO_DRAFT_INDEX ? 'draft' : index % 11 === 0 ? 'pending' : 'active'
     const draft = state === 'draft'
     const risk = state === 'active' && index % 6 === 0
-    const current = (index % 6) + 1
-    const total = Math.max(current, index % 4 === 0 ? 3 : 6)
     const service = active[index % active.length]
+    // One-off packages (setup, website) are a single delivery.
+    const current = service.quota.once ? 1 : (index % 6) + 1
+    const total = service.quota.once ? 1 : Math.max(current, index % 4 === 0 ? 3 : 6)
     const quota = { ...service.quota }
     const media = MEDIA[index % MEDIA.length]
     // Spread cycle ends over the coming month so 'this week' is a subset, with a few already overdue.

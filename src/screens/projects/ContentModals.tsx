@@ -185,7 +185,7 @@ export function CloseCycleModal({ project }: { project: Project }) {
 
   return (
     <Modal
-      title={'Chốt chu kỳ ' + cycle.no}
+      title={project.quota.once ? 'Bàn giao dự án' : 'Chốt chu kỳ ' + cycle.no}
       onSubmit={(form) => {
         const actualEnd = field(form, 'actualEnd')
         const reason = field(form, 'reason')

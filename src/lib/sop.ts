@@ -282,7 +282,7 @@ export function cycleMilestones(cycle: Cycle, quota: PackageQuota, params: SopPa
   const end: Milestone = {
     key: 'end',
     kind: 'end',
-    label: 'Chốt chu kỳ ' + cycle.no,
+    label: quota.once ? 'Bàn giao' : 'Chốt chu kỳ ' + cycle.no,
     owner: 'Account',
     due: cycle.plannedEnd,
     baseDue: cycle.plannedEnd,
@@ -329,7 +329,10 @@ export function projectHealth(project: Project, params: SopParams, today = TODAY
   if (project.state === 'pending') return { level: 'paused', label: 'Tạm dừng', reason: project.pause?.reason || 'Dự án đang tạm dừng.', tone: 'waiting' }
   if (project.state === 'stopped') return { level: 'stopped', label: 'Đã dừng', reason: project.stop?.reason || 'Dự án đã dừng.', tone: 'muted' }
   const cycle = runningCycle(project)
-  if (!cycle) return { level: 'finished', label: 'Hết chu kỳ HĐ', reason: 'Đã chạy đủ số chu kỳ theo hợp đồng — cần tái ký.', tone: 'waiting' }
+  if (!cycle) {
+    if (project.quota.once) return { level: 'finished', label: 'Đã bàn giao', reason: 'Dự án một lần đã hoàn thành.', tone: 'ok' }
+    return { level: 'finished', label: 'Hết chu kỳ HĐ', reason: 'Đã chạy đủ số chu kỳ theo hợp đồng — cần tái ký.', tone: 'waiting' }
+  }
   const milestones = cycleMilestones(cycle, project.quota, params, today)
   const late = milestones.filter((item) => item.state === 'late')
   if (late.length) {
@@ -367,7 +370,7 @@ export function nextActions(project: Project, params: SopParams, today = TODAY):
     .map((item) => {
       if (item.key === 'end' && item.state === 'late') {
         const { missing } = cycleProgress(cycle, project.quota)
-        return { ...item, label: 'Chốt chu kỳ ' + cycle.no + (missing ? ' — còn ' + missing + ' bài' : '') }
+        return { ...item, label: (project.quota.once ? 'Bàn giao' : 'Chốt chu kỳ ' + cycle.no) + (missing ? ' — còn ' + missing + ' bài' : '') }
       }
       return item
     })

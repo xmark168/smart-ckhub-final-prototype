@@ -166,7 +166,11 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
     if (!extra || !contract) return
     contract.extraProjectIds = [...(contract.extraProjectIds ?? []), extraId]
     contract.service += ' + ' + extra.service
-    contract.value += Math.round((extra.servicePrice * contract.cycles * (1 + VAT_RATE)) / 1000) * 1000
+    // A monthly package in the contract sets its length (the one-off package is billed once).
+    const cycles = extra.quota.once ? 1 : extra.total || 6
+    contract.cycles = Math.max(contract.cycles, cycles)
+    contract.end = contractEnd(contract.start, contract.cycles)
+    contract.value += Math.round((extra.servicePrice * cycles * (1 + VAT_RATE)) / 1000) * 1000
     contract.payments = contract.payments.map((payment) => {
       const amount = Math.round((contract.value * payment.percent) / 100 / 1000) * 1000
       // A fully paid installment stays fully paid at the combined amount.

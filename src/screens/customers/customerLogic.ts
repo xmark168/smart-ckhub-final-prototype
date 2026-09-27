@@ -107,6 +107,7 @@ export function daysToEnd(contract: Contract): number {
 
 /** Renewal window: the last contracted cycle is running, or the contract ends within 30 days. */
 export function renewalDue(project: Project, contract: Contract): boolean {
+  if (project.quota.once) return false
   const lastCycle = Boolean(runningCycle(project)) && project.cycles.length >= contract.cycles
   return lastCycle || daysToEnd(contract) <= 30
 }

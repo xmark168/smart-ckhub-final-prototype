@@ -67,7 +67,7 @@ export function ProjectHeader({ project, readOnly, onTab }: { project: Project; 
         <div className="project-head-actions" hidden={readOnly}>
           <button className="secondary" onClick={actions.edit}><Icon name="pencil" /> Sửa</button>
           {project.state === 'draft' && <button className="primary" onClick={actions.start}><Icon name="play" /> Bắt đầu triển khai</button>}
-          {closeIsPrimary && <button className="primary" onClick={actions.closeCycle}><Icon name="calendar-check-2" /> Chốt chu kỳ</button>}
+          {closeIsPrimary && <button className="primary" onClick={actions.closeCycle}><Icon name="calendar-check-2" /> {project.quota.once ? 'Bàn giao' : 'Chốt chu kỳ'}</button>}
           {(project.state === 'pending' || project.state === 'stopped') && <button className="primary" onClick={actions.resume}><Icon name="play" /> {project.state === 'pending' ? 'Tiếp tục' : 'Mở lại'}</button>}
           {menu.length > 0 && (
             <div className="head-menu" ref={menuRef}>
@@ -200,7 +200,7 @@ function HealthBand({ project, onTab }: { project: Project; onTab: (tab: Project
           <>
             <strong className={overdue ? 'is-late' : ''}>{overdue ? shortMoney(overdue) : metrics.remaining ? shortMoney(metrics.remaining) : 'Đã thu đủ'}</strong>
             <small className="hb-money-note">{overdue ? 'quá hạn · đợt ' + (metrics.next?.installment ?? '') + ' · ' + shortDate(metrics.next?.due ?? '') : metrics.remaining ? 'còn thu' + (metrics.next ? ' · đợt tới ' + shortDate(metrics.next.due) : '') : 'không còn đợt thanh toán'}</small>
-            <span className="hb-cycles">Chu kỳ {cycle ? cycle.no : 0}/{project.total || '–'}{cyclesLeft ? ' · còn ' + cyclesLeft : ' · cuối, cần tái ký'}</span>
+            <span className="hb-cycles">{project.quota.once ? 'Dự án một lần · không tái ký' : 'Chu kỳ ' + (cycle ? cycle.no : 0) + '/' + (project.total || '–') + (cyclesLeft ? ' · còn ' + cyclesLeft : ' · cuối, cần tái ký')}</span>
           </>
         ) : <p className="hb-note">Chưa có hợp đồng chính.</p>}
       </button>

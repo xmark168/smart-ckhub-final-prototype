@@ -54,6 +54,7 @@ export function PackageModal({ item }: { item?: ServicePackage }) {
             plans: Number(field(form, 'qPlans') || 0),
             brandPosts: Number(field(form, 'qBrand') || 0),
             salesPosts: Number(field(form, 'qSales') || 0),
+            once: field(form, 'unit') === 'Gói' || undefined,
           },
         }
         if (values.quota.brandPosts + values.quota.salesPosts !== values.quota.posts) {
