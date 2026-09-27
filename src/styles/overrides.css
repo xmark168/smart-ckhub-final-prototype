@@ -1148,3 +1148,10 @@ em.pill { font-style: normal; }
 .home-table td.is-late { color: var(--late); font-weight: 800; }
 @media (max-width: 900px) { .home-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .home-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .home-table th:nth-child(4), .home-table td:nth-child(4) { display: none; } }
+
+/* ---- Bell from real data, admin links ---- */
+button.notification-item { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+button.notification-item:hover { background: rgb(250, 246, 242); }
+.notification-empty { padding: 18px 16px; }
+.admin-link { border: 1px solid rgb(227, 216, 206); border-radius: 14px; background: #fff; font: inherit; text-align: left; cursor: pointer; }
+.admin-link:hover { border-color: #c43d0c; }

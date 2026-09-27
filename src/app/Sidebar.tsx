@@ -3,6 +3,8 @@ import { ACCOUNTS } from '../lib/format'
 import { Icon } from '../lib/icons'
 import { resetData, useData } from '../store/store'
 import type { Role } from '../store/types'
+import { MEDIA_PEOPLE } from '../screens/projects/projectLogic'
+import { alertsFor } from './alerts'
 import { ROLES, useApp, type ScreenId } from './context'
 import { PAGES, sectionOf, type PageMeta } from './routes'
 
@@ -12,6 +14,9 @@ const NAV = (Object.entries(PAGES) as Array<[ScreenId, PageMeta]>).filter(([, pa
 
 export function Sidebar() {
   const { role, setRole, account, setAccount, screen, go, toast } = useApp()
+  const data = useData()
+  // My overdue / due-today tasks, the same list as the bell.
+  const badge = alertsFor(data, role, account).filter((item) => !/^(debt|late):/.test(item.key)).length
   const { profile } = useData()
   const [menuOpen, setMenuOpen] = useState(false)
   const personRef = useRef<HTMLDivElement>(null)
@@ -35,7 +40,7 @@ export function Sidebar() {
           <button key={id} className={id === activeScreen ? 'active' : ''} aria-label={page.nav!.label} title={page.nav!.label} aria-current={id === activeScreen ? 'page' : undefined} onClick={() => go(id)}>
             <Icon name={page.nav!.icon} className="ico" />
             <label>{page.nav!.label}</label>
-            {page.nav!.badge && <b>{page.nav!.badge}</b>}
+            {(id === 'tasks' || id === 'partnerWork') && badge > 0 && <b>{badge}</b>}
           </button>
         ))}
       </nav>
@@ -47,6 +52,14 @@ export function Sidebar() {
             <select id="roleSelect" value={role} onChange={(event) => setRole(event.target.value as Role)}>
               {ALL_ROLES.map((key) => <option key={key} value={key}>{ROLES[key].label}</option>)}
             </select>
+            {role === 'partner' && (
+              <>
+                <label htmlFor="partnerSelect">Đăng nhập là Media</label>
+                <select id="partnerSelect" value={MEDIA_PEOPLE.includes(account) ? account : MEDIA_PEOPLE[0]} onChange={(event) => setAccount(event.target.value)}>
+                  {MEDIA_PEOPLE.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </>
+            )}
             {role === 'account' && (
               <>
                 <label htmlFor="accountSelect">Đăng nhập là Account</label>
@@ -78,7 +91,7 @@ export function Sidebar() {
           onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open) }}
         >
           <i className="avatar">{ROLES[role].initial}</i>
-          <div className="user-copy"><b>{role === 'account' ? account : profile.name}</b><span>{ROLES[role].label}</span></div>
+          <div className="user-copy"><b>{role === 'account' ? account : role === 'partner' ? (MEDIA_PEOPLE.includes(account) ? account : MEDIA_PEOPLE[0]) : profile.name}</b><span>{ROLES[role].label}</span></div>
           <span className="sidebar-user-caret">⌃</span>
         </button>
       </div>

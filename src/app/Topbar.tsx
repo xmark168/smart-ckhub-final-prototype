@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { NOTIFICATION_TIMES, notificationsByScreen } from '../data/notifications'
+import { alertsFor } from './alerts'
 import { useData } from '../store/store'
 import { ROLES, useApp, type ScreenId } from './context'
-import { PAGES, sectionOf } from './routes'
+import { PAGES } from './routes'
 
 function Breadcrumb() {
   const { role, screen, go, customerId, projectId } = useApp()
@@ -37,13 +37,15 @@ function Breadcrumb() {
   )
 }
 
+/** Bell: the current user's overdue / due-today items, computed from the data. */
 function Notifications() {
-  const { screen, toast } = useApp()
+  const { role, account, go, openProject } = useApp()
+  const data = useData()
   const [open, setOpen] = useState(false)
-  const [guideOpen, setGuideOpen] = useState(false)
-  const [read, setRead] = useState(false)
+  const [seen, setSeen] = useState<string[]>([])
   const wrapRef = useRef<HTMLDivElement>(null)
-  const data = (screen && notificationsByScreen[sectionOf(screen)]) || notificationsByScreen.projects
+  const items = alertsFor(data, role, account)
+  const unread = items.filter((item) => !seen.includes(item.key)).length
 
   useEffect(() => {
     if (!open) return
@@ -58,40 +60,37 @@ function Notifications() {
     <div className="notification-wrap" ref={wrapRef}>
       <button
         className="notification-bell"
-        aria-label={read ? 'Thông báo: không có mục chưa đọc' : 'Thông báo ' + data.title + ': 3 chưa đọc'}
+        aria-label={unread ? 'Thông báo: ' + unread + ' chưa đọc' : 'Thông báo'}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>
-        {!read && <span className="notification-count">3</span>}
+        {unread > 0 && <span className="notification-count">{unread > 9 ? '9+' : unread}</span>}
       </button>
       <section className={'notification-popover' + (open ? ' open' : '')} aria-label="Danh sách thông báo">
         <div className="notification-head">
-          <div className="notification-title-group">
-            <b>Thông báo</b>
-            <button type="button" className="notification-help" title="Loại thông báo của trang" aria-label="Xem loại thông báo của trang" onClick={() => setGuideOpen(true)}>?</button>
-          </div>
-          <button type="button" onClick={() => { setRead(true); toast('Đã đánh dấu thông báo là đã đọc.') }}>Đánh dấu đã đọc</button>
+          <div className="notification-title-group"><b>Cần xử lý</b></div>
+          {unread > 0 && <button type="button" onClick={() => setSeen(items.map((item) => item.key))}>Đánh dấu đã đọc</button>}
         </div>
         <div className="notification-list">
-          {data.items.map(([title, text], index) => (
-            <article key={title} className={'notification-item ' + (read ? 'read' : 'unread')}>
+          {items.slice(0, 8).map((item) => (
+            <button
+              type="button"
+              key={item.key}
+              className={'notification-item ' + (seen.includes(item.key) ? 'read' : 'unread')}
+              onClick={() => {
+                setOpen(false)
+                if ('screen' in item.target) go(item.target.screen)
+                else openProject(item.target.projectId, item.target.tab)
+              }}
+            >
               <i className="notification-dot" />
-              <div><b>{title}</b><p>{text}</p><time>{NOTIFICATION_TIMES[index]}</time></div>
-            </article>
+              <div><b>{item.title}</b><p>{item.text}</p></div>
+            </button>
           ))}
+          {!items.length && <p className="empty-copy notification-empty">Không có việc quá hạn hay đến hạn hôm nay.</p>}
         </div>
-        <div className="notification-foot">Xem tất cả thông báo</div>
-        <section className={'notification-guide' + (guideOpen ? ' open' : '')}>
-          <div className="notification-guide-head">
-            <div><b>Thông báo · {data.title}</b><p>Loại thông báo dùng khi đang xem trang này.</p></div>
-            <button type="button" aria-label="Đóng" onClick={() => setGuideOpen(false)}>×</button>
-          </div>
-          <div className="notification-guide-list">
-            {data.types.map(([title, text]) => <div key={title}><b>{title}</b><span>{text}</span></div>)}
-          </div>
-          <div className="notification-guide-rule">{data.rule}</div>
-        </section>
+        {items.length > 8 && <div className="notification-foot">+{items.length - 8} mục khác</div>}
       </section>
     </div>
   )
