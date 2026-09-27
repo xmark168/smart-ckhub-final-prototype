@@ -11,7 +11,7 @@ export const ROLES: Record<Role, { initial: string; label: string; note: string;
   accountant: { initial: 'KT', label: 'Kế toán', note: 'Ghi nhận tiền thu và chứng từ.', home: 'contracts' },
   partner: { initial: 'PT', label: 'Partner', note: 'Xem công việc và dự án được giao.', home: 'partnerWork' },
   admin: { initial: 'AD', label: 'Administrator', note: 'Quản trị dữ liệu, quyền và cấu hình.', home: 'poc' },
-  bods: { initial: 'BD', label: 'BODs', note: 'Theo dõi chỉ số, rủi ro và phê duyệt.', home: 'reviews' },
+  bods: { initial: 'BD', label: 'BODs', note: 'Theo dõi tiến độ, việc trễ và công nợ.', home: 'overview' },
 }
 
 /** Tabs of the project detail page, as they appear in `?tab=`. */

@@ -18,7 +18,7 @@ const BUSINESS: Role[] = ['account', 'admin', 'bods']
 
 /** Page registry, in menu order. */
 export const PAGES: Record<ScreenId, PageMeta> = {
-  overview: { title: 'Tổng quan', access: BUSINESS, nav: { label: 'Tổng quan', icon: 'layout-dashboard', roles: ['account'] } },
+  overview: { title: 'Tổng quan', access: BUSINESS, nav: { label: 'Tổng quan', icon: 'layout-dashboard', roles: ['account', 'bods'] } },
   customers: { title: 'Khách hàng', access: BUSINESS, nav: { label: 'Khách hàng', icon: 'users-round', roles: ['account'] } },
   customerDetail: { title: 'Chi tiết khách hàng', access: BUSINESS, parent: 'customers' },
   projects: { title: 'Dự án', access: BUSINESS, nav: { label: 'Dự án', icon: 'folder-kanban', roles: ['account', 'bods'] } },
@@ -32,7 +32,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   partnerWork: { title: 'Việc của tôi', access: ['partner', 'admin'], nav: { label: 'Việc của tôi', icon: 'check-square', roles: ['partner'], badge: '1' } },
   partnerProject: { title: 'Dự án được giao', access: ['partner', 'admin'], nav: { label: 'Dự án được giao', icon: 'folder-kanban', roles: ['partner'] } },
   partnerSchedule: { title: 'Lịch của tôi', access: ['partner', 'admin'], nav: { label: 'Lịch của tôi', icon: 'calendar-days', roles: ['partner'] } },
-  reviews: { title: 'Hàng chờ phê duyệt', access: ['bods', 'admin'], nav: { label: 'Hàng chờ phê duyệt', icon: 'clipboard-check', roles: ['bods'], badge: '2' } },
+  reviews: { title: 'Hàng chờ phê duyệt', access: ['bods', 'admin'] },
   poc: { title: 'Quản trị hệ thống', access: ['admin'], nav: { label: 'Quản trị hệ thống', icon: 'settings', roles: ['admin'] } },
   docs: { title: 'Tài liệu thiết kế', access: ['admin'], nav: { label: 'Tài liệu', icon: 'notebook-tabs', roles: ['admin'] } },
   services: { title: 'Quản lý gói dịch vụ', access: ['admin'], nav: { label: 'Quản lý gói dịch vụ', icon: 'package', roles: ['admin'] } },
