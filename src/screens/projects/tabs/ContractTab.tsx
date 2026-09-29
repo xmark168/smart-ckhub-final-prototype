@@ -1,5 +1,5 @@
 import { useApp } from '../../../app/context'
-import { contractTone, coversProject, paymentMetrics, paymentState } from '../../../data/contracts'
+import { contractTone, coversProject, overdueText, paymentMetrics, paymentState } from '../../../data/contracts'
 import { diffDays, shortDate, TODAY } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { currentCycle } from '../../../lib/sop'
@@ -24,7 +24,7 @@ function PaymentRow({ project, payment, count }: { project: Project; payment: Pa
       <i aria-hidden="true">{paid ? <Icon name="check" /> : late ? '!' : ''}</i>
       <b>Đợt {payment.installment}/{count} · {payment.percent}% · {shortMoney(payment.amount)}</b>
       <span className="pay-when">
-        {paid && payment.paidAt ? 'thu ' + shortDate(payment.paidAt) : 'hạn ' + shortDate(payment.due) + (late ? ' · quá ' + diffDays(payment.due, TODAY) + ' ngày' : '')}
+        {paid && payment.paidAt ? 'thu ' + shortDate(payment.paidAt) : (payment.onDemo && payment.due > TODAY ? 'khi gửi demo · dự kiến ' : 'hạn ') + shortDate(payment.due) + (late ? ' · ' + overdueText(diffDays(payment.due, TODAY)) : '')}
         {!paid && payment.paid > 0 && ' · đã thu ' + shortMoney(payment.paid)}
       </span>
       {late ? <button type="button" className="text-btn" onClick={remind}>Nhắc khách</button> : <span className="sr-only">{state}</span>}

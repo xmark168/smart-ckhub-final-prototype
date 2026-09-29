@@ -6,7 +6,11 @@ import { usePagedList } from '../../lib/usePagedList'
 import { useScreenState } from '../../lib/useScreenState'
 import { update, useData } from '../../store/store'
 import type { WorkTask } from '../../store/types'
+import { addProjectActivity, updateProject } from '../projects/projectLogic'
 import { PEOPLE, TaskModal } from './TaskModal'
+
+/** "Gửi duyệt và đăng bài N": generated from a post, closed when the post is published. */
+const isPostTask = (task: WorkTask) => Boolean(task.source?.endsWith(':post'))
 
 const PAGE_SIZE = 20
 const WEEK = addDaysIso(TODAY, 7)
@@ -49,6 +53,20 @@ export function TasksScreen() {
   const change = (patch: Partial<typeof filters>) => {
     setFilters({ ...filters, ...patch })
     resetPage()
+  }
+  // For now the Account marks a post as published (later it will come from the Facebook / TikTok API).
+  const markPublished = (task: WorkTask) => {
+    const [, cycleKey, itemId] = task.source!.split(':')
+    updateProject(task.projectId, (project) => {
+      const cycle = project.cycles.find((entry) => 'c' + entry.no === cycleKey)
+      const item = cycle?.contents.find((entry) => entry.id === itemId)
+      if (!cycle || !item) return
+      const published = item.stage !== 'Đã đăng'
+      item.stage = published ? 'Đã đăng' : 'Lên lịch'
+      if (published && !item.postDate) item.postDate = TODAY
+      item.channels = item.channels.map((channel) => ({ ...channel, status: published ? 'Đã đăng' : 'Đã lên lịch', time: channel.time || '17:00' }))
+      if (published) addProjectActivity(project, 'send', 'Đã đăng bài ' + item.stt, item.title)
+    })
   }
   const toggle = (task: WorkTask) =>
     update((draft) => {
@@ -98,9 +116,11 @@ export function TasksScreen() {
                 <li key={task.id}>
                   {header && <h3 className="task-group">{header}</h3>}
                   <div className={'task-row' + (task.status !== 'open' ? ' is-closed' : task.due < TODAY ? ' is-late' : '')}>
-                    {task.source
-                      ? <span className="task-auto" title="Tự đóng khi việc gốc xong"><Icon name="rotate-ccw" /></span>
-                      : <input type="checkbox" aria-label={'Xong: ' + task.title} checked={task.status === 'done'} onChange={() => toggle(task)} />}
+                    {isPostTask(task) && role === 'account'
+                      ? <input type="checkbox" title="Đánh dấu đã đăng" aria-label={'Đã đăng: ' + task.title} checked={task.status === 'done'} onChange={() => markPublished(task)} />
+                      : task.source
+                        ? <span className="task-auto" title="Tự đóng khi việc gốc xong"><Icon name="rotate-ccw" /></span>
+                        : <input type="checkbox" aria-label={'Xong: ' + task.title} checked={task.status === 'done'} onChange={() => toggle(task)} />}
                     <button type="button" className="task-main" onClick={() => showModal(<TaskModal task={task} />)}>
                       <b>{task.title}</b>
                       <small>{project.customer}{task.note ? ' · ' + task.note : ''}</small>

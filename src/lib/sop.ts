@@ -338,11 +338,13 @@ export function projectHealth(project: Project, params: SopParams, today = TODAY
   if (late.length) {
     const first = late[0]
     const days = first.due ? diffDays(first.due, today) : 0
-    return { level: 'late', label: 'Chậm tiến độ', reason: first.label + (days > 0 ? ' trễ ' + days + ' ngày' : '') + (late.length > 1 ? ' · +' + (late.length - 1) + ' mốc khác' : ''), tone: 'danger' }
+    // A closing milestone late before its date means posting is behind the cadence: say so.
+    const why = days > 0 ? ' trễ ' + days + ' ngày' : first.kind === 'end' ? ' · ' + first.detail.replace(/ · mục tiêu.*$/, '') : ''
+    return { level: 'late', label: 'Chậm tiến độ', reason: first.label + why + (late.length > 1 ? ' · +' + (late.length - 1) + ' mốc khác' : ''), tone: 'danger' }
   }
   const due = milestones.filter((item) => item.state === 'due')
   if (overdue > 0 && !due.length) {
-    return { level: 'watch', label: 'Cần theo dõi', reason: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', tone: 'waiting' }
+    return { level: 'watch', label: 'Cần theo dõi', reason: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + ' đ', tone: 'waiting' }
   }
   if (due.length || project.risk) {
     return { level: 'watch', label: 'Cần theo dõi', reason: due.length ? due[0].label + ' đến hạn ' + shortDate(due[0].due) : 'Gắn cờ: ' + (project.riskReason || 'Account cần theo dõi.'), tone: 'waiting' }

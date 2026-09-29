@@ -1044,6 +1044,7 @@ em.pill { font-style: normal; }
 .contract-detail .pay-row { grid-template-columns: 22px minmax(0, 1fr) auto; }
 .contract-detail .pay-when { grid-column: 2 / -1; grid-row: 2; margin-top: -4px; }
 .pay-evidence { display: block; margin-top: 2px; color: var(--muted); font-weight: 500; }
+.pay-invoice { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; }
 .cd-record { display: grid; gap: 4px; padding: 14px; border-radius: 12px; background: rgb(250, 246, 242); }
 .cd-record h3 { margin: 0 0 6px; font-size: 14px; }
 @media (max-width: 520px) { .cd-facts { grid-template-columns: 1fr 1fr; } }
@@ -1155,3 +1156,4 @@ button.notification-item:hover { background: rgb(250, 246, 242); }
 .notification-empty { padding: 18px 16px; }
 .admin-link { border: 1px solid rgb(227, 216, 206); border-radius: 14px; background: #fff; font: inherit; text-align: left; cursor: pointer; }
 .admin-link:hover { border-color: #c43d0c; }
+.home-pkg { margin-left: 4px; color: var(--muted); font-size: 12px; font-style: normal; font-weight: 600; }

@@ -66,35 +66,80 @@ export function syncProjectContract(project: Project, contracts: Contract[]): vo
 /** VAT used by the demo contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
 export const VAT_RATE = 0.08
 
-function addMonthsIso(iso: string, months: number): string {
+export function addMonthsIso(iso: string, months: number): string {
   const [y, m, d] = iso.split('-').map(Number)
   return toIso(new Date(y, m - 1 + months, d))
 }
 
-/** Installment split by contract length: 6+ cycles 40/30/30, shorter 50/50, one-off 100%. */
-function splitFor(cycles: number): number[] {
-  return cycles >= 6 ? [40, 30, 30] : cycles >= 2 ? [50, 50] : [100]
+export interface ScheduleRow {
+  percent: number
+  due: string
+  onDemo?: boolean
+}
+
+/**
+ * Payment schedule as written in the company's contracts, dated from signing:
+ * 1 tháng 50% on signing + 50% when the first demo video is sent; 3 tháng three equal
+ * installments monthly; 6 tháng 40/30/30 on signing, +2 and +4 months. Other lengths
+ * follow the nearest pattern. One-off packages: 50% on signing, 50% on hand-over.
+ */
+export function paymentSchedule(cycles: number, start: string, once = false): ScheduleRow[] {
+  if (once || cycles <= 1) return [{ percent: 50, due: start }, { percent: 50, due: addDaysIso(start, 14), onDemo: !once }]
+  if (cycles === 2) return [{ percent: 50, due: start }, { percent: 50, due: addMonthsIso(start, 1) }]
+  if (cycles <= 3) return [{ percent: 33.34, due: start }, { percent: 33.33, due: addMonthsIso(start, 1) }, { percent: 33.33, due: addMonthsIso(start, 2) }]
+  const step = Math.max(1, Math.floor(cycles / 3))
+  return [{ percent: 40, due: start }, { percent: 30, due: addMonthsIso(start, step) }, { percent: 30, due: addMonthsIso(start, step * 2) }]
+}
+
+/** Split `value` by percent; the last installment takes the rounding remainder (whole thousands). */
+export function splitAmounts(value: number, percents: number[]): number[] {
+  let left = value
+  return percents.map((percent, index) => {
+    // A third (33.33 / 33.34 %) is an exact third, as in the 3-month contracts (3 equal installments).
+    const share = Math.abs(percent - 100 / 3) < 0.02 ? value / 3 : (value * percent) / 100
+    const amount = index === percents.length - 1 ? left : Math.round(share / 1000) * 1000
+    left -= amount
+    return amount
+  })
+}
+
+/** Contract clause: debt older than 20 days ends the contract automatically. */
+export const AUTO_END_DAYS = 20
+
+/** "quá 12 ngày", with the 20-day auto-termination rule when it gets close. */
+export function overdueText(days: number): string {
+  if (days >= AUTO_END_DAYS) return 'quá ' + days + ' ngày · vượt 20 ngày, HĐ tự chấm dứt'
+  if (days >= 15) return 'quá ' + days + ' ngày · còn ' + (AUTO_END_DAYS - days) + ' ngày là HĐ tự chấm dứt'
+  return 'quá ' + days + ' ngày'
+}
+
+/** 1-month contracts: the "on demo" installment falls due on the day the Post Demo is sent. */
+export function syncDemoPayments(contracts: Contract[], projects: Project[]): void {
+  for (const contract of contracts) {
+    const demo = projects.find((item) => item.id === contract.projectId)?.cycles[0]?.demo.sentAt
+    for (const payment of contract.payments) if (payment.onDemo && demo && payment.paid < payment.amount) payment.due = demo
+  }
 }
 
 /**
  * Demo schedule: installments spread over the term; past-due ones are paid except on a few
  * projects (overdue or partly paid) so the debt view has realistic cases.
  */
-function seedPayments(value: number, start: string, cycles: number, index: number): Payment[] {
-  const split = splitFor(cycles)
-  const step = split.length > 1 ? Math.max(1, Math.floor(cycles / split.length)) : 0
-  let left = value
-  return split.map((percent, n) => {
-    const amount = n === split.length - 1 ? left : Math.round((value * percent) / 100 / 1000) * 1000
-    left -= amount
-    const due = addMonthsIso(start, n * step)
+function seedPayments(value: number, start: string, cycles: number, index: number, once: boolean): Payment[] {
+  const schedule = paymentSchedule(cycles, start, once)
+  const amounts = splitAmounts(value, schedule.map((row) => row.percent))
+  return schedule.map(({ percent, due, onDemo }, n) => {
+    const amount = amounts[n]
     const past = due <= TODAY
     // Only a recent installment (last 45 days) is left unpaid in the demo.
-    const last = (n === split.length - 1 || addMonthsIso(start, (n + 1) * step) > TODAY) && due > addDaysIso(TODAY, -45)
+    const next = schedule[n + 1]?.due
+    const last = (!next || next > TODAY) && due > addDaysIso(TODAY, -45)
     const overdue = past && last && index % 7 === 2
     const partial = past && last && index % 9 === 4
     const paid = !past || overdue ? 0 : partial ? Math.round(amount / 2 / 1000) * 1000 : amount
-    return { installment: n + 1, percent, amount, due, paid, paidAt: paid ? due : undefined, evidence: paid ? 'UNC-' + due.slice(2, 7).replace('-', '') + '-' + String(index + 1).padStart(3, '0') : '' }
+    // Paid installments already have their VAT invoice, except the most recent one on a few projects.
+    const invoiced = paid >= amount && !(last && index % 5 === 1)
+    return { installment: n + 1, percent, amount, due, paid, paidAt: paid ? due : undefined, evidence: paid ? 'UNC-' + due.slice(2, 7).replace('-', '') + '-' + String(index + 1).padStart(3, '0') : '', onDemo, invoiced }
   })
 }
 
@@ -109,11 +154,11 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
     // Monthly packages bill every cycle; one-off packages (setup, website) once.
     const value = comTamTai ? COM_TAM_TAI_CONTRACT.value : Math.round((price * (monthly ? cycles : 1) * (1 + VAT_RATE)) / 1000) * 1000
     const start = comTamTai ? COM_TAM_TAI_CONTRACT.start : project.cycles[0]?.start ?? '2026-09-01'
-    const payments: Payment[] = comTamTai ? COM_TAM_TAI_CONTRACT.payments.map((payment) => ({ ...payment })) : seedPayments(value, start, monthly ? cycles : 1, index)
+    const payments: Payment[] = comTamTai ? COM_TAM_TAI_CONTRACT.payments.map((payment) => ({ ...payment, invoiced: payment.paid >= payment.amount })) : seedPayments(value, start, monthly ? cycles : 1, index, !monthly)
     const settled = payments.every((payment) => payment.paid >= payment.amount)
     records.push({
       id: 'contract-' + (index + 1),
-      code: project.contractCode || 'HĐ-2026-' + String(index + 1).padStart(3, '0'),
+      code: project.contractCode || 'HĐ-2026-' + String(index + 101),
       projectId: project.id,
       customer: project.customer,
       project: project.customer,
@@ -150,7 +195,7 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
         end: contractEnd(due, 1),
         value: 1080000,
         paid: due < addDaysIso(TODAY, -45) ? 1080000 : 0,
-        payments: [{ installment: 1, percent: 100, amount: 1080000, paid: due < addDaysIso(TODAY, -45) ? 1080000 : 0, paidAt: due < addDaysIso(TODAY, -45) ? due : undefined, due, evidence: due < addDaysIso(TODAY, -45) ? 'UNC-PL-' + String(index + 1).padStart(3, '0') : '' }],
+        payments: [{ installment: 1, percent: 100, amount: 1080000, paid: due < addDaysIso(TODAY, -45) ? 1080000 : 0, paidAt: due < addDaysIso(TODAY, -45) ? due : undefined, due, evidence: due < addDaysIso(TODAY, -45) ? 'UNC-PL-' + String(index + 1).padStart(3, '0') : '', invoiced: due < addDaysIso(TODAY, -45) }],
         status: 'Hiệu lực',
         evidence: '',
         folderUrl: '',
@@ -183,5 +228,5 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
   return records
 }
 
-/** Demo: A Mẹt Quán's Ads project is billed inside the Website contract (HĐ-2026-006). */
+/** Demo: A Mẹt Quán's Ads project is billed inside the Website contract (HĐ-2026-106). */
 export const SHARED_CONTRACT: Record<string, string> = { 'project-amet-ads': 'project-6' }

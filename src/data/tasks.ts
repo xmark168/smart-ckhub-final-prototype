@@ -48,6 +48,8 @@ function projectWork(project: Project, data: AppData): Expected[] {
   for (const contract of data.contracts.filter((row) => row.projectId === project.id && row.status === 'Hiệu lực')) {
     for (const payment of contract.payments) {
       add({ source: 'pay:' + contract.id + ':' + payment.installment, title: 'Thu đợt ' + payment.installment + ' · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: payment.due, done: payment.paid >= payment.amount, tab: 'hop-dong' })
+      // The VAT invoice is issued right after the money comes in.
+      if (payment.paid >= payment.amount) add({ source: 'inv:' + contract.id + ':' + payment.installment, title: 'Xuất hóa đơn đợt ' + payment.installment + ' · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: payment.paidAt || TODAY, done: Boolean(payment.invoiced), tab: 'hop-dong' })
     }
   }
 

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { seedCategories, seedPackages } from '../data/catalog'
-import { seedContracts } from '../data/contracts'
+import { seedContracts, syncDemoPayments } from '../data/contracts'
 import { seedCustomers } from '../data/customers'
 import { DEFAULT_PARAMS } from '../data/params'
 import { seedProjects } from '../data/projects'
@@ -9,7 +9,7 @@ import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
 /** Bump when the seed or AppData shape changes so stale browser data is discarded. */
-const DATA_VERSION = 23
+const DATA_VERSION = 24
 
 export function createSeed(): AppData {
   const packages = structuredClone(seedPackages)
@@ -27,6 +27,7 @@ export function createSeed(): AppData {
     period: { mode: 'month', month: '09', year: '2026' },
     params: { ...DEFAULT_PARAMS },
   }
+  syncDemoPayments(seed.contracts, seed.projects)
   syncTasks(seed)
   seed.tasks.push(...SEED_MANUAL_TASKS)
   return seed
@@ -78,6 +79,7 @@ export function useData(): AppData {
 export function update(recipe: (draft: AppData) => void): void {
   const draft = structuredClone(data)
   recipe(draft)
+  syncDemoPayments(draft.contracts, draft.projects)
   syncTasks(draft)
   commit(draft)
 }

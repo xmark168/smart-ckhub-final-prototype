@@ -62,7 +62,7 @@ export function attentionItems(customer: Customer, projects: Project[], contract
       .forEach((row) => {
         seen.add(row.id)
         const overdue = paymentMetrics(row).overdue
-        if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + 'đ', targetId: row.id })
+        if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + ' đ', targetId: row.id })
         if (row.isPrimary && project.state === 'active' && renewalDue(project, row)) {
           items.push({ kind: 'renew', label: row.code + ' · sắp hết HĐ', detail: 'Hết hạn ' + row.end + ' · chu kỳ ' + project.cycles.length + '/' + row.cycles + '. Cần trao đổi tái ký.', targetId: row.id })
         }

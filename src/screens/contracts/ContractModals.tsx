@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { contractTone, coversProject, paymentMetrics, paymentState, syncProjectContract, totalPaid } from '../../data/contracts'
+import { contractTone, coversProject, overdueText, paymentMetrics, paymentSchedule, paymentState, splitAmounts, syncProjectContract, totalPaid } from '../../data/contracts'
 import { runningCycle } from '../../lib/sop'
 import { contractEnd, diffDays, money, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
@@ -15,6 +15,7 @@ interface PlanRow {
   key: number
   percent: number
   due: string
+  onDemo?: boolean
 }
 
 let rowKey = 0
@@ -41,13 +42,29 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   const monthly = [project, ...projects.filter((item) => extraIds.includes(item.id))].reduce((sum, item) => sum + (item?.servicePrice ?? 0), 0)
   const suggested = Math.round(monthly * (once ? 1 : cycles) * (1 + vat / 100))
   const [value, setValue] = useState<number>(row ? row.value : suggested)
+  const [start, setStart] = useState(row ? row.start : TODAY)
+  // New contracts get the schedule the company writes for that length; editing it by hand stops the auto-fill.
+  const fromTemplate = (length: number, from: string) => paymentSchedule(once ? 1 : length, from, once).map((item) => ({ key: rowKey++, ...item }))
   const [plan, setPlan] = useState<PlanRow[]>(() =>
-    (row?.payments.length ? row.payments : [{ percent: 100, due: '' }]).map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due })),
+    row?.payments.length ? row.payments.map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due, onDemo: payment.onDemo })) : fromTemplate(cycles, start),
   )
+  const [planTouched, setPlanTouched] = useState(Boolean(row))
   const fromOnboarding = !row && Boolean(preferredProjectId)
-  const total = plan.reduce((sum, item) => sum + (Number(item.percent) || 0), 0)
+  const total = Math.round(plan.reduce((sum, item) => sum + (Number(item.percent) || 0), 0) * 100) / 100
   const complete = plan.every((item) => item.percent && item.due)
-  const setPlanRow = (key: number, patch: Partial<PlanRow>) => setPlan((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)))
+  const amounts = splitAmounts(value, plan.map((item) => Number(item.percent) || 0))
+  const setPlanRow = (key: number, patch: Partial<PlanRow>) => {
+    setPlanTouched(true)
+    setPlan((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)))
+  }
+  const [valueTouched, setValueTouched] = useState(Boolean(row))
+  const changeTerm = (length: number, from: string) => {
+    setCycles(length)
+    setStart(from)
+    if (!planTouched) setPlan(fromTemplate(length, from))
+    // A new contract's value follows packages × cycles + VAT until typed by hand.
+    if (!valueTouched) setValue(Math.round(monthly * (once ? 1 : length) * (1 + vat / 100)))
+  }
 
   const save = (form: HTMLFormElement) => {
     const target = projects.find((item) => item.id === field(form, 'project'))
@@ -62,9 +79,9 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
       const previousProjectId = current.projectId
       // Keep money already collected on each installment when the schedule is edited.
       const payments: Payment[] = plan.map((item, index) => {
-        const amount = Math.round((value * item.percent) / 100)
+        const amount = amounts[index]
         const before = current.payments[index]
-        return { installment: index + 1, percent: item.percent, amount, due: item.due, paid: Math.min(before?.paid ?? 0, amount), paidAt: before?.paidAt, evidence: before?.evidence, driveLink: before?.driveLink }
+        return { installment: index + 1, percent: item.percent, amount, due: item.due, paid: Math.min(before?.paid ?? 0, amount), paidAt: before?.paidAt, evidence: before?.evidence, driveLink: before?.driveLink, onDemo: item.onDemo, invoiced: before?.invoiced }
       })
       Object.assign(current, {
         projectId: target.id,
@@ -175,13 +192,17 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </fieldset>
         )}
         <label className="field">Mã hợp đồng<Req /><input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
-        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={once ? 1 : cycles} disabled={once} onChange={(event) => setCycles(Math.max(1, Number(event.target.value) || 1))} />{once && <small className="field-hint">Gói trả một lần: 1 lần bàn giao.</small>}</label>
-        <label className="field">Ngày bắt đầu hợp đồng<Req /><input name="start" type="date" required defaultValue={row ? row.start : '2026-10-01'} /></label>
+        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={once ? 1 : cycles} disabled={once} onChange={(event) => changeTerm(Math.max(1, Number(event.target.value) || 1), start)} />{once && <small className="field-hint">Gói trả một lần: 1 lần bàn giao.</small>}</label>
+        <label className="field">Ngày ký / bắt đầu<Req /><input name="start" type="date" required value={start} onChange={(event) => changeTerm(cycles, event.target.value)} /></label>
         <label className="field">VAT<Req />
-          <span className="percent-input"><input type="number" min="0" max="20" step="1" required value={vat} onChange={(event) => setVat(Math.max(0, Number(event.target.value) || 0))} /><em>%</em></span>
+          <span className="percent-input"><input type="number" min="0" max="20" step="1" required value={vat} onChange={(event) => {
+            const next = Math.max(0, Number(event.target.value) || 0)
+            setVat(next)
+            if (!valueTouched) setValue(Math.round(monthly * (once ? 1 : cycles) * (1 + next / 100)))
+          }} /><em>%</em></span>
         </label>
         <label className="field">Giá trị hợp đồng (gồm VAT)<Req />
-          <MoneyInput value={value} onChange={setValue} required ariaLabel="Giá trị hợp đồng" />
+          <MoneyInput value={value} onChange={(next) => { setValueTouched(true); setValue(next) }} required ariaLabel="Giá trị hợp đồng" />
           {monthly > 0 && suggested !== value && (
             <small className="field-hint">
               Theo gói: {money(monthly)} × {cycles} chu kỳ + VAT {vat}% = {money(suggested)}{' '}
@@ -197,7 +218,13 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
 
         <section className="onboarding-payment-plan">
           <div className="onboarding-payment-plan-head">
-            <div><b>Lịch thanh toán</b><small>Nhập theo điều khoản HĐ; không tự suy ra từ số chu kỳ.</small></div>
+            <div>
+              <b>Lịch thanh toán</b>
+              <small>
+                Theo mẫu HĐ: 1 tháng 50/50 (đợt 2 khi gửi demo) · 3 tháng 3 đợt mỗi tháng · 6 tháng 40/30/30 (ký, +2, +4 tháng).{' '}
+                {planTouched && <button type="button" className="text-btn" onClick={() => { setPlanTouched(false); setPlan(fromTemplate(cycles, start)) }}>Về mẫu</button>}
+              </small>
+            </div>
             <span className={total !== 100 || !complete ? 'invalid' : ''}>{(complete ? '' : 'Chưa đủ lịch · ') + 'Tổng ' + total + '% · ' + money(value)}</span>
           </div>
           <div>
@@ -206,14 +233,15 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
                 <span className="onboarding-payment-index">Đợt {index + 1}</span>
                 <label className="onboarding-payment-field">
                   <span>Tỷ lệ</span>
-                  <input type="number" min="1" max="100" step="1" value={item.percent} onChange={(event) => setPlanRow(item.key, { percent: Number(event.target.value) })} />
+                  <input type="number" min="1" max="100" step="0.01" value={item.percent} onChange={(event) => setPlanRow(item.key, { percent: Number(event.target.value) })} />
                   <small>% giá trị HĐ</small>
                 </label>
                 <label className="onboarding-payment-field">
                   <span>Hạn thanh toán</span>
                   <input type="date" value={item.due} onChange={(event) => setPlanRow(item.key, { due: event.target.value })} />
+                  {item.onDemo && <small>Tự theo ngày gửi demo</small>}
                 </label>
-                <strong>{money(Math.round((value * (Number(item.percent) || 0)) / 100))}</strong>
+                <strong>{money(amounts[index])}</strong>
                 <button
                   className="onboarding-payment-remove"
                   type="button"
@@ -257,6 +285,15 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
   const project = projects.find((item) => item.id === row.projectId)
   const cycle = project ? project.cycles.length : 0
   const appendices = row.isPrimary ? contracts.filter((item) => !item.isPrimary && item.projectId === row.projectId && item.status !== 'Đã hủy') : []
+
+  const toggleInvoice = (installment: number) =>
+    update((draft) => {
+      const contract = draft.contracts.find((item) => item.id === contractId)
+      const target = contract?.payments.find((entry) => entry.installment === installment)
+      if (!contract || !target) return
+      target.invoiced = !target.invoiced
+      contract.activity.unshift((target.invoiced ? 'Đã xuất hóa đơn đợt ' : 'Bỏ đánh dấu hóa đơn đợt ') + installment)
+    })
 
   const record = (form: HTMLFormElement) => {
     const amount = Number(field(form, 'payment') || 0)
@@ -315,7 +352,10 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
                 <i aria-hidden="true">{paid ? <Icon name="check" /> : late ? '!' : ''}</i>
                 <b>Đợt {payment.installment} · {payment.percent}% · {money(payment.amount)}</b>
                 <span className="pay-when">
-                  {paid && payment.paidAt ? 'Thu ' + shortDate(payment.paidAt) : 'Hạn ' + shortDate(payment.due) + (late ? ' · quá ' + diffDays(payment.due, TODAY) + ' ngày' : '')}
+                  {paid && payment.paidAt ? 'Thu ' + shortDate(payment.paidAt) : (payment.onDemo && payment.due > TODAY ? 'Khi gửi demo · dự kiến ' : 'Hạn ') + shortDate(payment.due) + (late ? ' · ' + overdueText(diffDays(payment.due, TODAY)) : '')}
+                  {paid && (canRecord
+                    ? <label className="pay-invoice"><input type="checkbox" checked={Boolean(payment.invoiced)} onChange={() => toggleInvoice(payment.installment)} /> Đã xuất hóa đơn</label>
+                    : <small className="pay-evidence">{payment.invoiced ? 'Đã xuất hóa đơn' : 'Chưa xuất hóa đơn'}</small>)}
                   {!paid && payment.paid > 0 && ' · đã thu ' + money(payment.paid)}
                   {payment.evidence && <small className="pay-evidence">{payment.evidence}{payment.driveLink && <> · <a href={payment.driveLink} target="_blank" rel="noreferrer">chứng từ</a></>}</small>}
                 </span>

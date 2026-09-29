@@ -1,5 +1,5 @@
 import { useApp } from '../../app/context'
-import { contractTone, paymentMetrics, paymentState } from '../../data/contracts'
+import { contractTone, overdueText, paymentMetrics, paymentState } from '../../data/contracts'
 import { addDaysIso, diffDays, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
@@ -158,7 +158,7 @@ export function ContractsScreen() {
                           <>
                             <b className={late ? 'is-late' : ''}>{shortMoney(next.amount - next.paid)}</b>
                             <span className={'project-record-meta' + (late ? ' is-late' : '')}>
-                              {owner !== main ? owner.code + ' · ' : ''}Đợt {next.installment} · {late ? 'quá ' + diffDays(next.due, TODAY) + ' ngày' : next.due === TODAY ? 'hôm nay' : 'hạn ' + shortDate(next.due)}
+                              {owner !== main ? owner.code + ' · ' : ''}Đợt {next.installment} · {late ? overdueText(diffDays(next.due, TODAY)) : next.due === TODAY ? 'hôm nay' : (next.onDemo ? 'khi gửi demo · dự kiến ' : 'hạn ') + shortDate(next.due)}
                               {paymentState(next) === 'Thu một phần' ? ' · đã thu một phần' : ''}
                             </span>
                             {late && <button type="button" className="text-btn cv-remind" onClick={(event) => { event.stopPropagation(); remind(owner, next) }}>Nhắc khách</button>}

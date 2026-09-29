@@ -76,7 +76,7 @@ function AccountHome() {
         <Panel title="Dự án cần chú ý" action="Dự án" onAction={() => go('projects')} empty="Mọi dự án đúng tiến độ.">
           {attention.slice(0, 6).map(({ project, health }) => (
             <button type="button" key={project.id} className={'home-line' + (health.level === 'late' ? ' is-late' : '')} onClick={() => openProject(project.id)}>
-              <span><b>{project.customer}</b><small>{health.reason}</small></span>
+              <span><b>{project.customer} <i className="home-pkg">{project.service.split(' · ')[0]}</i></b><small>{health.reason}</small></span>
               <em className={'pill ' + health.tone}>{health.label}</em>
             </button>
           ))}

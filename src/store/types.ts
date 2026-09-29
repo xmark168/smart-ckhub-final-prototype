@@ -238,6 +238,10 @@ export interface Payment {
   paidAt?: string
   evidence?: string
   driveLink?: string
+  /** Due when the first demo video is sent (1-month contracts); `due` follows the Post Demo date. */
+  onDemo?: boolean
+  /** VAT invoice issued (it is issued after each payment is received). */
+  invoiced?: boolean
 }
 
 export type ContractStatus = 'Nháp' | 'Hiệu lực' | 'Kết thúc' | 'Đã hủy'

@@ -163,7 +163,8 @@ export function seedProjects(packages: ServicePackage[]): Project[] {
       serviceScope: service.scope,
       servicePrice: service.price,
       quota,
-      contractCode: draft ? '' : 'HĐ-2026-' + String(index + 1).padStart(3, '0'),
+      // Demo codes start at 101 so they never collide with the real Cơm Tấm Tài contract (HĐ-2026-056).
+      contractCode: draft ? '' : 'HĐ-2026-' + String(index + 101),
       total: draft ? 0 : total,
       state,
       risk,
