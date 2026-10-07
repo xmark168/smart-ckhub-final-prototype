@@ -3,7 +3,8 @@ import { ACCOUNTS } from '../lib/format'
 import { Icon } from '../lib/icons'
 import { resetData, useData } from '../store/store'
 import type { Role } from '../store/types'
-import { MEDIA_PEOPLE } from '../screens/projects/projectLogic'
+import { PARTNER_PEOPLE } from '../lib/people'
+import { sessionName } from '../lib/scope'
 import { alertsFor } from './alerts'
 import { ROLES, useApp, type ScreenId } from './context'
 import { PAGES, sectionOf, type PageMeta } from './routes'
@@ -54,9 +55,9 @@ export function Sidebar() {
             </select>
             {role === 'partner' && (
               <>
-                <label htmlFor="partnerSelect">Đăng nhập là Media</label>
-                <select id="partnerSelect" value={MEDIA_PEOPLE.includes(account) ? account : MEDIA_PEOPLE[0]} onChange={(event) => setAccount(event.target.value)}>
-                  {MEDIA_PEOPLE.map((name) => <option key={name} value={name}>{name}</option>)}
+                <label htmlFor="partnerSelect">Đăng nhập là nhân sự</label>
+                <select id="partnerSelect" value={sessionName('partner', account)} onChange={(event) => setAccount(event.target.value)}>
+                  {PARTNER_PEOPLE.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </>
             )}
@@ -91,7 +92,7 @@ export function Sidebar() {
           onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open) }}
         >
           <i className="avatar">{ROLES[role].initial}</i>
-          <div className="user-copy"><b>{role === 'account' ? account : role === 'partner' ? (MEDIA_PEOPLE.includes(account) ? account : MEDIA_PEOPLE[0]) : profile.name}</b><span>{ROLES[role].label}</span></div>
+          <div className="user-copy"><b>{role === 'account' || role === 'partner' ? sessionName(role, account) : profile.name}</b><span>{ROLES[role].label}</span></div>
           <span className="sidebar-user-caret">⌃</span>
         </button>
       </div>

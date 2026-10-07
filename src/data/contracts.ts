@@ -1,4 +1,4 @@
-import { addDaysIso, contractEnd, TODAY, toIso } from '../lib/format'
+import { addDaysIso, contractEnd, displayToInput, TODAY, toIso } from '../lib/format'
 import type { Contract, Payment, Project, ServicePackage } from '../store/types'
 import { COM_TAM_TAI_CONTRACT, COM_TAM_TAI_CONTRACT_FOLDER, COM_TAM_TAI_ID } from './comTamTai'
 
@@ -26,7 +26,7 @@ export function contractTone(status: Contract['status']): string {
 
 export function paymentMetrics(row: Contract) {
   const remain = (payment: Payment) => Math.max(0, payment.amount - payment.paid)
-  const unpaid = row.payments.filter((payment) => payment.paid < payment.amount)
+  const unpaid = collectionPayments(row).filter((payment) => payment.paid < payment.amount)
   const sum = (list: Payment[]) => list.reduce((total, payment) => total + remain(payment), 0)
   return {
     remaining: sum(unpaid),
@@ -34,6 +34,65 @@ export function paymentMetrics(row: Contract) {
     dueToday: sum(unpaid.filter((payment) => payment.due === TODAY)),
     future: sum(unpaid.filter((payment) => payment.due > TODAY)),
     next: [...unpaid].sort((a, b) => a.due.localeCompare(b.due))[0] ?? null,
+    refund: row.settlement?.status === 'confirmed' ? Math.max(0, cashReceived(row) - (row.settlement.agreedValue ?? 0)) : 0,
+  }
+}
+
+/** Original installments are retained. Confirmed settlement replaces their collection balance. */
+export function cashReceived(row: Contract): number {
+  return row.payments.reduce((sum, payment) => sum + payment.paid, 0) + (row.settlement?.transactions ?? []).reduce((sum, entry) => sum + (entry.kind === 'receipt' ? entry.amount : -entry.amount), 0)
+}
+
+export function collectibleValue(row: Contract): number {
+  return row.settlement?.status === 'confirmed' ? row.settlement.agreedValue ?? 0 : row.value
+}
+
+export function collectionPayments(row: Contract): Payment[] {
+  if (row.status === 'Đã hủy' || row.settlement?.status === 'pending') return []
+  if (row.settlement?.status !== 'confirmed') return row.payments
+  return [{ installment: 0, percent: 100, amount: row.settlement.agreedValue ?? 0, paid: cashReceived(row), due: row.settlement.due ?? row.settlement.stoppedAt }]
+}
+
+export function contractTerm(row: Contract, contracts: Contract[]) {
+  const extensions = contracts.filter((item) => item.parentContractId === row.id && item.type === 'Phụ lục' && (item.status === 'Hiệu lực' || item.status === 'Kết thúc') && item.extensionMonths)
+  return {
+    cycles: row.cycles + extensions.reduce((sum, item) => sum + (item.extensionMonths ?? 0), 0),
+    end: extensions.reduce((end, item) => displayToInput(item.end) > displayToInput(end) ? item.end : end, row.end),
+  }
+}
+
+export function canOpenContractCycle(row: Contract | undefined, project: Project, start: string, contracts: Contract[]): boolean {
+  if (!row || row.status !== 'Hiệu lực' || row.settlement || start < row.start) return false
+  if (project.quota.once) return project.cycles.length < (row.firstCycle ?? 1)
+  if (row.kind === 'Nguyên tắc') return true
+  const term = contractTerm(row, contracts)
+  return project.cycles.length < (row.firstCycle ?? 1) - 1 + term.cycles && start <= displayToInput(term.end)
+}
+
+/** Missing fields are added in place; legacy prices, dates and receipts stay intact. */
+export function normalizeContracts(contracts: Contract[]): void {
+  for (const row of contracts) {
+    row.kind ??= 'Dịch vụ'
+    row.firstCycle ??= 1
+    row.issuesVat ??= true
+  }
+}
+
+/** One charge per opened service cycle, anchored to the main project's cycle. */
+export function syncFrameworkPayments(contracts: Contract[], projects: Project[]): void {
+  for (const row of contracts) {
+    if (row.kind !== 'Nguyên tắc' || !row.isPrimary || row.status !== 'Hiệu lực' || row.settlement) continue
+    const project = projects.find((item) => item.id === row.projectId)
+    if (!project || project.state === 'stopped') continue
+    for (const cycle of project.cycles.filter((item) => item.no >= (row.firstCycle ?? 1))) {
+      const installment = cycle.no - (row.firstCycle ?? 1) + 1
+      const existing = row.payments.find((item) => item.installment === installment)
+      if (existing) { existing.due = cycle.start; continue }
+      row.payments.push({ installment, percent: 100, amount: row.monthlyValue ?? 0, due: cycle.start, paid: 0 })
+      row.activity.unshift('Phát sinh thanh toán chu kỳ ' + cycle.no)
+    }
+    row.value = row.payments.reduce((sum, payment) => sum + payment.amount, 0)
+    row.paid = totalPaid(row.payments)
   }
 }
 
@@ -49,18 +108,19 @@ export function coversProject(row: Contract, projectId: string): boolean {
 /** Overdue unpaid amount on the project's primary contract (0 when none). */
 export function projectOverdue(contracts: Contract[], projectId: string): number {
   const row = primaryContract(contracts, projectId)
-  return row && row.status === 'Hiệu lực' ? paymentMetrics(row).overdue : 0
+  return row ? paymentMetrics(row).overdue : 0
 }
 
 export function primaryContract(contracts: Contract[], projectId: string): Contract | undefined {
-  return contracts.find((row) => coversProject(row, projectId) && row.isPrimary && row.status !== 'Đã hủy')
+  const candidates = contracts.filter((row) => coversProject(row, projectId) && row.isPrimary && row.status !== 'Đã hủy')
+  return candidates.find((row) => row.status === 'Hiệu lực') ?? candidates.find((row) => row.status === 'Nháp') ?? candidates[0]
 }
 
 /** Project's contract code and cycle total always come from its primary contract. */
 export function syncProjectContract(project: Project, contracts: Contract[]): void {
   const primary = primaryContract(contracts, project.id)
   project.contractCode = primary ? primary.code : ''
-  project.total = primary ? primary.cycles : 0
+  project.total = primary ? primary.kind === 'Nguyên tắc' && !project.quota.once ? 0 : (primary.firstCycle ?? 1) - 1 + contractTerm(primary, contracts).cycles : 0
 }
 
 /** VAT used by the demo contracts (Cơm Tấm Tài: 9tr × 6 + 8% = 58.320.000 đ). */
@@ -171,6 +231,7 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
       end: contractEnd(start, cycles),
       value,
       vatRate: VAT_RATE * 100,
+      issuesVat: true,
       paid: totalPaid(payments),
       payments,
       status: comTamTai ? 'Hiệu lực' : project.state === 'stopped' && settled ? 'Kết thúc' : 'Hiệu lực',
@@ -194,6 +255,7 @@ export function seedContracts(projects: Project[], packages: ServicePackage[] = 
         start: due,
         end: contractEnd(due, 1),
         value: 1080000,
+        issuesVat: true,
         paid: due < addDaysIso(TODAY, -45) ? 1080000 : 0,
         payments: [{ installment: 1, percent: 100, amount: 1080000, paid: due < addDaysIso(TODAY, -45) ? 1080000 : 0, paidAt: due < addDaysIso(TODAY, -45) ? due : undefined, due, evidence: due < addDaysIso(TODAY, -45) ? 'UNC-PL-' + String(index + 1).padStart(3, '0') : '', invoiced: due < addDaysIso(TODAY, -45) }],
         status: 'Hiệu lực',

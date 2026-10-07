@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { contractTone, coversProject, overdueText, paymentMetrics, paymentSchedule, paymentState, splitAmounts, syncProjectContract, totalPaid } from '../../data/contracts'
+import { cashReceived, collectibleValue, collectionPayments, contractTerm, contractTone, coversProject, overdueText, paymentMetrics, paymentSchedule, paymentState, primaryContract, splitAmounts, syncProjectContract, totalPaid } from '../../data/contracts'
 import { runningCycle } from '../../lib/sop'
-import { contractEnd, diffDays, money, shortDate, TODAY } from '../../lib/format'
+import { addDaysIso, contractEnd, diffDays, displayToInput, money, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
 import { update, useData } from '../../store/store'
 import type { Contract, ContractStatus, Payment } from '../../store/types'
 import { field } from '../../lib/form'
 import { Modal, Req } from '../../ui/Modal'
 import { MoneyInput } from '../../ui/MoneyInput'
+import { canEditProject, inScope } from '../../lib/scope'
+import { SettlementModal } from './SettlementModal'
 
 interface PlanRow {
   key: number
@@ -23,13 +25,21 @@ let rowKey = 0
 /** Create or edit a contract. `preferredProjectId` comes from the project's Cổng khởi động. */
 /** `appendix` opens a new Phụ lục (e.g. to change the package) for `preferredProjectId`. */
 export function ContractFormModal({ contractId, preferredProjectId, appendix = false }: { contractId?: string; preferredProjectId?: string; appendix?: boolean }) {
-  const { closeModal, toast } = useApp()
-  const { projects, contracts, packages, params } = useData()
+  const { closeModal, toast, role, account } = useApp()
+  const { projects: allProjects, contracts, packages, params, paymentAccounts } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
   const row = contracts.find((item) => item.id === contractId)
   const [vat, setVat] = useState<number>(row?.vatRate ?? params.vatRate)
+  const [issuesVat, setIssuesVat] = useState(row?.issuesVat !== false)
+  const [paymentAccountId, setPaymentAccountId] = useState(row?.paymentAccountId ?? '')
+  const selectedAccount = paymentAccounts.find((item) => item.id === paymentAccountId)
   const [projectId, setProjectId] = useState(preferredProjectId ?? row?.projectId ?? projects[0]?.id ?? '')
   const project = projects.find((item) => item.id === projectId)
   const [type, setType] = useState<Contract['type']>(row ? row.type : appendix ? 'Phụ lục' : 'Hợp đồng chính')
+  const parent = contracts.find((item) => item.id === row?.parentContractId) ?? (project ? primaryContract(contracts, project.id) : undefined)
+  const [kind, setKind] = useState<NonNullable<Contract['kind']>>(row?.kind ?? (appendix ? parent?.kind : undefined) ?? 'Dịch vụ')
+  const framework = kind === 'Nguyên tắc' && type === 'Hợp đồng chính'
+  const [extensionMonths, setExtensionMonths] = useState(row?.extensionMonths ?? 0)
   const [extraIds, setExtraIds] = useState<string[]>(row?.extraProjectIds ?? [])
   const siblings = projects.filter((item) => project && item.customerId === project.customerId && item.id !== project.id && item.state !== 'stopped')
   const running = project ? runningCycle(project) : undefined
@@ -40,11 +50,11 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
   const [cycles, setCycles] = useState<number>(row ? row.cycles : 1)
   // Suggested value: monthly price of every package in the contract × cycles + VAT.
   const monthly = [project, ...projects.filter((item) => extraIds.includes(item.id))].reduce((sum, item) => sum + (item?.servicePrice ?? 0), 0)
-  const suggested = Math.round(monthly * (once ? 1 : cycles) * (1 + vat / 100))
-  const [value, setValue] = useState<number>(row ? row.value : suggested)
+  const suggested = Math.round(monthly * (once || framework ? 1 : cycles) * (1 + vat / 100))
+  const [value, setValue] = useState<number>(row ? framework ? row.monthlyValue ?? row.value : row.value : suggested)
   const [start, setStart] = useState(row ? row.start : TODAY)
   // New contracts get the schedule the company writes for that length; editing it by hand stops the auto-fill.
-  const fromTemplate = (length: number, from: string) => paymentSchedule(once ? 1 : length, from, once).map((item) => ({ key: rowKey++, ...item }))
+  const fromTemplate = (length: number, from: string) => (framework ? [{ percent: 100, due: from }] : paymentSchedule(once ? 1 : length, from, once)).map((item) => ({ key: rowKey++, ...item }))
   const [plan, setPlan] = useState<PlanRow[]>(() =>
     row?.payments.length ? row.payments.map((payment) => ({ key: rowKey++, percent: payment.percent, due: payment.due, onDemo: payment.onDemo })) : fromTemplate(cycles, start),
   )
@@ -63,13 +73,26 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
     setStart(from)
     if (!planTouched) setPlan(fromTemplate(length, from))
     // A new contract's value follows packages × cycles + VAT until typed by hand.
-    if (!valueTouched) setValue(Math.round(monthly * (once ? 1 : length) * (1 + vat / 100)))
+    if (!valueTouched) setValue(Math.round(monthly * (once || framework ? 1 : length) * (1 + vat / 100)))
   }
 
   const save = (form: HTMLFormElement) => {
     const target = projects.find((item) => item.id === field(form, 'project'))
     if (!target) return
-    if (!(value > 0) || !complete || total !== 100) { toast('Kiểm tra lịch thanh toán: đủ hạn và tổng tỷ lệ phải là 100%.'); return }
+    if (!canEditProject(role, account, target)) { toast('Bạn không có quyền sửa hợp đồng dự án này.'); return }
+    if (row?.settlement) { toast('Hợp đồng đang quyết toán; không sửa giá trị hoặc lịch thanh toán.'); return }
+    if (row?.status === 'Hiệu lực' && field(form, 'status') === 'Kết thúc') { toast('Dùng Dừng dự án để ghi ngày dừng, lý do và gửi Kế toán quyết toán.'); return }
+    if (framework && once) { toast('Hợp đồng nguyên tắc dùng cho dịch vụ thu theo chu kỳ.'); return }
+    if (framework && extraIds.length) { toast('Nguyên tắc thu theo chu kỳ từng dự án. Lập hợp đồng riêng cho dự án khác.'); return }
+    if (type === 'Phụ lục' && (!parent || parent.status !== 'Hiệu lực' || parent.settlement)) { toast('Chọn hợp đồng gốc đang hiệu lực trước khi lập phụ lục.'); return }
+    if (type === 'Phụ lục' && extensionMonths && parent?.kind === 'Nguyên tắc') { toast('Hợp đồng nguyên tắc không cần gia hạn hàng tháng.'); return }
+    if (type === 'Phụ lục' && extensionMonths && field(form, 'start') < addDaysIso(displayToInput(contractTerm(parent!, contracts).end), 1) && !row) { toast('Ngày bắt đầu gia hạn phải sau hạn hiện tại.'); return }
+    const receivingAccount = paymentAccounts.find((item) => item.id === paymentAccountId)
+    if (paymentAccountId && (!receivingAccount || (!receivingAccount.active && paymentAccountId !== row?.paymentAccountId))) {
+      toast('Chọn tài khoản nhận thanh toán đang sử dụng.'); return
+    }
+    if (!(value > 0) || (!framework && (!complete || total !== 100))) { toast('Kiểm tra lịch thanh toán: đủ hạn và tổng tỷ lệ phải là 100%.'); return }
+    if (!framework && row && (row.payments.some((payment, index) => payment.paid > (amounts[index] ?? 0) || payment.invoiced && amounts[index] !== payment.amount) || plan.length < row.payments.length && row.payments.slice(plan.length).some((payment) => payment.paid > 0 || payment.invoiced))) { toast('Không giảm hoặc bỏ đợt đã thu / xuất hóa đơn. Dùng phụ lục hoặc quyết toán để giữ chứng từ gốc.'); return }
     update((draft) => {
       const existing = row && draft.contracts.find((item) => item.id === row.id)
       const current: Contract = existing ?? {
@@ -78,7 +101,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
       }
       const previousProjectId = current.projectId
       // Keep money already collected on each installment when the schedule is edited.
-      const payments: Payment[] = plan.map((item, index) => {
+      const payments: Payment[] = framework ? (existing ? current.payments : [{ installment: 1, percent: 100, amount: value, due: start, paid: 0 }]) : plan.map((item, index) => {
         const amount = amounts[index]
         const before = current.payments[index]
         return { installment: index + 1, percent: item.percent, amount, due: item.due, paid: Math.min(before?.paid ?? 0, amount), paidAt: before?.paidAt, evidence: before?.evidence, driveLink: before?.driveLink, onDemo: item.onDemo, invoiced: before?.invoiced }
@@ -88,13 +111,20 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         customer: target.customer,
         project: target.customer,
         type: field(form, 'type') as Contract['type'],
+        kind: type === 'Phụ lục' ? parent?.kind ?? 'Dịch vụ' : kind,
+        firstCycle: existing?.firstCycle ?? (type === 'Hợp đồng chính' ? (target.cycles.at(-1)?.no ?? 0) + 1 : 1),
+        monthlyValue: framework ? value : undefined,
+        parentContractId: type === 'Phụ lục' ? parent?.id : undefined,
+        extensionMonths: type === 'Phụ lục' ? extensionMonths : undefined,
         isPrimary: field(form, 'type') === 'Hợp đồng chính',
         code: field(form, 'code').toUpperCase(),
         cycles: once ? 1 : cycles,
         start: field(form, 'start'),
-        end: contractEnd(field(form, 'start'), once ? 1 : cycles),
-        value,
+        end: framework ? '' : contractEnd(field(form, 'start'), extensionMonths || (once ? 1 : cycles)),
+        value: framework ? payments.reduce((sum, payment) => sum + payment.amount, 0) : value,
         vatRate: vat,
+        issuesVat,
+        paymentAccountId: paymentAccountId || undefined,
         payments,
         paid: totalPaid(payments),
         status: field(form, 'status') as ContractStatus,
@@ -155,7 +185,17 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           <select value={type} disabled={Boolean(row)} onChange={(event) => setType(event.target.value as Contract['type'])}><option>Hợp đồng chính</option><option>Phụ lục</option></select>
           <input type="hidden" name="type" value={type} />
         </label>
-        {type === 'Hợp đồng chính' && siblings.length > 0 && (
+        {type === 'Hợp đồng chính' && <label className="field">Loại hợp đồng<Req />
+          <select value={kind} disabled={Boolean(row)} onChange={(event) => {
+            const next = event.target.value as NonNullable<Contract['kind']>
+            setKind(next); setCycles(1); setPlanTouched(false); setValueTouched(false)
+            if (next === 'Nguyên tắc') setExtraIds([])
+            setValue(Math.round((next === 'Nguyên tắc' ? project?.servicePrice ?? 0 : monthly) * (1 + vat / 100)))
+            setPlan((next === 'Nguyên tắc' ? [{ percent: 100, due: start }] : paymentSchedule(1, start, once)).map((item) => ({ key: rowKey++, ...item })))
+          }}><option>Dịch vụ</option>{!once && <option>Nguyên tắc</option>}</select>
+          {framework && <small className="field-hint">Ký một lần. Mỗi chu kỳ mở mới phát sinh một khoản thu; không cần tái ký hàng tháng. Theo T0 triển khai; mỗi dự án dùng hợp đồng riêng để thu và quyết toán theo chu kỳ của mình.</small>}
+        </label>}
+        {type === 'Hợp đồng chính' && !framework && siblings.length > 0 && (
           <fieldset className="field">
             <legend>Gói khác ký chung hợp đồng này</legend>
             {siblings.map((item) => (
@@ -173,7 +213,13 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         )}
         {type === 'Phụ lục' && (
           <fieldset className="field">
-            <legend>Đổi gói dịch vụ (tuỳ chọn)</legend>
+            <legend>Hợp đồng gốc: {parent?.code ?? 'Chưa có'}</legend>
+            {parent?.kind !== 'Nguyên tắc' && <label className="field">Gia hạn thời gian
+              <select value={extensionMonths} onChange={(event) => {
+                const months = Number(event.target.value); setExtensionMonths(months)
+                if (months && parent) changeTerm(months, addDaysIso(displayToInput(contractTerm(parent, contracts).end), 1))
+              }}><option value="0">Không gia hạn</option><option value="1">1 tháng</option><option value="3">3 tháng</option><option value="6">6 tháng</option></select>
+            </label>}
             <label className="field">Gói mới
               <select value={newPackage} onChange={(event) => setNewPackage(event.target.value)}>
                 <option value="">Không đổi gói</option>
@@ -192,20 +238,32 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           </fieldset>
         )}
         <label className="field">Mã hợp đồng<Req /><input name="code" required defaultValue={row ? row.code : fromOnboarding ? 'HĐ-2026-' + (project?.code ?? '').slice(-3) : 'HĐ-2026-'} /></label>
-        <label className="field">Số chu kỳ theo hợp đồng<Req /><input name="cycles" type="number" min="1" required value={once ? 1 : cycles} disabled={once} onChange={(event) => changeTerm(Math.max(1, Number(event.target.value) || 1), start)} />{once && <small className="field-hint">Gói trả một lần: 1 lần bàn giao.</small>}</label>
+        {!framework && <label className="field">Thời hạn triển khai<Req /><select value={once ? 1 : cycles} disabled={once || Boolean(extensionMonths)} onChange={(event) => changeTerm(Number(event.target.value), start)}>{![1, 3, 6].includes(cycles) && <option value={cycles}>{cycles} tháng (dữ liệu cũ)</option>}<option value="1">1 tháng</option><option value="3">3 tháng</option><option value="6">6 tháng</option></select>{once && <small className="field-hint">Gói trả một lần: 1 lần bàn giao.</small>}</label>}
         <label className="field">Ngày ký / bắt đầu<Req /><input name="start" type="date" required value={start} onChange={(event) => changeTerm(cycles, event.target.value)} /></label>
+        <label className="field">Xuất VAT<Req />
+          <select value={issuesVat ? 'yes' : 'no'} onChange={(event) => setIssuesVat(event.target.value === 'yes')}><option value="yes">Có</option><option value="no">Không</option></select>
+          <small className="field-hint">Theo dõi yêu cầu xuất hóa đơn; không thay đổi cách tính giá trị hợp đồng.</small>
+        </label>
+        <label className="field">Tài khoản nhận thanh toán
+          <select value={paymentAccountId} onChange={(event) => setPaymentAccountId(event.target.value)}>
+            <option value="">Chưa chọn</option>
+            {selectedAccount && !selectedAccount.active && <option value={selectedAccount.id}>{selectedAccount.bank} · {selectedAccount.accountNumber} · {selectedAccount.accountHolder} (Ngừng dùng)</option>}
+            {paymentAccounts.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.bank} · {item.accountNumber} · {item.accountHolder}</option>)}
+          </select>
+          {!paymentAccounts.some((item) => item.active) && <small className="field-hint">Chưa có tài khoản đang dùng. Kế toán hoặc Administrator cấu hình tại Hợp đồng &amp; công nợ.</small>}
+        </label>
         <label className="field">VAT<Req />
           <span className="percent-input"><input type="number" min="0" max="20" step="1" required value={vat} onChange={(event) => {
             const next = Math.max(0, Number(event.target.value) || 0)
             setVat(next)
-            if (!valueTouched) setValue(Math.round(monthly * (once ? 1 : cycles) * (1 + next / 100)))
+            if (!valueTouched) setValue(Math.round(monthly * (once || framework ? 1 : cycles) * (1 + next / 100)))
           }} /><em>%</em></span>
         </label>
-        <label className="field">Giá trị hợp đồng (gồm VAT)<Req />
+        <label className="field">{framework ? 'Giá trị mỗi chu kỳ (gồm VAT)' : 'Giá trị hợp đồng (gồm VAT)'}<Req />
           <MoneyInput value={value} onChange={(next) => { setValueTouched(true); setValue(next) }} required ariaLabel="Giá trị hợp đồng" />
           {monthly > 0 && suggested !== value && (
             <small className="field-hint">
-              Theo gói: {money(monthly)} × {cycles} chu kỳ + VAT {vat}% = {money(suggested)}{' '}
+              Theo gói: {money(monthly)} × {framework ? 1 : cycles} chu kỳ + VAT {vat}% = {money(suggested)}{' '}
               <button type="button" className="text-btn" onClick={() => setValue(suggested)}>Dùng số này</button>
             </small>
           )}
@@ -216,7 +274,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
         <label className="field">Link file HĐ đã ký trên Drive <small>(không bắt buộc)</small><input name="evidence" type="url" placeholder="https://drive.google.com/..." defaultValue={row?.evidence} /></label>
         <label className="field">Folder hợp đồng trên Drive <small>(không bắt buộc)</small><input name="folderUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." defaultValue={row?.folderUrl} /></label>
 
-        <section className="onboarding-payment-plan">
+        {!framework && <section className="onboarding-payment-plan">
           <div className="onboarding-payment-plan-head">
             <div>
               <b>Lịch thanh toán</b>
@@ -255,7 +313,7 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
           <button className="secondary onboarding-add-payment" type="button" onClick={() => setPlan((current) => [...current, { key: rowKey++, percent: 0, due: '' }])}>
             <Icon name="plus" /> Thêm đợt thanh toán
           </button>
-        </section>
+        </section>}
 
         <div className="form-actions">
           <button className="secondary" type="button" onClick={closeModal}>Hủy</button>
@@ -271,24 +329,27 @@ export function ContractFormModal({ contractId, preferredProjectId, appendix = f
  * under it), and the form to record money actually received.
  */
 export function ContractDetailModal({ contractId }: { contractId: string }) {
-  const { toast, showModal, role } = useApp()
+  const { toast, showModal, role, account } = useApp()
   const canRecord = role === 'accountant'
-  const { contracts, projects } = useData()
-  const row = contracts.find((item) => item.id === contractId)
-  const unpaid = row ? row.payments.filter((payment) => payment.paid < payment.amount) : []
+  const { contracts, projects, paymentAccounts } = useData()
+  const row = contracts.find((item) => item.id === contractId && projects.some((project) => project.id === item.projectId && inScope(role, account, project)))
+  const unpaid = row && !row.settlement ? collectionPayments(row).filter((payment) => payment.paid < payment.amount) : []
   const [installment, setInstallment] = useState(String(unpaid[0]?.installment ?? ''))
   if (!row) return null
+  const paymentAccount = paymentAccounts.find((item) => item.id === row.paymentAccountId)
   const metrics = paymentMetrics(row)
+  const term = contractTerm(row, contracts)
   const paidPct = row.value ? Math.min(100, Math.round((row.paid / row.value) * 100)) : 0
   const selected = row.payments.find((payment) => String(payment.installment) === installment)
   const left = selected ? Math.max(0, selected.amount - selected.paid) : 0
   const project = projects.find((item) => item.id === row.projectId)
   const cycle = project ? project.cycles.length : 0
-  const appendices = row.isPrimary ? contracts.filter((item) => !item.isPrimary && item.projectId === row.projectId && item.status !== 'Đã hủy') : []
+  const appendices = row.type === 'Hợp đồng chính' ? contracts.filter((item) => item.type === 'Phụ lục' && (item.parentContractId ? item.parentContractId === row.id : item.projectId === row.projectId && row.isPrimary) && item.status !== 'Đã hủy') : []
 
   const toggleInvoice = (installment: number) =>
     update((draft) => {
       const contract = draft.contracts.find((item) => item.id === contractId)
+      if (!canRecord || contract?.issuesVat === false) return
       const target = contract?.payments.find((entry) => entry.installment === installment)
       if (!contract || !target) return
       target.invoiced = !target.invoiced
@@ -296,8 +357,10 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
     })
 
   const record = (form: HTMLFormElement) => {
+    if (!canRecord) return
     const amount = Number(field(form, 'payment') || 0)
-    if (!selected || !amount || amount > left) { toast('Kiểm tra số tiền thực thu của đợt đã chọn.'); return }
+    if (!selected || !Number.isFinite(amount) || amount <= 0 || amount > left) { toast('Kiểm tra số tiền thực thu của đợt đã chọn.'); return }
+    if (!field(form, 'paidAt') || field(form, 'paidAt') > TODAY) { toast('Cần ngày thu hợp lệ.'); return }
     const evidence = field(form, 'paymentEvidence')
     if (!evidence) { toast('Cần mã chứng từ trước khi ghi nhận.'); return }
     update((draft) => {
@@ -313,6 +376,7 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
       // A signed contract becomes effective with its first payment.
       if (contract.status === 'Nháp' && target.installment === 1) {
         contract.status = 'Hiệu lực'
+        if (contract.isPrimary) draft.contracts.forEach((item) => { if (item.id !== contract.id && item.isPrimary && coversProject(item, contract.projectId)) item.isPrimary = false })
         contract.activity.unshift('Hiệu lực từ khi thu đợt 1')
       }
       // Money on the first installment is the deposit: it clears the "Xác nhận cọc" launch gate.
@@ -330,19 +394,38 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
       <div className="form">
         <div className="cd-head">
           <span className={'pill ' + contractTone(row.status)}>{row.status}</span>
-          <span>{row.isPrimary ? 'Hợp đồng chính' : row.type} · {row.customer}</span>
+          <span>{row.type} · {row.kind ?? 'Dịch vụ'} · {row.customer}</span>
         </div>
         <dl className="cd-facts">
-          <div><dt>Thời hạn</dt><dd>{shortDate(row.start)} – {row.end}</dd></div>
-          <div><dt>Chu kỳ</dt><dd>{row.isPrimary ? cycle + ' / ' + row.cycles : row.cycles}</dd></div>
+          <div><dt>Thời hạn</dt><dd>{shortDate(row.start)} – {row.kind === 'Nguyên tắc' && row.isPrimary ? 'Theo thời gian hợp tác; không tái ký hàng tháng' : term.end}</dd></div>
+          <div><dt>Chu kỳ</dt><dd>{row.isPrimary ? Math.max(0, cycle - (row.firstCycle ?? 1) + 1) + ' / ' + (row.kind === 'Nguyên tắc' ? 'Tiếp tục theo chu kỳ' : term.cycles) : row.cycles}</dd></div>
+          {row.kind === 'Nguyên tắc' && row.isPrimary && <div><dt>Giá trị mỗi chu kỳ</dt><dd>{money(row.monthlyValue)} · thu từ ngày mở chu kỳ</dd></div>}
+          {row.parentContractId && <div><dt>Hợp đồng gốc</dt><dd>{contracts.find((item) => item.id === row.parentContractId)?.code ?? '—'}{row.extensionMonths ? ' · Gia hạn ' + row.extensionMonths + ' tháng' : ''}</dd></div>}
           <div><dt>Gói</dt><dd>{row.service || '—'}{row.vatRate !== undefined ? ' · VAT ' + row.vatRate + '%' : ''}</dd></div>
+          <div><dt>Xuất VAT</dt><dd>{row.issuesVat === false ? 'Không' : 'Có'}</dd></div>
+          <div><dt>Tài khoản nhận thanh toán</dt><dd>{paymentAccount ? <>{paymentAccount.bank} · {paymentAccount.accountNumber}<br />{paymentAccount.accountHolder}{!paymentAccount.active && <small> · Ngừng dùng</small>}</> : row.paymentAccountId ? 'Tài khoản không còn trong danh mục' : 'Chưa chọn'}</dd></div>
         </dl>
+        {row.settlement && <section className="customer-data-rules">
+          <b>Dừng ngày {shortDate(row.settlement.stoppedAt)} · {row.settlement.reason}</b>
+          <p>{row.settlement.status === 'pending' ? 'Chờ Kế toán xác nhận quyết toán. Lịch thu gốc giữ để đối chiếu; việc nhắc thu chưa thanh toán được tạm dừng.' : 'Đã quyết toán ' + money(collectibleValue(row)) + ' · Thực thu sau hoàn ' + money(cashReceived(row)) + ' · ' + (metrics.refund ? 'Cần hoàn ' + money(metrics.refund) : 'Cần thu ' + money(metrics.remaining))}</p>
+          {canRecord && (row.settlement.status === 'pending' || metrics.remaining > 0 || metrics.refund > 0) && <button type="button" className="secondary" onClick={() => showModal(<SettlementModal contractId={row.id} />)}>{row.settlement.status === 'pending' ? 'Xác nhận quyết toán' : 'Thu / hoàn quyết toán'}</button>}
+          {row.settlement.evidence && <p>Thỏa thuận: {row.settlement.evidence}</p>}
+          {row.settlement.transactions.map((entry, index) => <p key={index}>{entry.kind === 'refund' ? 'Hoàn' : 'Thu'} {money(entry.amount)} · {shortDate(entry.date)} · {entry.evidence}
+            {entry.kind === 'receipt' && row.issuesVat !== false && (canRecord ? <label className="pay-invoice"><input type="checkbox" checked={Boolean(entry.invoiced)} onChange={() => update((draft) => {
+              const contract = draft.contracts.find((item) => item.id === row.id)
+              const transaction = contract?.settlement?.transactions[index]
+              if (transaction && contract?.issuesVat !== false) { transaction.invoiced = !transaction.invoiced; contract?.activity.unshift('Cập nhật hóa đơn thu quyết toán · ' + entry.evidence) }
+            })} /> Đã xuất hóa đơn</label> : <small>{entry.invoiced ? ' · Đã xuất hóa đơn' : ' · Chưa xuất hóa đơn'}</small>)}
+            {row.issuesVat === false && entry.invoiced && <small> · Đã xuất hóa đơn (lịch sử)</small>}
+          </p>)}
+        </section>}
 
         <div className="contract-money">
           <span className="pace-bar" aria-hidden="true"><i className={metrics.overdue ? 'behind' : 'ahead'} style={{ width: paidPct + '%' }} /></span>
           <small>Đã thu <b>{money(row.paid)}</b> / {money(row.value)}{metrics.overdue ? <> · <b className="is-late">quá hạn {money(metrics.overdue)}</b></> : metrics.remaining ? ' · còn ' + money(metrics.remaining) : ''}</small>
         </div>
 
+        {row.settlement && <h3>Lịch thanh toán gốc · giữ để đối chiếu</h3>}
         <ol className="pay-list">
           {row.payments.map((payment) => {
             const paid = payment.paid >= payment.amount
@@ -353,9 +436,10 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
                 <b>Đợt {payment.installment} · {payment.percent}% · {money(payment.amount)}</b>
                 <span className="pay-when">
                   {paid && payment.paidAt ? 'Thu ' + shortDate(payment.paidAt) : (payment.onDemo && payment.due > TODAY ? 'Khi gửi demo · dự kiến ' : 'Hạn ') + shortDate(payment.due) + (late ? ' · ' + overdueText(diffDays(payment.due, TODAY)) : '')}
-                  {paid && (canRecord
+                  {paid && row.issuesVat !== false && (canRecord
                     ? <label className="pay-invoice"><input type="checkbox" checked={Boolean(payment.invoiced)} onChange={() => toggleInvoice(payment.installment)} /> Đã xuất hóa đơn</label>
                     : <small className="pay-evidence">{payment.invoiced ? 'Đã xuất hóa đơn' : 'Chưa xuất hóa đơn'}</small>)}
+                  {row.issuesVat === false && payment.invoiced && <small className="pay-evidence">Đã xuất hóa đơn (lịch sử)</small>}
                   {!paid && payment.paid > 0 && ' · đã thu ' + money(payment.paid)}
                   {payment.evidence && <small className="pay-evidence">{payment.evidence}{payment.driveLink && <> · <a href={payment.driveLink} target="_blank" rel="noreferrer">chứng từ</a></>}</small>}
                 </span>
@@ -389,7 +473,7 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
               <label className="field">Số tiền thực thu<Req /><MoneyInput key={installment} name="payment" defaultValue={left} max={left} required ariaLabel="Số tiền thực thu" /></label>
             </div>
             <div className="form-grid">
-              <label className="field">Ngày thu<input name="paidAt" type="date" defaultValue={TODAY} max={TODAY} /></label>
+              <label className="field">Ngày thu<Req /><input name="paidAt" type="date" required defaultValue={TODAY} max={TODAY} /></label>
               <label className="field">Mã chứng từ<Req /><input name="paymentEvidence" required placeholder="UNC-0926-018" autoComplete="off" /></label>
             </div>
             <label className="field">Link chứng từ <small>(không bắt buộc)</small><input name="paymentDrive" type="url" placeholder="https://drive.google.com/..." /></label>
@@ -397,7 +481,7 @@ export function ContractDetailModal({ contractId }: { contractId: string }) {
         )}
 
         <div className="form-actions">
-          <button className="secondary" type="button" onClick={() => showModal(<ContractFormModal contractId={row.id} />)}>Sửa hợp đồng</button>
+          {!row.settlement && project && canEditProject(role, account, project) && <button className="secondary" type="button" onClick={() => showModal(<ContractFormModal contractId={row.id} />)}>Sửa hợp đồng</button>}
           {unpaid.length > 0 && canRecord && <button className="primary">Ghi nhận thu</button>}
         </div>
       </div>

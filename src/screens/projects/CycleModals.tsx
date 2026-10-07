@@ -3,7 +3,7 @@ import { useApp } from '../../app/context'
 import { inputToDisplay, newId, TODAY } from '../../lib/format'
 import { field } from '../../lib/form'
 import { allShootings, mediaClashes } from '../../data/shootings'
-import { inScope } from '../../lib/scope'
+import { canEditProject, inScope } from '../../lib/scope'
 import { runningCycle } from '../../lib/sop'
 import { useData } from '../../store/store'
 import type { Cycle, PlanStatus, Project, Shooting } from '../../store/types'
@@ -35,6 +35,7 @@ export function PlanModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Content Plan"
+      projectId={project.id}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.plan.status = status
@@ -92,6 +93,7 @@ export function ShootingModal({ project, shooting }: { project?: Project; shooti
     <Modal
       title={shooting ? 'Buổi shoot' : 'Tạo lịch shooting'}
       onSubmit={(form) => {
+        if (!canEditProject(role, account, target)) return toast('Bạn không có quyền sửa lịch của dự án này.')
         const status = field(form, 'status') as Shooting['status']
         if (status !== 'Chờ xác nhận' && !date) return toast('Cần ngày shoot khi đã xác nhận hoặc đã quay.')
         const next: Shooting = {
@@ -162,6 +164,7 @@ export function DemoModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Post Demo"
+      projectId={project.id}
       onSubmit={(form) => {
         saveCycle(project, (cycle) => {
           cycle.demo = {

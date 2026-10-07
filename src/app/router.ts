@@ -18,6 +18,7 @@ export const PATHS: Record<ScreenId, string> = {
   shootings: '/shootings',
   tasks: '/tasks',
   partners: '/partners',
+  creativeWorkload: '/creative-workload',
   partnerWork: '/my-work',
   partnerProject: '/my-projects',
   partnerSchedule: '/my-schedule',

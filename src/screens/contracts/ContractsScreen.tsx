@@ -1,5 +1,5 @@
 import { useApp } from '../../app/context'
-import { contractTone, overdueText, paymentMetrics, paymentState } from '../../data/contracts'
+import { cashReceived, collectibleValue, collectionPayments, contractTerm, contractTone, overdueText, paymentMetrics, paymentState } from '../../data/contracts'
 import { addDaysIso, diffDays, includesText, shortDate, TODAY } from '../../lib/format'
 import { usePagedList } from '../../lib/usePagedList'
 import { Icon } from '../../lib/icons'
@@ -11,6 +11,7 @@ import { InfoModal } from '../../ui/Modal'
 import { shortMoney } from '../customers/customerLogic'
 import { addProjectActivity, updateProject } from '../projects/projectLogic'
 import { ContractDetailModal, ContractFormModal } from './ContractModals'
+import { PaymentAccountsModal } from './PaymentAccountsModal'
 
 type Collection = '' | 'overdue' | 'soon' | 'settled'
 
@@ -29,9 +30,10 @@ const RULES =
 
 const unpaid = (payment: Payment) => payment.paid < payment.amount
 /** The installment to act on: the oldest overdue one, else the next due within 30 days. */
-function actionable(rows: Contract[]): Payment | undefined {
+function actionable(rows: Contract[]): (Payment & { contractId: string }) | undefined {
   return rows
-    .flatMap((row) => row.payments)
+    .filter((row) => row.status !== 'Nháp' && row.settlement?.status !== 'pending')
+    .flatMap((row) => collectionPayments(row).map((payment) => ({ ...payment, contractId: row.id })))
     .filter((payment) => unpaid(payment) && payment.due <= SOON)
     .sort((a, b) => a.due.localeCompare(b.due))[0]
 }
@@ -39,8 +41,8 @@ function actionable(rows: Contract[]): Payment | undefined {
 function matches(group: Contract[], collection: Collection): boolean {
   const metrics = group.map(paymentMetrics)
   if (collection === 'overdue') return metrics.some((item) => item.overdue > 0)
-  if (collection === 'soon') return group.some((row) => row.payments.some((payment) => unpaid(payment) && payment.due >= TODAY && payment.due <= SOON))
-  if (collection === 'settled') return metrics.every((item) => item.remaining === 0)
+  if (collection === 'soon') return group.some((row) => collectionPayments(row).some((payment) => unpaid(payment) && payment.due >= TODAY && payment.due <= SOON))
+  if (collection === 'settled') return group.every((row) => row.settlement?.status !== 'pending') && metrics.every((item) => item.remaining === 0 && item.refund === 0)
   return true
 }
 
@@ -56,10 +58,10 @@ export function ContractsScreen() {
   // Account sees the contracts of the projects they run; BODs and Admin see all.
   const visible = contracts.filter((row) => {
     const project = projects.find((item) => item.id === row.projectId)
-    return !project || inScope(role, account, project)
+    return Boolean(project && inScope(role, account, project))
   })
-  const active = visible.filter((row) => row.status === 'Hiệu lực')
-  const payments = active.flatMap((row) => row.payments)
+  const active = visible.filter((row) => row.status === 'Hiệu lực' || row.status === 'Kết thúc')
+  const payments = active.flatMap(collectionPayments)
   const month = TODAY.slice(0, 7)
   const sum = (list: Payment[], pick: (payment: Payment) => number) => list.reduce((total, payment) => total + pick(payment), 0)
   const overdue = payments.filter((payment) => unpaid(payment) && payment.due < TODAY)
@@ -67,14 +69,14 @@ export function ContractsScreen() {
   const summary = {
     overdue: sum(overdue, (payment) => payment.amount - payment.paid),
     soon: sum(soon, (payment) => payment.amount - payment.paid),
-    collected: sum(payments.filter((payment) => payment.paidAt?.startsWith(month)), (payment) => payment.paid),
+    collected: active.reduce((total, row) => total + sum(row.payments.filter((payment) => payment.paidAt?.startsWith(month)), (payment) => payment.paid) + (row.settlement?.transactions ?? []).filter((entry) => entry.date.startsWith(month)).reduce((sum, entry) => sum + (entry.kind === 'receipt' ? entry.amount : -entry.amount), 0), 0),
     remaining: active.reduce((total, row) => total + paymentMetrics(row).remaining, 0),
   }
 
   // One row per primary contract; its appendices ride along (money and due dates included).
   const groups = visible
-    .filter((row) => row.isPrimary || !visible.some((main) => main.isPrimary && main.projectId === row.projectId))
-    .map((main) => ({ main, appendices: visible.filter((row) => !row.isPrimary && row !== main && row.projectId === main.projectId) }))
+    .filter((row) => row.type !== 'Phụ lục' || !visible.some((main) => main.type !== 'Phụ lục' && (row.parentContractId ? row.parentContractId === main.id : main.projectId === row.projectId)))
+    .map((main) => ({ main, appendices: visible.filter((row) => row.type === 'Phụ lục' && row !== main && (row.parentContractId ? row.parentContractId === main.id : row.projectId === main.projectId && main.isPrimary)) }))
   const list = groups
     .filter(({ main, appendices }) =>
       (!filters.status || main.status === filters.status) &&
@@ -104,14 +106,17 @@ export function ContractsScreen() {
               <button className="project-help" aria-label="Quy tắc hợp đồng" onClick={() => showModal(<InfoModal title="Quy tắc hợp đồng & công nợ" message={RULES} contract />)}>?</button>
             </div>
           </div>
-          {role !== 'accountant' && <button className="primary" onClick={() => showModal(<ContractFormModal />)}><Icon name="file-plus-2" /> Tạo hợp đồng</button>}
+          <div className="contracts-head-actions">
+            <button className="secondary" onClick={() => showModal(<PaymentAccountsModal />)}>Tài khoản nhận thanh toán</button>
+            {role !== 'accountant' && <button className="primary" onClick={() => showModal(<ContractFormModal />)}><Icon name="file-plus-2" /> Tạo hợp đồng</button>}
+          </div>
         </div>
 
         <section className="contract-kpis">
           {card('overdue', 'Quá hạn', summary.overdue, overdue.length ? overdue.length + ' đợt cần nhắc thu' : 'Không có đợt quá hạn', summary.overdue ? 'attention' : '')}
           {card('soon', 'Sắp thu · 30 ngày', summary.soon, soon.length ? soon.length + ' đợt đến hạn' : 'Không có đợt sắp đến hạn')}
           <div className="contract-kpi static"><span>Đã thu tháng {Number(month.slice(5))}</span><b>{shortMoney(summary.collected) || '0'}</b><small>Theo ngày ghi nhận</small></div>
-          <div className="contract-kpi static"><span>Còn phải thu</span><b>{shortMoney(summary.remaining) || '0'}</b><small>{active.length} hợp đồng hiệu lực</small></div>
+          <div className="contract-kpi static"><span>Còn phải thu</span><b>{shortMoney(summary.remaining) || '0'}</b><small>{active.length} hợp đồng theo dõi{active.some((row) => row.settlement?.status === 'pending') && ' · ' + active.filter((row) => row.settlement?.status === 'pending').length + ' chờ quyết toán'}</small></div>
         </section>
 
         <section className="project-list-shell contract-list-shell">
@@ -133,10 +138,10 @@ export function ContractsScreen() {
               <tbody>
                 {rows.map(({ main, appendices }) => {
                   const group = [main, ...appendices]
-                  const value = group.reduce((total, row) => total + row.value, 0)
-                  const paid = group.reduce((total, row) => total + row.paid, 0)
+                  const value = group.reduce((total, row) => total + collectibleValue(row), 0)
+                  const paid = group.reduce((total, row) => total + cashReceived(row), 0)
                   const next = actionable(group)
-                  const owner = next ? group.find((row) => row.payments.includes(next))! : main
+                  const owner = next ? group.find((row) => row.id === next.contractId)! : main
                   const late = next && next.due < TODAY
                   const pct = value ? Math.min(100, Math.round((paid / value) * 100)) : 0
                   return (
@@ -147,7 +152,7 @@ export function ContractsScreen() {
                       </td>
                       <td>
                         <span className="cv-service" title={main.service}>{main.service}</span>
-                        <span className="project-record-meta">{shortDate(main.start)} – {main.end} · {main.cycles} chu kỳ</span>
+                        <span className="project-record-meta">{main.kind ?? 'Dịch vụ'} · {shortDate(main.start)} – {main.kind === 'Nguyên tắc' && main.type !== 'Phụ lục' ? 'Theo chu kỳ' : contractTerm(main, contracts).end}</span>
                       </td>
                       <td>
                         <span className="pace-bar cv-bar" aria-hidden="true"><i className={late ? 'behind' : 'ahead'} style={{ width: pct + '%' }} /></span>
@@ -158,12 +163,12 @@ export function ContractsScreen() {
                           <>
                             <b className={late ? 'is-late' : ''}>{shortMoney(next.amount - next.paid)}</b>
                             <span className={'project-record-meta' + (late ? ' is-late' : '')}>
-                              {owner !== main ? owner.code + ' · ' : ''}Đợt {next.installment} · {late ? overdueText(diffDays(next.due, TODAY)) : next.due === TODAY ? 'hôm nay' : (next.onDemo ? 'khi gửi demo · dự kiến ' : 'hạn ') + shortDate(next.due)}
+                              {owner !== main ? owner.code + ' · ' : ''}{next.installment === 0 ? 'Quyết toán' : 'Đợt ' + next.installment} · {late ? overdueText(diffDays(next.due, TODAY)) : next.due === TODAY ? 'hôm nay' : (next.onDemo ? 'khi gửi demo · dự kiến ' : 'hạn ') + shortDate(next.due)}
                               {paymentState(next) === 'Thu một phần' ? ' · đã thu một phần' : ''}
                             </span>
                             {late && <button type="button" className="text-btn cv-remind" onClick={(event) => { event.stopPropagation(); remind(owner, next) }}>Nhắc khách</button>}
                           </>
-                        ) : <span className="project-record-meta">{paymentMetrics(main).remaining ? 'Chưa tới hạn' : 'Đã thu đủ'}</span>}
+                        ) : <span className="project-record-meta">{group.some((row) => row.settlement?.status === 'pending') ? 'Chờ Kế toán quyết toán' : group.some((row) => paymentMetrics(row).refund > 0) ? 'Cần hoàn ' + shortMoney(group.reduce((sum, row) => sum + paymentMetrics(row).refund, 0)) : paymentMetrics(main).remaining ? 'Chưa tới hạn' : 'Đã thu đủ'}</span>}
                       </td>
                       <td><span className={'pill ' + contractTone(main.status)}>{main.status}</span></td>
                     </tr>

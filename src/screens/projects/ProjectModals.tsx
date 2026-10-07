@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../../app/context'
 import { packageLabel } from '../../data/catalog'
-import { coversProject, primaryContract } from '../../data/contracts'
+import { canOpenContractCycle, coversProject, primaryContract } from '../../data/contracts'
 import { projectCycle } from '../../data/cycles'
 import { ACCOUNTS, addBusinessDaysIso, formatDate, newId, parseInput, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
@@ -71,6 +71,7 @@ export function CreateProjectModal({ onCreated, customerId }: { onCreated: (id: 
             customer: customer.name,
             owner,
             createdBy: account,
+            members: [...new Set([owner, account])].map((name) => ({ name, role: 'account', access: 'edit' })),
             area: customer.area,
             service: packageLabel(selectedPackage),
             servicePackageId: selectedPackage.id,
@@ -151,11 +152,13 @@ export function EditProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Sửa dự án"
+      projectId={project.id}
       onSubmit={(form) => {
         const service = locked ? undefined : packages.find((item) => item.id === field(form, 'servicePackage'))
         updateProject(project.id, (item) => {
           const changedPackage = Boolean(service && item.servicePackageId !== service.id)
           item.owner = field(form, 'owner')
+          if (item.members && !item.members.some((member) => member.role === 'account' && member.name === item.owner)) item.members.push({ name: item.owner, role: 'account', access: 'edit' })
           if (service && changedPackage) {
             item.servicePackageId = service.id
             item.service = packageLabel(service)
@@ -203,6 +206,7 @@ export function StopProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Dừng dự án"
+      projectId={project.id}
       onSubmit={(form) => {
         const date = field(form, 'effectiveDate')
         const reason = field(form, 'reason')
@@ -225,6 +229,12 @@ export function StopProjectModal({ project }: { project: Project }) {
             const row = draft.contracts.find((entry) => entry.id === contract.id)
             if (!row) return
             row.status = 'Kết thúc'
+            row.settlement ??= { status: 'pending', stoppedAt: date, reason, transactions: [] }
+            for (const appendix of draft.contracts.filter((entry) => entry.type === 'Phụ lục' && entry.status === 'Hiệu lực' && (entry.parentContractId === row.id || (!entry.parentContractId && entry.projectId === row.projectId)))) {
+              appendix.status = 'Kết thúc'
+              appendix.settlement ??= { status: 'pending', stoppedAt: date, reason, transactions: [] }
+              appendix.activity.unshift('Chờ Kế toán quyết toán khi dừng hợp đồng gốc ' + row.code)
+            }
             row.activity.unshift('Kết thúc cùng lúc dừng ' + project.code + ' · ' + formatDate(parseInput(date)))
           })
         }
@@ -233,12 +243,12 @@ export function StopProjectModal({ project }: { project: Project }) {
     >
       <div className="form">
         <label className="field">Lý do dừng<Req /><textarea name="reason" required placeholder="Nêu lý do dừng triển khai" /></label>
-        <label className="field">Ngày hiệu lực<Req /><input name="effectiveDate" type="date" required defaultValue={TODAY} /></label>
+        <label className="field">Ngày hiệu lực<Req /><input name="effectiveDate" type="date" required defaultValue={TODAY} max={TODAY} min={project.cycles.find((entry) => entry.status === 'running')?.start} /></label>
         {contract && contract.status === 'Hiệu lực' && (
           others.length ? (
             <div className="customer-data-rules"><p>{contract.code} còn gồm {others.map((item) => item.code).join(', ')} đang chạy nên giữ Hiệu lực. Đổi phạm vi hợp đồng bằng phụ lục.</p></div>
           ) : (
-            <label className="filter-check"><input name="endContract" type="checkbox" defaultChecked /> Chuyển {contract.code} sang Kết thúc (công nợ còn lại vẫn được theo dõi)</label>
+            <label className="filter-check"><input name="endContract" type="checkbox" defaultChecked /> Kết thúc {contract.code} và gửi Kế toán quyết toán (giữ lịch thu, hóa đơn và chứng từ gốc)</label>
           )
         )}
         <label className="filter-check"><input name="confirmed" type="checkbox" required /> Tôi xác nhận đã kiểm tra ảnh hưởng tới hợp đồng, kế hoạch và công việc.</label>
@@ -253,6 +263,7 @@ export function PauseProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Tạm dừng dự án"
+      projectId={project.id}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         const returnDate = field(form, 'returnDate')
@@ -279,8 +290,11 @@ export function StartProjectModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Bắt đầu triển khai"
+      projectId={project.id}
       onSubmit={(form) => {
         const start = field(form, 'cycleStart')
+        const contracts = getData().contracts
+        if (!canOpenContractCycle(primaryContract(contracts, project.id), project, start, contracts)) { toast('Ngày bắt đầu phải trong thời hạn hợp đồng đang hiệu lực.'); return }
         updateProject(project.id, (item) => {
           item.state = 'active'
           item.risk = false
@@ -339,6 +353,7 @@ export function OnboardingModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Cổng khởi động"
+      projectId={project.id}
       className="onboarding-modal onboarding-lean-modal"
       onSubmit={(form) => {
         if (briefRequired && checked(form, 'briefReady') && !field(form, 'briefLink')) { toast('Cần link brief form trước khi xác nhận brief.'); return }
@@ -425,6 +440,7 @@ export function CancelDraftModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Hủy dự án nháp"
+      projectId={project.id}
       onSubmit={(form) => {
         const reason = field(form, 'reason')
         updateProject(project.id, (item) => {
@@ -450,6 +466,7 @@ export function NotesModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Ghi chú dự án"
+      projectId={project.id}
       onSubmit={(form) => {
         const notes = field(form, 'notes')
         updateProject(project.id, (item) => {

@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../app/context'
 import { viewOnlyReason } from './viewOnly'
+import { canEditProject } from '../lib/scope'
+import { useData } from '../store/store'
 
 interface ModalProps {
   title: ReactNode
@@ -11,6 +13,8 @@ interface ModalProps {
   backdropClassName?: string
   onSubmit?: (form: HTMLFormElement) => void
   onClose?: () => void
+  /** Business project forms recheck their grant at submission, including after revocation. */
+  projectId?: string
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -19,8 +23,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * Accessible modal dialog: role="dialog" named by its title, Escape closes, Tab stays inside,
  * first field gets focus on open and focus returns to the opener on close.
  */
-export function Modal({ title, children, className = '', backdropClassName = 'customer-modal', onSubmit, onClose }: ModalProps) {
-  const { closeModal, toast } = useApp()
+export function Modal({ title, children, className = '', backdropClassName = 'customer-modal', onSubmit, onClose, projectId }: ModalProps) {
+  const { closeModal, toast, role, account } = useApp()
+  const { projects } = useData()
   const close = onClose ?? closeModal
   const titleId = useId()
   const formRef = useRef<HTMLDivElement>(null)
@@ -70,6 +75,12 @@ export function Modal({ title, children, className = '', backdropClassName = 'cu
           className="modal-form"
           onSubmit={(event) => {
             event.preventDefault()
+            if (projectId && onSubmit) {
+              const project = projects.find((item) => item.id === projectId)
+              if (!project || !canEditProject(role, account, project)) {
+                toast('Bạn không có quyền chỉnh sửa dự án này.'); return
+              }
+            }
             const blocked = viewOnlyReason()
             if (blocked && onSubmit) {
               toast(blocked + ' — chế độ xem, không lưu thay đổi.')

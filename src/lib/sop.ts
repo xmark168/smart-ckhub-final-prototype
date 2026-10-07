@@ -9,7 +9,7 @@ import { addBusinessDaysIso, addDaysIso, diffDays, shortDate, TODAY } from './fo
  * rest instead of turning them all red. Pure functions — no store access.
  */
 
-export const STAGES: ContentStage[] = ['Ý tưởng', 'Script', 'Dựng', 'Chờ khách duyệt', 'Lên lịch', 'Đã đăng']
+export const STAGES: ContentStage[] = ['Ý tưởng', 'Script', 'Dựng', 'Chờ khách duyệt', 'Lên lịch', 'Đã đăng', 'Đã hủy']
 
 export type MilestoneState = 'waiting' | 'upcoming' | 'due' | 'late' | 'done' | 'doneLate' | 'skipped'
 
@@ -70,7 +70,7 @@ export function isPublished(item: ContentItem): boolean {
 }
 
 function reached(item: ContentItem, stage: ContentStage): boolean {
-  return STAGES.indexOf(item.stage) >= STAGES.indexOf(stage)
+  return item.stage !== 'Đã hủy' && STAGES.indexOf(item.stage) >= STAGES.indexOf(stage)
 }
 
 /** A script counts as delivered once the item has reached editing. */
@@ -94,8 +94,9 @@ export function stateOf(due: string, done: string, today: string): MilestoneStat
 /** Posts the cycle must deliver: the package quota (or more when posts were carried over) plus gifted posts. */
 export function postTarget(cycle: Cycle, quota: PackageQuota): number {
   if (!quota.posts) return 0
-  const core = cycle.contents.filter((item) => !item.bonus).length
-  return Math.max(quota.posts, core) + cycle.contents.filter((item) => item.bonus).length
+  const active = cycle.contents.filter((item) => item.stage !== 'Đã hủy')
+  const core = active.filter((item) => !item.bonus).length
+  return Math.max(quota.posts, core) + active.filter((item) => item.bonus).length
 }
 
 export function cycleProgress(cycle: Cycle, quota: PackageQuota) {
@@ -125,7 +126,7 @@ function shiftDate(date: string, offset: number, unit: 'bd' | 'd'): string {
 }
 
 function itemsIn(cycle: Cycle, range?: [number, number]): ContentItem[] {
-  const sorted = [...cycle.contents].sort((a, b) => a.stt - b.stt)
+  const sorted = cycle.contents.filter((item) => item.stage !== 'Đã hủy').sort((a, b) => a.stt - b.stt)
   if (!range) return sorted
   const [from, to] = range
   return sorted.filter((_, index) => index + 1 >= from && (!to || index + 1 <= to))

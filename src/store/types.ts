@@ -71,7 +71,7 @@ export interface PackageQuota {
 
 export type PlanStatus = 'draft' | 'sent' | 'changes' | 'approved'
 
-export type ContentStage = 'Ý tưởng' | 'Script' | 'Dựng' | 'Chờ khách duyệt' | 'Lên lịch' | 'Đã đăng'
+export type ContentStage = 'Ý tưởng' | 'Script' | 'Dựng' | 'Chờ khách duyệt' | 'Lên lịch' | 'Đã đăng' | 'Đã hủy'
 export type Platform = 'Facebook' | 'TikTok'
 
 export interface ContentChannel {
@@ -91,12 +91,20 @@ export interface ContentItem {
   /** Carried over from the previous cycle when it was closed short. */
   carried?: boolean
   postDate: string
+  /** Actual publication date; absent on legacy records until confirmed. */
+  publishedAt?: string
+  cancellation?: { date: string; by: string; reason: string }
   deadlineScript: string
   deadlineEdit: string
   mission: 'Thương hiệu' | 'Bán hàng'
   category: string
   topic: string
   title: string
+  /** Creative brief, shared by Content Plan and Posts; optional on legacy records. */
+  mainIdea?: string
+  contentDirection?: string
+  visualDirection?: string
+  documentLink?: string
   format: 'Video' | 'Ảnh' | 'Album'
   stage: ContentStage
   mediaLink: string
@@ -203,6 +211,8 @@ export interface Project {
   customer: string
   owner: string
   createdBy: string
+  /** Explicit project grants. Empty list means no employee has access. */
+  members?: ProjectMember[]
   area: string
   service: string
   servicePackageId: string
@@ -228,6 +238,12 @@ export interface Project {
   onboarding?: Onboarding
 }
 
+export interface ProjectMember {
+  name: string
+  role: Exclude<Role, 'admin'>
+  access: 'view' | 'edit'
+}
+
 export interface Payment {
   installment: number
   percent: number
@@ -246,6 +262,14 @@ export interface Payment {
 
 export type ContractStatus = 'Nháp' | 'Hiệu lực' | 'Kết thúc' | 'Đã hủy'
 
+export interface PaymentAccount {
+  id: string
+  bank: string
+  accountNumber: string
+  accountHolder: string
+  active: boolean
+}
+
 export interface Contract {
   id: string
   code: string
@@ -253,6 +277,24 @@ export interface Contract {
   customer: string
   project: string
   type: 'Hợp đồng chính' | 'Phụ lục'
+  kind?: 'Nguyên tắc' | 'Dịch vụ'
+  /** First service cycle covered by this signed contract. */
+  firstCycle?: number
+  /** Framework contracts charge this gross amount when each cycle opens. */
+  monthlyValue?: number
+  /** Appendix belongs to this signed main contract; optional extension in months. */
+  parentContractId?: string
+  extensionMonths?: number
+  settlement?: {
+    status: 'pending' | 'confirmed'
+    stoppedAt: string
+    reason: string
+    agreedValue?: number
+    due?: string
+    confirmedAt?: string
+    evidence?: string
+    transactions: { amount: number; date: string; evidence: string; kind: 'receipt' | 'refund'; invoiced?: boolean }[]
+  }
   isPrimary: boolean
   service: string
   scope: string
@@ -270,6 +312,10 @@ export interface Contract {
   activity: string[]
   /** VAT % of this contract (entered per contract; the rate changes over the years). */
   vatRate?: number
+  /** Missing on legacy data means VAT invoices are required. */
+  issuesVat?: boolean
+  /** Shared receiving account; current details come from the account directory. */
+  paymentAccountId?: string
   /** Other projects of the same customer billed in this contract (one contract, several packages). */
   extraProjectIds?: string[]
   /** Phụ lục only: the package it switches to and the first cycle it applies to. */
@@ -311,7 +357,7 @@ export interface WorkTask {
   projectId: string
   title: string
   /** Who normally does it. */
-  role: StepOwner | 'Kế toán'
+  role: StepOwner | 'Kế toán' | 'Creative' | 'Plan'
   /** Person it is given to; editable, never overwritten by the sync. */
   assignee: string
   /** yyyy-mm-dd */
@@ -340,6 +386,7 @@ export interface AppData {
   customers: Customer[]
   projects: Project[]
   contracts: Contract[]
+  paymentAccounts: PaymentAccount[]
   categories: ServiceCategory[]
   packages: ServicePackage[]
   tasks: WorkTask[]

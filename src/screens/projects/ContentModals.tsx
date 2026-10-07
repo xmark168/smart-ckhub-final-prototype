@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useApp } from '../../app/context'
 import { projectCycle } from '../../data/cycles'
 import { addDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
-import { projectOverdue } from '../../data/contracts'
+import { canOpenContractCycle, primaryContract, projectOverdue } from '../../data/contracts'
 import { checked, field } from '../../lib/form'
 import { cycleMilestones, cycleProgress, isPublished, runningCycle, STAGES } from '../../lib/sop'
 import { getData, useData } from '../../store/store'
 import type { ContentChannel, ContentItem, ContentStage, KeyNote, Platform, Project } from '../../store/types'
 import { FormActions, Modal, Req } from '../../ui/Modal'
-import { addProjectActivity, updateProject } from './projectLogic'
+import { addProjectActivity, canStopProject, updateProject } from './projectLogic'
+import { inScope } from '../../lib/scope'
 
 const CATEGORIES = ['Chia sẻ', 'Thông báo', 'Review', 'Mini-game', 'Tiểu phẩm', 'Challenge', 'Khuyến mãi']
 const PLATFORMS: Platform[] = ['Facebook', 'TikTok']
@@ -21,14 +22,15 @@ function channelStatus(stage: ContentStage): ContentChannel['status'] {
  * One row of the cycle Content Plan. Opened from the project Content tab (project fixed) or
  * from the Posts page (project chosen here). Always writes to the running cycle.
  */
-export function ContentItemModal({ project, item }: { project?: Project; item?: ContentItem }) {
-  const { closeModal, toast } = useApp()
+export function ContentItemModal({ project, item, initialStage, cycleNo }: { project?: Project; item?: ContentItem; initialStage?: ContentStage; cycleNo?: number }) {
+  const { closeModal, toast, account, role } = useApp()
   const { projects, params } = useData()
-  const choices = projects.filter((entry) => entry.state === 'active' && runningCycle(entry) && entry.quota.posts > 0)
+  const choices = projects.filter((entry) => entry.state === 'active' && runningCycle(entry) && entry.quota.posts > 0 && canStopProject(role, account, entry))
   const [projectId, setProjectId] = useState(project?.id ?? choices[0]?.id ?? '')
-  const target = projects.find((entry) => entry.id === projectId)
-  const cycle = target ? runningCycle(target) : undefined
-  const [stage, setStage] = useState<ContentStage>(item?.stage ?? 'Ý tưởng')
+  const target = projects.find((entry) => entry.id === projectId && inScope(role, account, entry))
+  const cycle = target ? cycleNo !== undefined ? target.cycles.find((entry) => entry.no === cycleNo) : item ? target.cycles.find((entry) => entry.contents.some((content) => content.id === item.id)) : runningCycle(target) : undefined
+  const editable = Boolean(target && cycle?.status === 'running' && target.state === 'active' && canStopProject(role, account, target))
+  const [stage, setStage] = useState<ContentStage>(initialStage ?? item?.stage ?? 'Ý tưởng')
   const [edit, setEdit] = useState(item?.deadlineEdit ?? '')
 
   if (!target || !cycle) {
@@ -40,7 +42,7 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
     )
   }
 
-  const core = cycle.contents.filter((entry) => !entry.bonus)
+  const core = cycle.contents.filter((entry) => !entry.bonus && entry.stage !== 'Đã hủy')
   const nextStt = cycle.contents.reduce((max, entry) => Math.max(max, entry.stt), 0) + 1
   const current: ContentItem = item ?? {
     id: '', stt: nextStt, bonus: core.length >= target.quota.posts, postDate: '', deadlineScript: '', deadlineEdit: '',
@@ -56,8 +58,19 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
   return (
     <Modal
       title={item ? 'Nội dung #' + item.stt : 'Tạo nội dung'}
-      onSubmit={(form) => {
+      className="content-item-modal"
+      projectId={editable ? target.id : undefined}
+      onSubmit={!editable ? undefined : (form) => {
+        if (!canStopProject(role, account, target)) { toast('Chỉ Account phụ trách hoặc tạo dự án được sửa bài.'); return }
         const postDate = field(form, 'postDate')
+        const publishedAt = field(form, 'publishedAt')
+        const cancelReason = field(form, 'cancelReason')
+        if (stage === 'Đã đăng' && (!publishedAt || publishedAt > TODAY)) {
+          toast('Nhập ngày đăng thực tế không vượt quá hôm nay.'); return
+        }
+        if (stage === 'Đã hủy' && !cancelReason) {
+          toast('Nhập lý do hủy bài.'); return
+        }
         if ((stage === 'Lên lịch' || stage === 'Đã đăng') && !postDate) {
           toast('Cần ngày đăng khi nội dung ở giai đoạn Lên lịch hoặc Đã đăng.')
           return
@@ -71,8 +84,14 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
           category: field(form, 'category'),
           topic: field(form, 'topic'),
           title: field(form, 'title'),
+          mainIdea: field(form, 'mainIdea'),
+          contentDirection: field(form, 'contentDirection'),
+          visualDirection: field(form, 'visualDirection'),
+          documentLink: field(form, 'documentLink'),
           format: field(form, 'format') as ContentItem['format'],
           stage,
+          publishedAt: stage === 'Đã đăng' ? publishedAt : current.publishedAt,
+          cancellation: stage === 'Đã hủy' ? { date: current.cancellation?.date ?? TODAY, by: current.cancellation?.by ?? account, reason: cancelReason } : undefined,
           postDate,
           deadlineEdit: edit,
           deadlineScript: field(form, 'deadlineScript') || scriptDue,
@@ -92,13 +111,16 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
           else running.contents.push(next)
           running.contents.sort((a, b) => a.stt - b.stt)
           const title = (item ? 'Nội dung #' : 'Thêm nội dung #') + next.stt + ': ' + next.stage
-          running.activity.unshift({ title, detail: next.title, time: 'Vừa xong' })
-          if (!item || item.stage !== next.stage) addProjectActivity(draft, isPublished(next) ? 'send' : 'file-pen-line', title, next.title)
+          const detail = next.title + (next.cancellation ? ' · Lý do hủy: ' + next.cancellation.reason : '')
+          running.activity.unshift({ title, detail, time: 'Vừa xong' })
+          if (!item || item.stage !== next.stage) addProjectActivity(draft, isPublished(next) ? 'send' : 'file-pen-line', title, detail)
         })
         closeModal()
       }}
     >
       <div className="form">
+        {!editable && <p className="cd-note">Chế độ xem · {target.customer} · Chu kỳ {cycle.no}</p>}
+        <fieldset className="content-item-fields" disabled={!editable}>
         {!project && (
           <label className="field">Dự án
             <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
@@ -111,18 +133,32 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
           <select name="mission" defaultValue={current.mission}><option>Thương hiệu</option><option>Bán hàng</option></select>
         </label>
         <label className="field">Thể loại
-          <select name="category" defaultValue={current.category}>{CATEGORIES.map((name) => <option key={name}>{name}</option>)}</select>
+          <input name="category" defaultValue={current.category} list="content-category-options" placeholder="Chọn hoặc nhập thể loại" />
+          <datalist id="content-category-options">{CATEGORIES.map((name) => <option key={name} value={name} />)}</datalist>
         </label>
         <label className="field">Chủ đề<input name="topic" defaultValue={current.topic} placeholder="Ví dụ: Gia đình cơm tấm" /></label>
         <label className="field">Định dạng
           <select name="format" defaultValue={current.format}><option>Video</option><option>Ảnh</option><option>Album</option></select>
         </label>
+        <fieldset className="content-plan-copy">
+          <legend>Nội dung triển khai · Content Plan</legend>
+          <label className="field">Ý tưởng / thông điệp chính<textarea name="mainIdea" rows={3} defaultValue={current.mainIdea ?? ''} placeholder="Bài muốn truyền tải điều gì? Điểm thu hút chính là gì?" /></label>
+          <label className="field">Nội dung triển khai<textarea name="contentDirection" rows={6} defaultValue={current.contentDirection ?? ''} placeholder="Kịch bản, thoại, caption, nội dung ưu đãi…" /></label>
+          <label className="field">Hướng hình ảnh<textarea name="visualDirection" rows={6} defaultValue={current.visualDirection ?? ''} placeholder="Cảnh quay, góc chụp, hình minh họa, hướng thiết kế…" /></label>
+          <label className="field">Link tài liệu <small>(không bắt buộc)</small><input name="documentLink" type="url" defaultValue={current.documentLink ?? ''} placeholder="https://docs.google.com/..." /></label>
+        </fieldset>
         <label className="field">Giai đoạn
           <select name="stage" value={stage} onChange={(event) => setStage(event.target.value as ContentStage)}>{STAGES.map((name) => <option key={name}>{name}</option>)}</select>
         </label>
+        {stage === 'Đã hủy' && <>
+          <label className="field">Lý do hủy bài<Req /><textarea name="cancelReason" required defaultValue={current.cancellation?.reason ?? ''} /></label>
+          <p className="cd-note">Bài hủy giữ lịch sử, ngừng nhắc việc và không tính là bài đã bàn giao. Cần bài thay thế để đủ định mức.</p>
+          {current.cancellation && <p className="cd-note">Hủy ngày {formatDate(parseInput(current.cancellation.date))} · {current.cancellation.by}</p>}
+        </>}
         <label className="field">Deadline dựng<input name="deadlineEdit" type="date" value={edit} onChange={(event) => setEdit(event.target.value)} /></label>
         <label className="field">Deadline script<input name="deadlineScript" type="date" defaultValue={current.deadlineScript} placeholder={scriptDue} /></label>
-        <label className="field">Ngày đăng<input name="postDate" type="date" defaultValue={current.postDate} /></label>
+        <label className="field">Ngày đăng dự kiến<input name="postDate" type="date" defaultValue={current.postDate} /></label>
+        {stage === 'Đã đăng' && <label className="field">Ngày đăng thực tế<Req /><input name="publishedAt" type="date" required max={TODAY} defaultValue={current.publishedAt ?? (current.stage === 'Đã đăng' ? '' : TODAY)} /></label>}
         <label className="field">Giờ đăng<input name="time" type="time" defaultValue={current.channels[0]?.time || '17:00'} /></label>
         <fieldset className="field">
           <legend>Kênh xuất bản</legend>
@@ -138,22 +174,21 @@ export function ContentItemModal({ project, item }: { project?: Project; item?: 
             {scriptDue && <> Hạn script mặc định: {formatDate(parseInput(scriptDue))} (dựng − {params.scriptLeadDays} ngày).</>}
           </p>
         </div>
-        {item ? (
+        </fieldset>
+        {!editable && (current.documentLink || current.mediaLink) && <p className="cd-note">
+          {current.documentLink && <a href={current.documentLink} target="_blank" rel="noreferrer">Mở tài liệu</a>}
+          {current.documentLink && current.mediaLink && ' · '}
+          {current.mediaLink && <a href={current.mediaLink} target="_blank" rel="noreferrer">Mở media / bài đăng</a>}
+        </p>}
+        {!editable ? <div className="form-actions"><button className="secondary" type="button" onClick={closeModal}>Đóng</button></div> : item ? (
           <div className="form-actions">
             <button
               className="secondary"
               type="button"
-              onClick={() => {
-                updateProject(target.id, (draft) => {
-                  const running = runningCycle(draft)
-                  if (!running) return
-                  running.contents = running.contents.filter((entry) => entry.id !== item.id)
-                  running.activity.unshift({ title: 'Xóa nội dung #' + item.stt, detail: item.title, time: 'Vừa xong' })
-                })
-                closeModal()
-              }}
+              disabled={stage === 'Đã hủy'}
+              onClick={() => setStage('Đã hủy')}
             >
-              Xóa nội dung
+              Hủy bài
             </button>
             <button className="primary">Lưu nội dung</button>
           </div>
@@ -176,26 +211,29 @@ export function CloseCycleModal({ project }: { project: Project }) {
   const [handling, setHandling] = useState<'carry' | 'drop'>('carry')
   if (!cycle) return null
   const progress = cycleProgress(cycle, project.quota)
-  const unpublished = cycle.contents.filter((entry) => !entry.bonus && !isPublished(entry))
-  const hasNext = cycle.no < project.total
+  const unpublished = cycle.contents.filter((entry) => !entry.bonus && entry.stage !== 'Đã hủy' && !isPublished(entry))
+  const contract = primaryContract(getData().contracts, project.id)
   // Cycles follow the timeline, not the calendar: the next one starts the day after this one closes.
   const nextStart = addDaysIso(TODAY, 1)
+  const hasNext = canOpenContractCycle(contract, project, nextStart, getData().contracts)
   const overdue = projectOverdue(getData().contracts, project.id)
   const openSteps = cycleMilestones(cycle, project.quota, params).filter((entry) => entry.kind !== 'end' && !entry.done && entry.state !== 'skipped')
 
   return (
     <Modal
       title={project.quota.once ? 'Bàn giao dự án' : 'Chốt chu kỳ ' + cycle.no}
+      projectId={project.id}
       onSubmit={(form) => {
         const actualEnd = field(form, 'actualEnd')
         const reason = field(form, 'reason')
         const start = field(form, 'nextStart')
+        if (hasNext && (!start || start <= actualEnd || !canOpenContractCycle(primaryContract(getData().contracts, project.id), project, start, getData().contracts))) { toast('Chu kỳ tiếp phải sau ngày chốt và trong hạn hợp đồng. Ký mới hoặc gia hạn trước khi mở.'); return }
         const carry = handling === 'carry' && hasNext
         updateProject(project.id, (item) => {
           const running = runningCycle(item)
           if (!running) return
           const done = cycleProgress(running, item.quota)
-          const missing = running.contents.filter((entry) => !entry.bonus && !isPublished(entry))
+          const missing = running.contents.filter((entry) => !entry.bonus && entry.stage !== 'Đã hủy' && !isPublished(entry))
           running.status = 'closed'
           running.actualEnd = actualEnd
           running.result = {
@@ -273,6 +311,7 @@ export function KeyNoteModal({ project, type = 'Từ Account', preset = '' }: { 
   return (
     <Modal
       title={type === 'Shooting recap' ? 'Shooting recap' : 'Thêm Key note'}
+      projectId={project.id}
       onSubmit={(form) => {
         const note: KeyNote = { id: 'note-' + Date.now(), date: field(form, 'date'), author: account, type: field(form, 'type') as KeyNote['type'], content: field(form, 'content') }
         updateProject(project.id, (item) => {
@@ -300,6 +339,7 @@ export function LinksModal({ project }: { project: Project }) {
   return (
     <Modal
       title="Folder dự án"
+      projectId={project.id}
       onSubmit={(form) => {
         updateProject(project.id, (item) => {
           item.links = { ...item.links, folder: field(form, 'folder') }

@@ -3,7 +3,7 @@ import type { Role } from '../store/types'
 
 export type ScreenId =
   | 'overview' | 'customers' | 'customerDetail' | 'projects' | 'projectDetail' | 'cycleWorkspace' | 'contracts'
-  | 'posts' | 'shootings' | 'tasks' | 'partners' | 'partnerWork' | 'partnerProject' | 'partnerSchedule'
+  | 'posts' | 'shootings' | 'tasks' | 'partners' | 'creativeWorkload' | 'partnerWork' | 'partnerProject' | 'partnerSchedule'
   | 'reviews' | 'poc' | 'services' | 'parameters' | 'docs' | 'access' | 'profile' | 'settings'
 
 export const ROLES: Record<Role, { initial: string; label: string; note: string; home: ScreenId }> = {
@@ -15,7 +15,7 @@ export const ROLES: Record<Role, { initial: string; label: string; note: string;
 }
 
 /** Tabs of the project detail page, as they appear in `?tab=`. */
-export type ProjectTab = 'tong-quan' | 'quay-chup' | 'noi-dung' | 'hop-dong' | 'tai-lieu'
+export type ProjectTab = 'tong-quan' | 'de-xuat-ke-hoach' | 'quay-chup' | 'noi-dung' | 'hop-dong' | 'tai-lieu'
 
 export interface AppContextValue {
   role: Role

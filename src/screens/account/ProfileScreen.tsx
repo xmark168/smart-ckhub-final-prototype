@@ -1,11 +1,16 @@
 import { ROLES, useApp } from '../../app/context'
 import { useData } from '../../store/store'
 import { AccountModal } from './AccountModal'
+import { canManageProjectAccess, inScope, projectGrant, sessionName } from '../../lib/scope'
+import { projectLabel, projectTone } from '../projects/projectLogic'
+import { ProjectAccessModal } from '../projects/ProjectAccessModal'
 
 export function ProfileScreen() {
-  const { role, toast, showModal, openLogin } = useApp()
-  const { profile } = useData()
+  const { role, account, toast, showModal, openLogin, openProject, go } = useApp()
+  const { profile, projects } = useData()
   const roleInfo = ROLES[role]
+  const visible = projects.filter((project) => inScope(role, account, project))
+  const person = sessionName(role, account)
   return (
     <section className="screen active" id="profile">
       <div className="page-head">
@@ -28,6 +33,27 @@ export function ProfileScreen() {
           </div>
         </section>
       </div>
+      <section className="panel profile-projects">
+        <div className="panel-head"><div><h2>Dự án được phân quyền ({visible.length})</h2><p className="subline">{person} · quyền theo từng dự án. Giao việc không tự cấp quyền truy cập.</p></div></div>
+        <div className="project-table-wrap">
+          <table className="home-table profile-project-table">
+            <thead><tr><th>Dự án</th><th>Trạng thái</th><th>Quyền của bạn</th><th /></tr></thead>
+            <tbody>{visible.map((project) => {
+              const grant = projectGrant(role, account, project)
+              const permission = role === 'admin' ? 'Quản trị dự án và phân quyền' : role === 'partner' ? 'Xem công việc được giao' : role === 'accountant' ? 'Hợp đồng và khoản thu' : grant?.access === 'edit' ? 'Tham gia và chỉnh sửa' : 'Chỉ xem'
+              return <tr key={project.id}>
+                <td><b>{project.code} · {project.customer}</b><span className="content-sub">{project.service} · Account {project.owner}</span></td>
+                <td><span className={'pill ' + projectTone(project)}>{projectLabel(project)}</span></td>
+                <td>{permission}</td>
+                <td><div className="payment-account-actions">
+                  <button type="button" className="text-btn" onClick={() => role === 'partner' ? go('partnerProject') : role === 'accountant' ? go('contracts') : openProject(project.id)}>Mở</button>
+                  {canManageProjectAccess(role, account, project) && <button type="button" className="text-btn" onClick={() => showModal(<ProjectAccessModal projectId={project.id} />)}>Phân quyền</button>}
+                </div></td>
+              </tr>
+            })}{!visible.length && <tr><td colSpan={4} className="operations-empty">Bạn chưa được cấp quyền tham gia dự án nào.</td></tr>}</tbody>
+          </table>
+        </div>
+      </section>
       <div className="layout" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-head"><h2>Bảo mật</h2></div>

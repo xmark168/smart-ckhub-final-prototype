@@ -7,10 +7,10 @@ export function PartnerProjectsScreen() {
   const { go } = useApp()
   const name = usePartnerName()
   const { myTasks, myShoots, byId } = usePartnerWork(name)
-  const ids = [...new Set([...myTasks.map((task) => task.projectId), ...myShoots.filter((row) => row.running).map((row) => row.project.id)])]
+  const ids = [...byId.keys()]
   return (
     <section className="screen active" id="partnerProject">
-      <div className="page-head"><div><h1>Dự án được giao</h1><p>{name} · dự án có việc hoặc buổi shoot của bạn.</p></div></div>
+      <div className="page-head"><div><h1>Dự án được giao</h1><p>{name} · chỉ dự án đã được cấp quyền tham gia.</p></div></div>
       <section className="panel home-panel">
         {ids.length ? (
           <div className="home-lines">

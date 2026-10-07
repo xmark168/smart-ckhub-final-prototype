@@ -1,6 +1,6 @@
-import { coversProject, paymentMetrics } from '../../data/contracts'
+import { contractTerm, coversProject, paymentMetrics } from '../../data/contracts'
 import { diffDays, displayToInput, foldText, TODAY } from '../../lib/format'
-import { projectHealth, runningCycle } from '../../lib/sop'
+import { projectHealth } from '../../lib/sop'
 import type { Contract, Customer, Period, Project, Role, SopParams } from '../../store/types'
 
 export type CustomerStatus = 'active' | 'onboarding' | 'paused' | 'lost' | 'none' | 'ended'
@@ -58,13 +58,13 @@ export function attentionItems(customer: Customer, projects: Project[], contract
     if (health.level === 'late') items.push({ kind: 'late', label: project.code + ' · chậm tiến độ', detail: health.reason, targetId: project.id })
     else if (project.risk) items.push({ kind: 'risk', label: project.code + ' · gắn cờ', detail: project.riskReason || 'Account gắn cờ trên dự án', targetId: project.id })
     contracts
-      .filter((row) => coversProject(row, project.id) && row.status === 'Hiệu lực' && !seen.has(row.id))
+      .filter((row) => coversProject(row, project.id) && (row.status === 'Hiệu lực' || row.status === 'Kết thúc') && !seen.has(row.id))
       .forEach((row) => {
         seen.add(row.id)
         const overdue = paymentMetrics(row).overdue
         if (overdue) items.push({ kind: 'debt', label: row.code + ' · quá hạn ' + shortMoney(overdue), detail: 'Công nợ quá hạn ' + overdue.toLocaleString('vi-VN') + ' đ', targetId: row.id })
-        if (row.isPrimary && project.state === 'active' && renewalDue(project, row)) {
-          items.push({ kind: 'renew', label: row.code + ' · sắp hết HĐ', detail: 'Hết hạn ' + row.end + ' · chu kỳ ' + project.cycles.length + '/' + row.cycles + '. Cần trao đổi tái ký.', targetId: row.id })
+        if (row.isPrimary && project.state === 'active' && renewalDue(project, row, contracts)) {
+          items.push({ kind: 'renew', label: row.code + ' · sắp hết HĐ', detail: 'Hết hạn ' + contractTerm(row, contracts).end + ' · chu kỳ ' + project.cycles.length + '/' + project.total + '. Cần trao đổi tái ký.', targetId: row.id })
         }
       })
   })
@@ -101,15 +101,15 @@ export function attentionKind(reason: string): 'late' | 'debt' | 'flag' | 'renew
 }
 
 /** Days until the contract ends (end is dd.mm.yyyy); negative when already past. */
-export function daysToEnd(contract: Contract): number {
-  return diffDays(TODAY, displayToInput(contract.end))
+export function daysToEnd(contract: Contract, contracts: Contract[] = []): number {
+  return contract.kind === 'Nguyên tắc' ? Infinity : diffDays(TODAY, displayToInput(contractTerm(contract, contracts).end))
 }
 
 /** Renewal window: the last contracted cycle is running, or the contract ends within 30 days. */
-export function renewalDue(project: Project, contract: Contract): boolean {
-  if (project.quota.once) return false
-  const lastCycle = Boolean(runningCycle(project)) && project.cycles.length >= contract.cycles
-  return lastCycle || daysToEnd(contract) <= 30
+export function renewalDue(project: Project, contract: Contract, contracts: Contract[] = []): boolean {
+  if (project.quota.once || contract.kind === 'Nguyên tắc' || contract.status !== 'Hiệu lực' || contract.settlement) return false
+  const lastCycle = project.cycles.length >= (contract.firstCycle ?? 1) - 1 + contractTerm(contract, contracts).cycles
+  return lastCycle || daysToEnd(contract, contracts) <= 30
 }
 
 export function periodLabel(period: Period): string {

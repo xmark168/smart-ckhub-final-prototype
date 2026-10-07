@@ -1,7 +1,7 @@
 import { addDaysIso, TODAY } from '../lib/format'
 import { cycleMilestones, editDone, isPublished, runningCycle, scriptDone } from '../lib/sop'
 import type { AppData, Project, StepOwner, WorkTask } from '../store/types'
-import { primaryContract } from './contracts'
+import { collectionPayments, paymentMetrics, primaryContract } from './contracts'
 
 /**
  * Work generated from the data: SOP milestones, posts, shoots, money, launch gates. Each has a
@@ -45,12 +45,19 @@ function projectWork(project: Project, data: AppData): Expected[] {
   }
 
   // Money: every unpaid installment of a running contract is Kế toán's to collect.
-  for (const contract of data.contracts.filter((row) => row.projectId === project.id && row.status === 'Hiệu lực')) {
-    for (const payment of contract.payments) {
+  for (const contract of data.contracts.filter((row) => row.projectId === project.id && (row.status === 'Hiệu lực' || row.status === 'Kết thúc'))) {
+    if (contract.settlement) add({ source: 'settle:' + contract.id, title: 'Xác nhận quyết toán · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: contract.settlement.stoppedAt, done: contract.settlement.status === 'confirmed', tab: 'hop-dong' })
+    if (contract.settlement?.status !== 'pending') for (const payment of collectionPayments(contract)) {
       add({ source: 'pay:' + contract.id + ':' + payment.installment, title: 'Thu đợt ' + payment.installment + ' · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: payment.due, done: payment.paid >= payment.amount, tab: 'hop-dong' })
-      // The VAT invoice is issued right after the money comes in.
-      if (payment.paid >= payment.amount) add({ source: 'inv:' + contract.id + ':' + payment.installment, title: 'Xuất hóa đơn đợt ' + payment.installment + ' · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: payment.paidAt || TODAY, done: Boolean(payment.invoiced), tab: 'hop-dong' })
     }
+    if (contract.settlement?.status === 'confirmed' && (paymentMetrics(contract).refund > 0 || contract.settlement.transactions.some((entry) => entry.kind === 'refund'))) add({ source: 'refund:' + contract.id, title: 'Hoàn tiền quyết toán · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: contract.settlement.due ?? contract.settlement.stoppedAt, done: paymentMetrics(contract).refund === 0, tab: 'hop-dong' })
+    for (const payment of contract.payments) {
+      // The VAT invoice is issued right after the money comes in.
+      if (contract.issuesVat !== false && payment.paid >= payment.amount) add({ source: 'inv:' + contract.id + ':' + payment.installment, title: 'Xuất hóa đơn đợt ' + payment.installment + ' · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: payment.paidAt || TODAY, done: Boolean(payment.invoiced), tab: 'hop-dong' })
+    }
+    if (contract.issuesVat !== false) contract.settlement?.transactions.forEach((entry, index) => {
+      if (entry.kind === 'receipt') add({ source: 'invsett:' + contract.id + ':' + index, title: 'Xuất hóa đơn thu quyết toán · ' + contract.code, role: 'Kế toán', assignee: 'Kế toán', due: entry.date, done: Boolean(entry.invoiced), tab: 'hop-dong' })
+    })
   }
 
   const cycle = runningCycle(project)
@@ -66,7 +73,7 @@ function projectWork(project: Project, data: AppData): Expected[] {
     add({
       source: key(c + step.key),
       title: step.label,
-      role: step.kind === 'end' ? 'Account' : owner,
+      role: step.kind === 'end' ? 'Account' : owner === 'Planner/Content' ? step.kind === 'script' ? 'Creative' : 'Plan' : owner,
       assignee: step.kind === 'end' ? project.owner : DEFAULT_ASSIGNEE[owner](project),
       due: step.due,
       done: Boolean(step.done),
@@ -77,8 +84,9 @@ function projectWork(project: Project, data: AppData): Expected[] {
   // Per post: Content writes the script, Media edits, Account publishes.
   const shootMedia = cycle.shootings.flatMap((shoot) => shoot.media)
   for (const item of cycle.contents) {
+    if (item.stage === 'Đã hủy') continue
     const name = 'bài ' + item.stt
-    if (item.deadlineScript) add({ source: key(c + item.id + ':script'), title: 'Script ' + name, role: 'Planner/Content', assignee: 'Content nội bộ', due: item.deadlineScript, done: scriptDone(item), tab: 'noi-dung' })
+    if (item.deadlineScript) add({ source: key(c + item.id + ':script'), title: 'Script ' + name, role: 'Creative', assignee: 'Content nội bộ', due: item.deadlineScript, done: scriptDone(item), tab: 'noi-dung' })
     if (item.deadlineEdit) add({ source: key(c + item.id + ':edit'), title: 'Dựng ' + name, role: 'Media', assignee: [...new Set(shootMedia)].join(', '), due: item.deadlineEdit, done: editDone(item), tab: 'noi-dung' })
     if (item.postDate) add({ source: key(c + item.id + ':post'), title: 'Gửi duyệt và đăng ' + name, role: 'Account', assignee: project.owner, due: item.postDate, done: isPublished(item), tab: 'noi-dung' })
   }
@@ -87,7 +95,7 @@ function projectWork(project: Project, data: AppData): Expected[] {
 
 /** Bring the stored tasks in line with the data. Mutates `data.tasks`. */
 export function syncTasks(data: AppData): void {
-  const expected = data.projects.filter((project) => project.state !== 'stopped').flatMap((project) => projectWork(project, data))
+  const expected = data.projects.flatMap((project) => projectWork(project, data))
   const bySource = new Map(expected.map((item) => [item.source, item]))
   const stored = new Map(data.tasks.filter((task) => task.source).map((task) => [task.source!, task]))
 
@@ -99,6 +107,7 @@ export function syncTasks(data: AppData): void {
       continue
     }
     task.title = item.title
+    task.role = item.role
     task.due = item.due
     task.tab = item.tab
     if (item.done && task.status !== 'done') Object.assign(task, { status: 'done', doneAt: TODAY })

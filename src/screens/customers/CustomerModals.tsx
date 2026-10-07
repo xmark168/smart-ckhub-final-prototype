@@ -8,6 +8,7 @@ import type { Customer } from '../../store/types'
 import { FormActions, Modal, Req } from '../../ui/Modal'
 import { addCustomerActivity, customerStatus, endBlockerItems, sameName } from './customerLogic'
 import { ContractDetailModal } from '../contracts/ContractModals'
+import { customerInScope, inScope } from '../../lib/scope'
 
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
@@ -200,9 +201,10 @@ export function EndCooperationModal({ customer }: { customer: Customer }) {
 }
 
 export function AccountSummaryModal({ owner }: { owner: string }) {
-  const { closeModal, openProject } = useApp()
-  const { customers, projects, params } = useData()
-  const assigned = customers.filter((item) => item.owner === owner)
+  const { closeModal, openProject, role, account } = useApp()
+  const { customers, projects: allProjects, params } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
+  const assigned = customers.filter((item) => item.owner === owner && customerInScope(role, account, item, projects))
   const working = assigned.filter((item) => customerStatus(item, projects) === 'active')
   const active = projects.filter((item) => item.owner === owner && item.state === 'active')
   const late = active.filter((item) => projectHealth(item, params).level === 'late')

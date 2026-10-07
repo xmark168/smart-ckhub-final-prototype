@@ -1,10 +1,12 @@
 import { cycleProgress, currentCycle, isPublished, postTarget, runningCycle } from '../../lib/sop'
 import { formatDate, parseInput } from '../../lib/format'
-import { update } from '../../store/store'
+import { getData, update } from '../../store/store'
+import { primaryContract } from '../../data/contracts'
 import { viewOnlyReason } from '../../ui/viewOnly'
+import { canEditProject } from '../../lib/scope'
 import type { Cycle, PlanStatus, Project, SopParams } from '../../store/types'
 
-export const MEDIA_PEOPLE = ['Hải', 'Như', 'Hân', 'Bình', 'Phước', 'Anh Thư', 'Ngọc']
+export { MEDIA_PEOPLE } from '../../lib/people'
 
 export function projectLabel(item: Project): string {
   return item.state === 'active' ? 'Đang triển khai' : item.state === 'pending' ? 'Tạm dừng' : item.state === 'stopped' ? 'Đã dừng' : 'Dự án nháp'
@@ -28,7 +30,8 @@ export function cycleRange(item: Project): string {
 /** Current cycle number shown as "4 / 6". */
 export function cycleCounter(item: Project): string {
   const cycle = currentCycle(item)
-  return (cycle ? cycle.no : '–') + ' / ' + (item.total || '–')
+  const framework = primaryContract(getData().contracts, item.id)?.kind === 'Nguyên tắc'
+  return (cycle ? cycle.no : '–') + ' / ' + (framework && !item.quota.once ? 'Liên tục' : item.total || '–')
 }
 
 /** Published / planned posts of the current cycle; `null` for packages without content. */
@@ -102,7 +105,7 @@ export function updateProject(id: string, change: (project: Project) => void): v
 }
 
 export function canStopProject(role: string, account: string, project: Project): boolean {
-  return role === 'account' && (project.owner === account || project.createdBy === account)
+  return canEditProject(role, account, project)
 }
 
 /** "Còn N ngày" / "Quá N ngày" relative to today, for a yyyy-mm-dd date. */

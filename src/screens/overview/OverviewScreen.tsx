@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useApp } from '../../app/context'
-import { paymentMetrics, primaryContract, projectOverdue } from '../../data/contracts'
+import { contractTerm, paymentMetrics, primaryContract, projectOverdue } from '../../data/contracts'
 import { allShootings } from '../../data/shootings'
 import { addDaysIso, diffDays, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
@@ -57,7 +57,7 @@ function AccountHome() {
   const myNow = open.filter((task) => task.assignee === account && task.due <= addDaysIso(TODAY, 2))
   const othersLate = open.filter((task) => task.assignee !== account && task.due < TODAY)
   const attention = useHealth(mine).filter((item) => item.health.level === 'late' || item.health.level === 'watch')
-  const overdue = contracts.filter((row) => byId.has(row.projectId) && row.status === 'Hiệu lực').reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
+  const overdue = contracts.filter((row) => byId.has(row.projectId) && (row.status === 'Hiệu lực' || row.status === 'Kết thúc')).reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
   const week = allShootings(mine).filter((row) => row.shooting.date >= TODAY && row.shooting.date <= addDaysIso(TODAY, 7) && row.shooting.status !== 'Đã hoàn thành').sort((a, b) => a.shooting.date.localeCompare(b.shooting.date))
   const myLate = myNow.filter((task) => task.due < TODAY).length
 
@@ -99,17 +99,21 @@ function AccountHome() {
 
 /** BODs: the whole company at a glance, then per Account. */
 function BodsHome() {
-  const { go, openProject } = useApp()
-  const { projects, tasks, contracts } = useData()
+  const { go, openProject, role, account } = useApp()
+  const { projects: allProjects, tasks: allTasks, contracts: allContracts } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
+  const ids = new Set(projects.map((project) => project.id))
+  const tasks = allTasks.filter((task) => ids.has(task.projectId))
+  const contracts = allContracts.filter((contract) => ids.has(contract.projectId))
   const health = useHealth(projects)
   const running = projects.filter((project) => project.state === 'active')
   const late = health.filter((item) => item.health.level === 'late')
   const openLate = tasks.filter((task) => task.status === 'open' && task.due < TODAY)
-  const active = contracts.filter((row) => row.status === 'Hiệu lực')
+  const active = contracts.filter((row) => row.status === 'Hiệu lực' || row.status === 'Kết thúc')
   const overdue = active.reduce((sum, row) => sum + paymentMetrics(row).overdue, 0)
   const renew = running.filter((project) => {
     const contract = primaryContract(contracts, project.id)
-    return contract && renewalDue(project, contract)
+    return contract && renewalDue(project, contract, contracts)
   })
   const owners = [...new Set(running.map((project) => project.owner))].sort()
   const rows = owners.map((owner) => {
@@ -129,7 +133,7 @@ function BodsHome() {
     <>
       <section className="home-kpis">
         <Kpi label="Đang triển khai" value={running.length} note={late.length + ' chậm tiến độ'} tone={late.length ? 'attention' : ''} onClick={() => go('projects')} />
-        <Kpi label="Việc quá hạn" value={openLate.length} note="Toàn công ty, mọi người làm" tone={openLate.length ? 'watch' : ''} onClick={() => go('tasks')} />
+        <Kpi label="Việc quá hạn" value={openLate.length} note="Trong các dự án được cấp quyền" tone={openLate.length ? 'watch' : ''} onClick={() => go('tasks')} />
         <Kpi label="Công nợ quá hạn" value={shortMoney(overdue) || '0'} note={active.filter((row) => paymentMetrics(row).overdue).length + ' hợp đồng'} tone={overdue ? 'watch' : ''} onClick={() => go('contracts')} />
         <Kpi label="Cần tái ký" value={renew.length} note="Chu kỳ cuối hoặc HĐ hết trong 30 ngày" onClick={() => go('projects')} />
       </section>
@@ -162,7 +166,7 @@ function BodsHome() {
             const contract = primaryContract(contracts, project.id)!
             return (
               <button type="button" key={project.id} className="home-line" onClick={() => openProject(project.id, 'hop-dong')}>
-                <span><b>{project.customer}</b><small>{project.owner} · {contract.code} · hết {contract.end}</small></span>
+                <span><b>{project.customer}</b><small>{project.owner} · {contract.code} · hết {contractTerm(contract, contracts).end}</small></span>
                 <Icon name="chevron-right" />
               </button>
             )

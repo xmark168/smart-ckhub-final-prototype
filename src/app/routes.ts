@@ -29,6 +29,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   shootings: { title: 'Lịch shooting', access: BUSINESS, nav: { label: 'Lịch shooting', icon: 'calendar-clock', roles: ['account', 'bods'] } },
   tasks: { title: 'Việc cần làm', access: [...BUSINESS, 'accountant'], nav: { label: 'Việc cần làm', icon: 'list-checks', roles: ['account', 'accountant', 'bods'] } },
   partners: { title: 'Media & tải việc', access: BUSINESS, nav: { label: 'Media & tải việc', icon: 'handshake', roles: ['account', 'bods'] } },
+  creativeWorkload: { title: 'Creative & tải việc', access: BUSINESS, nav: { label: 'Creative & tải việc', icon: 'pencil', roles: ['account', 'bods'] } },
   partnerWork: { title: 'Việc của tôi', access: ['partner', 'admin'], nav: { label: 'Việc của tôi', icon: 'check-square', roles: ['partner'] } },
   partnerProject: { title: 'Dự án được giao', access: ['partner', 'admin'], nav: { label: 'Dự án được giao', icon: 'folder-kanban', roles: ['partner'] } },
   partnerSchedule: { title: 'Lịch của tôi', access: ['partner', 'admin'], nav: { label: 'Lịch của tôi', icon: 'calendar-days', roles: ['partner'] } },

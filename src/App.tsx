@@ -4,6 +4,7 @@ import { ACCOUNTS } from './lib/format'
 import { LoginOverlay } from './app/LoginOverlay'
 import { currentLocation, navigate, pathFor, useLocation } from './app/router'
 import { canOpen } from './app/routes'
+import { PARTNER_PEOPLE } from './lib/people'
 import { Sidebar } from './app/Sidebar'
 import { Topbar } from './app/Topbar'
 import { ProfileScreen } from './screens/account/ProfileScreen'
@@ -24,6 +25,7 @@ import { PartnerProjectsScreen } from './screens/partner/PartnerProjectsScreen'
 import { PartnerScheduleScreen } from './screens/partner/PartnerScheduleScreen'
 import { PartnerWorkScreen } from './screens/partner/PartnerWorkScreen'
 import { PartnersScreen } from './screens/partners/PartnersScreen'
+import { CreativeWorkloadScreen } from './screens/partners/DepartmentWorkloadScreen'
 import { ProjectDetailScreen } from './screens/projects/ProjectDetailScreen'
 import { ProjectsScreen } from './screens/projects/ProjectsScreen'
 import { ReviewsScreen } from './screens/reviews/ReviewsScreen'
@@ -43,6 +45,7 @@ const SCREENS: Record<ScreenId, ComponentType> = {
   shootings: ShootingsScreen,
   tasks: TasksScreen,
   partners: PartnersScreen,
+  creativeWorkload: CreativeWorkloadScreen,
   partnerWork: PartnerWorkScreen,
   partnerProject: PartnerProjectsScreen,
   partnerSchedule: PartnerScheduleScreen,
@@ -68,7 +71,7 @@ function loadUi(): SavedUi {
   try {
     const saved = JSON.parse(localStorage.getItem(ROLE_KEY) || 'null') as Partial<SavedUi> | null
     if (saved?.role && saved.role in ROLES) ui.role = saved.role
-    if (saved?.account && ACCOUNTS.includes(saved.account)) ui.account = saved.account
+    if (saved?.account && (ACCOUNTS.includes(saved.account) || PARTNER_PEOPLE.includes(saved.account))) ui.account = saved.account
   } catch {
     // Ignore unreadable UI state.
   }

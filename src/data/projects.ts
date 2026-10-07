@@ -49,6 +49,7 @@ function workCycle(no: number, start: string, quota: PackageQuota, index: number
         stt: i + 1,
         bonus: false,
         postDate,
+        publishedAt: stage === 'Đã đăng' ? postDate : undefined,
         deadlineScript: postDate ? addDaysIso(postDate, -3) : '',
         deadlineEdit: postDate ? addDaysIso(postDate, -1) : '',
         mission: i < quota.brandPosts ? 'Thương hiệu' : 'Bán hàng',

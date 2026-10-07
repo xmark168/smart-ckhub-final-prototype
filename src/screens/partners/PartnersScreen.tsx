@@ -2,10 +2,16 @@ import { allShootings, mediaClashes } from '../../data/shootings'
 import { addDaysIso, TODAY } from '../../lib/format'
 import { useData } from '../../store/store'
 import { MEDIA_PEOPLE } from '../projects/projectLogic'
+import { useApp } from '../../app/context'
+import { inScope } from '../../lib/scope'
 
 /** Media workload from the shoots and tasks already in the system, to balance bookings. */
 export function PartnersScreen() {
-  const { projects, tasks } = useData()
+  const { role, account } = useApp()
+  const { projects: allProjects, tasks: allTasks } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
+  const ids = new Set(projects.map((project) => project.id))
+  const tasks = allTasks.filter((task) => ids.has(task.projectId))
   const shoots = allShootings(projects).filter((row) => row.shooting.status !== 'Đã hoàn thành')
   const rows = MEDIA_PEOPLE.map((name) => {
     const own = shoots.filter((row) => row.shooting.media.includes(name))

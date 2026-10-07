@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react'
 import { seedCategories, seedPackages } from '../data/catalog'
-import { seedContracts, syncDemoPayments } from '../data/contracts'
+import { normalizeContracts, seedContracts, syncDemoPayments, syncFrameworkPayments, syncProjectContract } from '../data/contracts'
 import { seedCustomers } from '../data/customers'
 import { DEFAULT_PARAMS } from '../data/params'
 import { seedProjects } from '../data/projects'
 import { syncTasks } from '../data/tasks'
+import { initializeProjectMembers } from '../lib/scope'
 import type { AppData } from './types'
 
 const DATA_KEY = 'smart-ckhub-data'
@@ -20,6 +21,7 @@ export function createSeed(): AppData {
     customers: seedCustomers(),
     projects,
     contracts,
+    paymentAccounts: [],
     categories: structuredClone(seedCategories),
     packages,
     tasks: [],
@@ -28,8 +30,10 @@ export function createSeed(): AppData {
     params: { ...DEFAULT_PARAMS },
   }
   syncDemoPayments(seed.contracts, seed.projects)
+  normalizeContracts(seed.contracts)
   syncTasks(seed)
   seed.tasks.push(...SEED_MANUAL_TASKS)
+  initializeProjectMembers(seed)
   return seed
 }
 
@@ -42,7 +46,15 @@ const SEED_MANUAL_TASKS: AppData['tasks'] = [
 function load(): AppData {
   try {
     const saved = JSON.parse(localStorage.getItem(DATA_KEY) || 'null') as AppData | null
-    if (saved && saved.version === DATA_VERSION) return saved
+    if (saved && saved.version === DATA_VERSION) {
+      saved.paymentAccounts ??= []
+      normalizeContracts(saved.contracts)
+      syncFrameworkPayments(saved.contracts, saved.projects)
+      saved.projects.forEach((project) => syncProjectContract(project, saved.contracts))
+      syncTasks(saved)
+      initializeProjectMembers(saved)
+      return saved
+    }
   } catch {
     // Storage blocked or corrupted: fall back to seed data.
   }
@@ -79,8 +91,12 @@ export function useData(): AppData {
 export function update(recipe: (draft: AppData) => void): void {
   const draft = structuredClone(data)
   recipe(draft)
+  normalizeContracts(draft.contracts)
+  syncFrameworkPayments(draft.contracts, draft.projects)
+  draft.projects.forEach((project) => syncProjectContract(project, draft.contracts))
   syncDemoPayments(draft.contracts, draft.projects)
   syncTasks(draft)
+  initializeProjectMembers(draft)
   commit(draft)
 }
 

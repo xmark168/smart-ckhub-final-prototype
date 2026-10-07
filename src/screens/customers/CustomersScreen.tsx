@@ -1,7 +1,7 @@
 import { useApp } from '../../app/context'
 import { includesText } from '../../lib/format'
 import { Icon } from '../../lib/icons'
-import { inScope } from '../../lib/scope'
+import { customerInScope, inScope } from '../../lib/scope'
 import { usePagedList } from '../../lib/usePagedList'
 import { useOutsideClose } from '../../lib/useOutsideClose'
 import { useScreenState } from '../../lib/useScreenState'
@@ -72,7 +72,9 @@ function sortRows(rows: Row[], sort: Sort = 'name'): Row[] {
 
 export function CustomersScreen() {
   const { openCustomer, showModal, role, account } = useApp()
-  const { customers, projects, contracts, params, period } = useData()
+  const { customers, projects: allProjects, contracts: allContracts, params, period } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
+  const contracts = allContracts.filter((contract) => projects.some((project) => project.id === contract.projectId))
   const [filters, setFilters] = useScreenState<Filters>('customers.filters', INITIAL)
   const [filterOpen, setFilterOpen] = useScreenState('customers.filterOpen', false)
   const filterRef = useOutsideClose<HTMLDivElement>(filterOpen, () => setFilterOpen(false))
@@ -84,7 +86,7 @@ export function CustomersScreen() {
   /** KPI cards and chips are toggles: clicking the active one returns to all current customers. */
   const toggleKpi = (kpi: Kpi) => change({ kpi: filters.kpi === kpi ? 'working' : kpi })
   const all: Row[] = customers
-    .filter((item) => inScope(role, account, item))
+    .filter((item) => customerInScope(role, account, item, projects))
     .map((item) => ({ item, status: customerStatus(item, projects), projects: customerProjects(item, projects), reasons: attentionReasons(item, projects, contracts, params) }))
   const working = all.filter((row) => row.status !== 'ended')
   const ended = all.filter((row) => row.status === 'ended')

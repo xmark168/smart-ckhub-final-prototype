@@ -56,7 +56,7 @@ function buildRow(item: Project, params: SopParams, contracts: Contract[]): Row 
     health: projectHealth(item, params, TODAY, overdue),
     week,
     overdue,
-    renew: item.state === 'active' && Boolean(contract && contract.status === 'Hiệu lực' && renewalDue(item, contract)),
+    renew: item.state === 'active' && Boolean(contract && contract.status === 'Hiệu lực' && renewalDue(item, contract, contracts)),
   }
 }
 

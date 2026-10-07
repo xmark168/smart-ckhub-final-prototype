@@ -1,8 +1,8 @@
 import { useApp } from '../../app/context'
-import { contractTone, coversProject, paymentMetrics, projectOverdue } from '../../data/contracts'
+import { cashReceived, collectibleValue, contractTerm, contractTone, coversProject, paymentMetrics, projectOverdue } from '../../data/contracts'
 import { formatDate, initials, money, parseInput, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
-import { inScope } from '../../lib/scope'
+import { customerInScope, inScope } from '../../lib/scope'
 import { currentCycle, projectHealth } from '../../lib/sop'
 import { update, useData } from '../../store/store'
 import { ContractDetailModal } from '../contracts/ContractModals'
@@ -19,8 +19,10 @@ const ATTENTION_ICON = { flag: 'flag', late: 'clock-3', risk: 'flag', debt: 'fil
 
 export function CustomerDetailScreen() {
   const { customerId, go, role, account, toast, showModal, openProject } = useApp()
-  const { customers, projects, contracts, params } = useData()
-  const item = customers.find((customer) => customer.id === customerId)
+  const { customers, projects: allProjects, contracts: allContracts, params } = useData()
+  const projects = allProjects.filter((project) => inScope(role, account, project))
+  const contracts = allContracts.filter((contract) => projects.some((project) => project.id === contract.projectId))
+  const item = customers.find((customer) => customer.id === customerId && customerInScope(role, account, customer, projects))
   if (!item) {
     return (
       <section className="screen active" id="customerDetail">
@@ -36,7 +38,7 @@ export function CustomerDetailScreen() {
   const own = customerProjects(item, projects)
   const attention = attentionItems(item, projects, contracts, params)
   const canManage = canManageCustomer(role, account, item)
-  const outOfScope = !inScope(role, account, item)
+  const outOfScope = !customerInScope(role, account, item, projects)
   const readOnlyHint = role === 'account' ? 'Chỉ Account ' + item.owner + (item.createdBy && item.createdBy !== item.owner ? ' hoặc ' + item.createdBy : '') + ' được thao tác' : 'BODs và Administrator chỉ xem'
   const ownContracts = contracts.filter((row) => own.some((project) => coversProject(row, project.id)) && row.status !== 'Đã hủy')
   const debt = ownContracts.reduce((sum, row) => sum + paymentMetrics(row).remaining, 0)
@@ -193,11 +195,11 @@ export function CustomerDetailScreen() {
                 <button type="button" className="customer-contract-line" key={row.id} onClick={() => openContract(row.id)}>
                   <span className="cpl-main">
                     <b>{row.code} · {row.type}</b>
-                    <small>{row.service} · {row.cycles} chu kỳ · hết {row.end}</small>
-                    {row.status === 'Hiệu lực' && daysToEnd(row) <= 30 && <small className="cpl-reason tone-waiting">{daysToEnd(row) < 0 ? 'Đã quá ngày hết hạn ' + -daysToEnd(row) + ' ngày' : 'Còn ' + daysToEnd(row) + ' ngày · cần trao đổi tái ký'}</small>}
+                    <small>{row.service} · {row.kind ?? 'Dịch vụ'} · {row.kind === 'Nguyên tắc' && row.type !== 'Phụ lục' ? 'Thu theo chu kỳ' : 'hết ' + contractTerm(row, contracts).end}{row.settlement?.status === 'pending' && ' · Chờ Kế toán quyết toán'}</small>
+                    {row.status === 'Hiệu lực' && row.type !== 'Phụ lục' && daysToEnd(row, contracts) <= 30 && <small className="cpl-reason tone-waiting">{daysToEnd(row, contracts) < 0 ? 'Đã quá ngày hết hạn ' + -daysToEnd(row, contracts) + ' ngày' : 'Còn ' + daysToEnd(row, contracts) + ' ngày · cần trao đổi tái ký'}</small>}
                   </span>
                   <span className="cpl-money">
-                    <b>{shortMoney(row.paid)} / {shortMoney(row.value)}</b>
+                    <b>{shortMoney(cashReceived(row))} / {shortMoney(collectibleValue(row))}</b>
                     <small>{metrics.overdue ? 'quá hạn ' + shortMoney(metrics.overdue) : metrics.remaining ? 'còn ' + shortMoney(metrics.remaining) : 'đã thu đủ'}</small>
                   </span>
                   <span className="cpl-status">

@@ -11,9 +11,12 @@ import { OverviewTab } from './tabs/OverviewTab'
 import { ProjectHeader } from './ProjectHeader'
 import { canStopProject } from './projectLogic'
 import { setViewOnly } from '../../ui/viewOnly'
+import { canManageProjectAccess, inScope } from '../../lib/scope'
+import { ProjectAccessModal } from './ProjectAccessModal'
 
 const TABS: Array<[ProjectTab, string, string, string]> = [
   ['tong-quan', 'Tổng quan', 'Tổng quan triển khai', 'Mốc SOP của chu kỳ hiện tại, việc cần làm tiếp và định mức gói.'],
+  ['de-xuat-ke-hoach', 'Đề xuất & kế hoạch', 'Đề xuất & kế hoạch', ''],
   ['quay-chup', 'Quay chụp', 'Quay chụp', ''],
   ['noi-dung', 'Bài đăng', 'Bài đăng', 'Mỗi dòng là một nội dung trong Content Plan; Facebook và TikTok là kênh xuất bản.'],
   ['hop-dong', 'Hợp đồng', 'Hợp đồng & thanh toán', 'Đọc trực tiếp từ Hợp đồng & công nợ.'],
@@ -25,9 +28,9 @@ function isTab(value: string | null): value is ProjectTab {
 }
 
 export function ProjectDetailScreen() {
-  const { projectId, go, screen, role, account } = useApp()
+  const { projectId, go, screen, role, account, showModal } = useApp()
   const { route } = useLocation()
-  const project = useData().projects.find((item) => item.id === projectId)
+  const project = useData().projects.find((item) => item.id === projectId && inScope(role, account, item))
   const raw = route?.query.get('tab') ?? null
   const tab: ProjectTab = isTab(raw) ? raw : 'tong-quan'
   const legacyCycleLink = screen === 'cycleWorkspace'
@@ -50,7 +53,7 @@ export function ProjectDetailScreen() {
       <section className="screen active" id="projectWorkspaceDetail">
         <div className="project-detail-head">
           <button className="project-detail-back" onClick={() => go('projects')}><Icon name="arrow-left" /> Dự án</button>
-          <p>Không tìm thấy dự án.</p>
+          <p>Không tìm thấy dự án hoặc bạn chưa được cấp quyền tham gia.</p>
         </div>
       </section>
     )
@@ -60,7 +63,8 @@ export function ProjectDetailScreen() {
   return (
     <section className="screen active" id="projectWorkspaceDetail">
       <ProjectHeader project={project} readOnly={Boolean(hint)} onTab={(id) => route && navigate(withQuery(route, { tab: id === 'tong-quan' ? undefined : id }))} />
-      {hint && <div className="scope-banner"><Icon name="shield-check" /> {hint}. Chế độ xem: mở được các form để xem nhưng không lưu thay đổi.</div>}
+      {canManageProjectAccess(role, account, project) && <div className="project-access-toolbar"><button className="secondary" onClick={() => showModal(<ProjectAccessModal projectId={project.id} />)}>Phân quyền dự án</button></div>}
+      {hint && <div className="scope-banner"><Icon name="shield-check" /> Chỉ xem theo quyền dự án. Không được lưu thay đổi.</div>}
       <nav className="project-detail-tabs" aria-label="Chi tiết dự án">
         {TABS.map(([id, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => route && navigate(withQuery(route, { tab: id === 'tong-quan' ? undefined : id }))}>
@@ -72,6 +76,12 @@ export function ProjectDetailScreen() {
         <section className="project-tab-panel is-active">
           <h2 className="sr-only">{title}</h2>
           {tab === 'tong-quan' && <OverviewTab project={project} />}
+          {tab === 'de-xuat-ke-hoach' && (
+            <section className="panel">
+              <div className="panel-head"><h2>Đề xuất &amp; kế hoạch</h2></div>
+              <p className="empty-copy">Tính năng sẽ được bổ sung ở phiên bản kế tiếp.</p>
+            </section>
+          )}
           {tab === 'quay-chup' && <ShootsTab project={project} />}
           {tab === 'noi-dung' && <ContentTab project={project} />}
           {tab === 'hop-dong' && <ContractTab project={project} />}

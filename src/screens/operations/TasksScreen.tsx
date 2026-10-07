@@ -1,7 +1,7 @@
 import { useApp } from '../../app/context'
 import { addDaysIso, diffDays, includesText, shortDate, TODAY } from '../../lib/format'
 import { Icon } from '../../lib/icons'
-import { inScope } from '../../lib/scope'
+import { canEditProject, inScope } from '../../lib/scope'
 import { usePagedList } from '../../lib/usePagedList'
 import { useScreenState } from '../../lib/useScreenState'
 import { update, useData } from '../../store/store'
@@ -41,7 +41,7 @@ export function TasksScreen() {
   const projectOf = new Map(projects.map((project) => [project.id, project]))
   const visible = tasks.filter((task) => {
     const project = projectOf.get(task.projectId)
-    return project && (role === 'accountant' ? task.role === 'Kế toán' : inScope(role, account, project))
+    return project && inScope(role, account, project) && (role !== 'accountant' || task.role === 'Kế toán')
   })
   const open = visible.filter((task) => task.status === 'open')
   const list = visible
@@ -56,6 +56,8 @@ export function TasksScreen() {
   }
   // For now the Account marks a post as published (later it will come from the Facebook / TikTok API).
   const markPublished = (task: WorkTask) => {
+    const targetProject = projectOf.get(task.projectId)
+    if (!targetProject || !canEditProject(role, account, targetProject)) return
     const [, cycleKey, itemId] = task.source!.split(':')
     updateProject(task.projectId, (project) => {
       const cycle = project.cycles.find((entry) => 'c' + entry.no === cycleKey)
@@ -63,6 +65,7 @@ export function TasksScreen() {
       if (!cycle || !item) return
       const published = item.stage !== 'Đã đăng'
       item.stage = published ? 'Đã đăng' : 'Lên lịch'
+      if (published) item.publishedAt = TODAY
       if (published && !item.postDate) item.postDate = TODAY
       item.channels = item.channels.map((channel) => ({ ...channel, status: published ? 'Đã đăng' : 'Đã lên lịch', time: channel.time || '17:00' }))
       if (published) addProjectActivity(project, 'send', 'Đã đăng bài ' + item.stt, item.title)
@@ -71,6 +74,8 @@ export function TasksScreen() {
   const toggle = (task: WorkTask) =>
     update((draft) => {
       const target = draft.tasks.find((item) => item.id === task.id)
+      const project = draft.projects.find((item) => item.id === task.projectId)
+      if (!project || (!canEditProject(role, account, project) && !(role === 'accountant' && target?.role === 'Kế toán' && inScope(role, account, project)))) return
       if (target) Object.assign(target, target.status === 'open' ? { status: 'done', doneAt: TODAY } : { status: 'open', doneAt: undefined })
     })
   const count = (test: (task: WorkTask) => boolean) => open.filter(test).length

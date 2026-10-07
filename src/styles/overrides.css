@@ -1157,3 +1157,30 @@ button.notification-item:hover { background: rgb(250, 246, 242); }
 .admin-link { border: 1px solid rgb(227, 216, 206); border-radius: 14px; background: #fff; font: inherit; text-align: left; cursor: pointer; }
 .admin-link:hover { border-color: #c43d0c; }
 .home-pkg { margin-left: 4px; color: var(--muted); font-size: 12px; font-style: normal; font-weight: 600; }
+
+/* Shared payment account directory. */
+.contracts-head-actions, .payment-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.payment-account-list { display: grid; gap: 12px; }
+.payment-account-card { display: grid; gap: 6px; padding: 14px; border: 1px solid #e3d8ce; border-radius: 12px; overflow-wrap: anywhere; }
+.payment-account-card small { color: var(--muted); }
+.payment-account-editor { display: grid; gap: 12px; }
+.contract-detail .cd-facts dd { overflow-wrap: anywhere; }
+
+/* Publication timing stays legible alongside production stages. */
+.content-table-panel .content-table { min-width: 860px; }
+.content-table .c-post { width: 120px; }
+.content-table .c-timing { width: 150px; }
+
+.department-workload-table { min-width: 700px; }
+.profile-projects { margin-top: 16px; }
+.profile-project-table { min-width: 680px; }
+.project-access-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+@media (max-width: 560px) {
+  .department-workload-table th:nth-child(4), .department-workload-table td:nth-child(4),
+  .profile-project-table th:nth-child(4), .profile-project-table td:nth-child(4) { display: table-cell; }
+}
+.content-item-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
+.content-plan-copy { border: 1px solid var(--line, #e5e7eb); border-radius: 12px; padding: 16px; min-width: 0; display: grid; gap: 14px; }
+.content-plan-copy legend { font-weight: 600; padding: 0 6px; }
+.content-plan-copy textarea { resize: vertical; white-space: pre-wrap; }
+.content-item-fields:disabled input, .content-item-fields:disabled textarea, .content-item-fields:disabled select { opacity: 1; color: inherit; -webkit-text-fill-color: inherit; }

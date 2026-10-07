@@ -1,5 +1,5 @@
 import { useApp } from '../../../app/context'
-import { contractTone, coversProject, overdueText, paymentMetrics, paymentState } from '../../../data/contracts'
+import { cashReceived, collectibleValue, collectionPayments, contractTerm, contractTone, coversProject, overdueText, paymentMetrics, paymentState } from '../../../data/contracts'
 import { diffDays, shortDate, TODAY } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { currentCycle } from '../../../lib/sop'
@@ -61,16 +61,17 @@ export function ContractTab({ project }: { project: Project }) {
         <button className="text-btn" onClick={() => showModal(<ContractDetailModal contractId={primary.id} />)}>Mở hợp đồng ›</button>
       </div>
       <p className="contract-card-meta">
-        {shortDate(primary.start)} – {primary.end} · Chu kỳ {cycle ? cycle.no : 0} / {primary.cycles}
+        {primary.kind ?? 'Dịch vụ'} · {shortDate(primary.start)} – {primary.kind === 'Nguyên tắc' ? 'Theo chu kỳ, không tái ký hàng tháng' : contractTerm(primary, all).end} · Chu kỳ {cycle ? cycle.no : 0} / {primary.kind === 'Nguyên tắc' ? 'Liên tục' : project.total}
         {sharedWith.length > 0 && <> · cùng hợp đồng với {sharedWith.map((item) => item.service).join(', ')}</>}
       </p>
       <div className="contract-money">
         <span className="pace-bar" aria-hidden="true"><i className={metrics.overdue ? 'behind' : 'ahead'} style={{ width: paidPct + '%' }} /></span>
-        <small>Đã thu <b>{shortMoney(primary.paid)}</b> / {shortMoney(primary.value)}{metrics.overdue ? <> · <b className="is-late">quá hạn {shortMoney(metrics.overdue)}</b></> : ''}</small>
+        <small>Đã thu <b>{shortMoney(cashReceived(primary))}</b> / {shortMoney(collectibleValue(primary))}{metrics.overdue ? <> · <b className="is-late">quá hạn {shortMoney(metrics.overdue)}</b></> : ''}{metrics.refund > 0 && <> · cần hoàn {shortMoney(metrics.refund)}</>}</small>
       </div>
       <ol className="pay-list">
-        {primary.payments.map((payment) => <PaymentRow key={payment.installment} project={project} payment={payment} count={primary.payments.length} />)}
+        {!primary.settlement && collectionPayments(primary).map((payment) => <PaymentRow key={payment.installment} project={project} payment={payment} count={primary.payments.length} />)}
       </ol>
+      {primary.settlement && <p>{primary.settlement.status === 'pending' ? 'Chờ Kế toán xác nhận quyết toán.' : 'Đã quyết toán. Mở hợp đồng để xem lịch thu / hoàn và chứng từ.'}</p>}
       {others.length > 0 && (
         <div className="contract-others">
           {others.map((row) => (
