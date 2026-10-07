@@ -176,3 +176,15 @@ Content Plan có danh sách rà nhanh và vùng viết dọc. Trang Bài đăng 
 Excel hỗ trợ file hoặc dán vùng ô, ghép cột bổ sung thành nội dung/thông tin nghiệp vụ/bỏ qua, preview cũ/mới và lịch sử hoàn tác toàn đợt khi chưa sửa hoặc bàn giao tiếp. Xuất/nhập lại giữ mã bài, xuống dòng, tên mục, mục ẩn và mục bổ sung. Bản đã gửi duyệt phải tạo bản sửa trước khi nhập cập nhật.
 
 Đã kiểm tra trên dữ liệu tách riêng: quyền xem/sửa/thu hồi, lịch sử phiên bản, xuất bản từng kênh, lịch dự kiến trước duyệt, phân công trước khi dọn task cũ, lưu/tải localStorage, nhập/xuất/hoàn tác Excel và các nghiệp vụ hợp đồng đang có. Preview thật đã rà bố cục, chọn chu kỳ và ghép dữ liệu dán; không lưu bài thử vào dữ liệu người dùng. Chưa thử với team CK Hub. P2 lịch tuần/tháng và link khách duyệt giữ cho bước sau.
+
+## Điều chỉnh theo gói / chu kỳ · 07/10/2026
+
+Theo lựa chọn của người dùng, bảng ngoài Bài đăng quản lý từng gói nội dung (một chu kỳ của dự án), thay danh sách mọi bài và hai chế độ Content Plan / Tiến độ. Lọc dự án được cấp quyền, trạng thái chu kỳ và gói cần xử lý; chu kỳ đang chạy đứng trước, chu kỳ đã chốt vẫn có trong danh sách.
+
+Mở gói bằng dialog rộng: bảng năm cột gộp chủ đề/định dạng, ý tưởng, tên Content/Media, bước xử lý/hạn tiếp theo và ngày đăng dự kiến/thực tế. Tên bài, thể loại, định dạng và ý tưởng sửa ngay tại ô khi bài còn nháp và người dùng có quyền. Enter chuyển xuống cùng cột, Shift + Enter xuống dòng trong ý tưởng. Brief dài dùng vùng viết dọc có các mục tùy chỉnh. Phân công/duyệt/xuất bản vẫn qua chi tiết dùng chung; đóng chi tiết hoặc nhập Excel quay lại đúng gói và bộ lọc.
+
+Định mức đọc từ gói dự án; chu kỳ đã chốt đọc số đã lưu trong kết quả. Bài tặng và bài hủy hiển thị riêng, bài hủy không lấp định mức. Chu kỳ cũ chỉ có số tổng không được tự tạo bài. Partner chỉ thấy bài được giao, không lấy số tổng của bài ngoài phạm vi làm số của mình.
+
+Thêm/nhân bản bài nằm trong gói, chỉ Account có quyền sửa chu kỳ đang chạy của dự án đang hoạt động. Bản sao giữ nội dung/mục tùy chỉnh, tạo ID mới, xóa phân công, duyệt, hạn, lịch đăng và link sản xuất; vượt định mức được đánh dấu bài tặng theo nghiệp vụ hiện có. Thêm bài lưu vào đúng chu kỳ đang mở. Không đổi dữ liệu người dùng hay phiên bản localStorage.
+
+Kiểm tra fixture: định mức, số chốt cũ, bài tặng/hủy, phạm vi Partner, quyền sửa ô khi thu hồi/gửi duyệt/chốt, bản sao sạch và lưu/tải lại. Preview kiểm tra Enter, phần viết dài, quay lại gói giữ bộ lọc, nhập Excel, toàn màn hình, chu kỳ cũ chỉ xem; bảng gói và dialog không tràn ngang ở desktop và màn hình 390px. Chưa thử với team CK Hub.

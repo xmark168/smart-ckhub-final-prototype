@@ -116,8 +116,8 @@ function LegacyContentItemModal({ project, item, initialStage, cycleNo, navigati
           })),
         }
         updateProject(target.id, (draft) => {
-          const running = runningCycle(draft)
-          if (!running) return
+          const running = draft.cycles.find((entry) => entry.no === cycle.no)
+          if (!running || running.status !== 'running' || draft.state !== 'active' || !canStopProject(role, account, draft)) return
           const index = running.contents.findIndex((entry) => entry.id === next.id)
           if (index >= 0) running.contents[index] = next
           else running.contents.push(next)
