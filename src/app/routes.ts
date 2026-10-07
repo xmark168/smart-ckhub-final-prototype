@@ -25,7 +25,7 @@ export const PAGES: Record<ScreenId, PageMeta> = {
   projectDetail: { title: 'Chi tiết dự án', access: BUSINESS, parent: 'projects' },
   cycleWorkspace: { title: 'Chu kỳ', access: BUSINESS, parent: 'projects' },
   contracts: { title: 'Hợp đồng & công nợ', access: [...BUSINESS, 'accountant'], nav: { label: 'Hợp đồng & công nợ', icon: 'file-text', roles: ['account', 'accountant', 'bods'] } },
-  posts: { title: 'Bài đăng', access: BUSINESS, nav: { label: 'Bài đăng', icon: 'file-pen-line', roles: ['account', 'bods'] } },
+  posts: { title: 'Bài đăng', access: [...BUSINESS, 'partner'], nav: { label: 'Bài đăng', icon: 'file-pen-line', roles: ['account', 'bods', 'partner'] } },
   shootings: { title: 'Lịch shooting', access: BUSINESS, nav: { label: 'Lịch shooting', icon: 'calendar-clock', roles: ['account', 'bods'] } },
   tasks: { title: 'Việc cần làm', access: [...BUSINESS, 'accountant'], nav: { label: 'Việc cần làm', icon: 'list-checks', roles: ['account', 'accountant', 'bods'] } },
   partners: { title: 'Media & tải việc', access: BUSINESS, nav: { label: 'Media & tải việc', icon: 'handshake', roles: ['account', 'bods'] } },

@@ -7,7 +7,7 @@ import { collectionPayments, paymentMetrics, primaryContract } from './contracts
  * Work generated from the data: SOP milestones, posts, shoots, money, launch gates. Each has a
  * stable `source` key; `syncTasks` stores them as tasks so they can be given to someone other
  * than the Account, and keeps them in step with the source (new → open, source done → done,
- * source gone → cancelled). Assignee and note set by people are never overwritten.
+ * source gone → cancelled). Per-post assignees follow the persistent post record.
  */
 interface Expected {
   source: string
@@ -82,13 +82,16 @@ function projectWork(project: Project, data: AppData): Expected[] {
   }
 
   // Per post: Content writes the script, Media edits, Account publishes.
-  const shootMedia = cycle.shootings.flatMap((shoot) => shoot.media)
   for (const item of cycle.contents) {
     if (item.stage === 'Đã hủy') continue
     const name = 'bài ' + item.stt
-    if (item.deadlineScript) add({ source: key(c + item.id + ':script'), title: 'Script ' + name, role: 'Creative', assignee: 'Content nội bộ', due: item.deadlineScript, done: scriptDone(item), tab: 'noi-dung' })
-    if (item.deadlineEdit) add({ source: key(c + item.id + ':edit'), title: 'Dựng ' + name, role: 'Media', assignee: [...new Set(shootMedia)].join(', '), due: item.deadlineEdit, done: editDone(item), tab: 'noi-dung' })
+    if (item.deadlineScript) add({ source: key(c + item.id + ':script'), title: 'Script ' + name, role: 'Creative', assignee: item.assignees?.content.join(', ') ?? '', due: item.deadlineScript, done: scriptDone(item), tab: 'noi-dung' })
+    if (item.deadlineEdit) add({ source: key(c + item.id + ':edit'), title: 'Dựng ' + name, role: 'Media', assignee: item.assignees?.media.join(', ') ?? '', due: item.deadlineEdit, done: editDone(item), tab: 'noi-dung' })
     if (item.postDate) add({ source: key(c + item.id + ':post'), title: 'Gửi duyệt và đăng ' + name, role: 'Account', assignee: project.owner, due: item.postDate, done: isPublished(item), tab: 'noi-dung' })
+    if (item.workflow && !item.workflow.legacy) {
+      add({ source: key(c + item.id + ':review-content'), title: 'Duyệt nội dung ' + name, role: 'Account', assignee: project.owner, due: item.deadlineScript || TODAY, done: item.workflow.phase !== 'content-review', tab: 'noi-dung' })
+      add({ source: key(c + item.id + ':review-client'), title: 'Ghi nhận khách duyệt ' + name, role: 'Account', assignee: project.owner, due: item.postDate || item.deadlineEdit || TODAY, done: item.workflow.phase !== 'client-review', tab: 'noi-dung' })
+    }
   }
   return list
 }
@@ -106,6 +109,7 @@ export function syncTasks(data: AppData): void {
       if (task.status === 'open') Object.assign(task, { status: 'cancelled', doneAt: TODAY })
       continue
     }
+    if (task.source.endsWith(':script') || task.source.endsWith(':edit')) task.assignee = item.assignee
     task.title = item.title
     task.role = item.role
     task.due = item.due

@@ -41,12 +41,13 @@ export function ProjectAccessModal({ projectId }: { projectId: string }) {
   return <Modal title={'Phân quyền · ' + project.code} className="contract-modal">
     <div className="form">
       <p className="cd-note">{project.customer} · {project.service}. Nhân sự cần quyền dự án trước khi xem việc được giao. Administrator quản lý toàn bộ; thành viên xem theo giới hạn vai trò.</p>
+      <p className="cd-note">Partner có quyền sửa chỉ làm phần Content / Media của bài được giao; không sửa hợp đồng hoặc phân quyền.</p>
       <div className="payment-account-list">
         {(project.members ?? []).map((member) => <div className="payment-account-card" key={member.role + ':' + member.name}>
           <b>{member.name} · {ROLES[member.role].label}</b>
           <span>{member.access === 'edit' ? 'Tham gia và chỉnh sửa' : member.role === 'partner' ? 'Xem công việc được giao' : member.role === 'accountant' ? 'Hợp đồng và khoản thu' : 'Chỉ xem'}</span>
           {(role === 'admin' || member.role !== 'account' || member.name !== project.owner) && <div className="payment-account-actions">
-            {member.role === 'account' && <button type="button" className="text-btn" onClick={() => change({ ...member, access: member.access === 'edit' ? 'view' : 'edit' })}>{member.access === 'edit' ? 'Chuyển chỉ xem' : 'Cho chỉnh sửa'}</button>}
+            {(member.role === 'account' || member.role === 'partner') && <button type="button" className="text-btn" onClick={() => change({ ...member, access: member.access === 'edit' ? 'view' : 'edit' })}>{member.access === 'edit' ? 'Chuyển chỉ xem' : 'Cho chỉnh sửa'}</button>}
             <button type="button" className="text-btn" onClick={() => change(member, true)}>Thu hồi quyền</button>
           </div>}
         </div>)}
@@ -55,8 +56,8 @@ export function ProjectAccessModal({ projectId }: { projectId: string }) {
       <h3>Cấp quyền tham gia</h3>
       <label className="field">Vai trò<Req /><select value={memberRole} onChange={(event) => { const next = event.target.value as ProjectMember['role']; setMemberRole(next); setName(PEOPLE[next][0]); setAccess('view') }}>{Object.keys(PEOPLE).map((key) => <option key={key} value={key}>{ROLES[key as ProjectMember['role']].label}</option>)}</select></label>
       <label className="field">Nhân sự<Req /><select value={name} onChange={(event) => setName(event.target.value)}>{PEOPLE[memberRole].map((person) => <option key={person}>{person}</option>)}</select></label>
-      {memberRole === 'account' && <label className="field">Quyền<Req /><select value={access} onChange={(event) => setAccess(event.target.value as ProjectMember['access'])}><option value="view">Chỉ xem</option><option value="edit">Tham gia và chỉnh sửa</option></select></label>}
-      <div className="form-actions"><button type="button" className="primary" onClick={() => change({ name, role: memberRole, access: memberRole === 'account' ? access : 'view' })}>Cấp / cập nhật quyền</button></div>
+      {(memberRole === 'account' || memberRole === 'partner') && <label className="field">Quyền<Req /><select value={access} onChange={(event) => setAccess(event.target.value as ProjectMember['access'])}><option value="view">Chỉ xem</option><option value="edit">Tham gia và chỉnh sửa</option></select></label>}
+      <div className="form-actions"><button type="button" className="primary" onClick={() => change({ name, role: memberRole, access: memberRole === 'account' || memberRole === 'partner' ? access : 'view' })}>Cấp / cập nhật quyền</button></div>
     </div>
   </Modal>
 }

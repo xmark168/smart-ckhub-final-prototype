@@ -6,7 +6,7 @@ import { usePagedList } from '../../lib/usePagedList'
 import { useScreenState } from '../../lib/useScreenState'
 import { update, useData } from '../../store/store'
 import type { WorkTask } from '../../store/types'
-import { addProjectActivity, updateProject } from '../projects/projectLogic'
+import { ContentItemModal } from '../projects/ContentModals'
 import { PEOPLE, TaskModal } from './TaskModal'
 
 /** "Gửi duyệt và đăng bài N": generated from a post, closed when the post is published. */
@@ -54,22 +54,11 @@ export function TasksScreen() {
     setFilters({ ...filters, ...patch })
     resetPage()
   }
-  // For now the Account marks a post as published (later it will come from the Facebook / TikTok API).
-  const markPublished = (task: WorkTask) => {
-    const targetProject = projectOf.get(task.projectId)
-    if (!targetProject || !canEditProject(role, account, targetProject)) return
-    const [, cycleKey, itemId] = task.source!.split(':')
-    updateProject(task.projectId, (project) => {
-      const cycle = project.cycles.find((entry) => 'c' + entry.no === cycleKey)
-      const item = cycle?.contents.find((entry) => entry.id === itemId)
-      if (!cycle || !item) return
-      const published = item.stage !== 'Đã đăng'
-      item.stage = published ? 'Đã đăng' : 'Lên lịch'
-      if (published) item.publishedAt = TODAY
-      if (published && !item.postDate) item.postDate = TODAY
-      item.channels = item.channels.map((channel) => ({ ...channel, status: published ? 'Đã đăng' : 'Đã lên lịch', time: channel.time || '17:00' }))
-      if (published) addProjectActivity(project, 'send', 'Đã đăng bài ' + item.stt, item.title)
-    })
+  const openTask = (task: WorkTask) => {
+    const project = projectOf.get(task.projectId)
+    const linked = project?.cycles.flatMap((cycle) => cycle.contents.map((item) => ({ cycle, item }))).find(({ cycle, item }) => task.source?.startsWith(`${project.id}:c${cycle.no}:${item.id}:`))
+    if (project && linked) showModal(<ContentItemModal project={project} item={linked.item} cycleNo={linked.cycle.no} initialStage={isPostTask(task) && ['Lên lịch', 'Đã đăng'].includes(linked.item.stage) ? linked.item.stage : undefined} />)
+    else showModal(<TaskModal task={task} />)
   }
   const toggle = (task: WorkTask) =>
     update((draft) => {
@@ -83,7 +72,6 @@ export function TasksScreen() {
     <button className={('ops-kpi ' + tone).trim()} onClick={() => change({ view: 'open', ...patch })}><span>{label}</span><b>{value}</b><small>{note}</small></button>
   )
 
-  let lastGroup = ''
   return (
     <section className="screen active" id="tasks">
       <div className="operations-page">
@@ -112,21 +100,18 @@ export function TasksScreen() {
             </select>
           </div>
           <ul className="task-list">
-            {rows.map((task) => {
+            {rows.map((task, index) => {
               const project = projectOf.get(task.projectId)!
               const group = groupOf(task)
-              const header = group !== lastGroup ? group : ''
-              lastGroup = group
+              const header = index === 0 || group !== groupOf(rows[index - 1]) ? group : ''
               return (
                 <li key={task.id}>
                   {header && <h3 className="task-group">{header}</h3>}
                   <div className={'task-row' + (task.status !== 'open' ? ' is-closed' : task.due < TODAY ? ' is-late' : '')}>
-                    {isPostTask(task) && role === 'account'
-                      ? <input type="checkbox" title="Đánh dấu đã đăng" aria-label={'Đã đăng: ' + task.title} checked={task.status === 'done'} onChange={() => markPublished(task)} />
-                      : task.source
-                        ? <span className="task-auto" title="Tự đóng khi việc gốc xong"><Icon name="rotate-ccw" /></span>
-                        : <input type="checkbox" aria-label={'Xong: ' + task.title} checked={task.status === 'done'} onChange={() => toggle(task)} />}
-                    <button type="button" className="task-main" onClick={() => showModal(<TaskModal task={task} />)}>
+                    {task.source
+                      ? <span className="task-auto" title="Tự đóng khi việc gốc xong"><Icon name="rotate-ccw" /></span>
+                      : <input type="checkbox" aria-label={'Xong: ' + task.title} checked={task.status === 'done'} onChange={() => toggle(task)} />}
+                    <button type="button" className="task-main" onClick={() => openTask(task)}>
                       <b>{task.title}</b>
                       <small>{project.customer}{task.note ? ' · ' + task.note : ''}</small>
                     </button>

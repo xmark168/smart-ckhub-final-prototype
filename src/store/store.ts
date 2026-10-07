@@ -5,6 +5,7 @@ import { seedCustomers } from '../data/customers'
 import { DEFAULT_PARAMS } from '../data/params'
 import { seedProjects } from '../data/projects'
 import { syncTasks } from '../data/tasks'
+import { normalizeContentData } from '../lib/contentWorkflow'
 import { initializeProjectMembers } from '../lib/scope'
 import type { AppData } from './types'
 
@@ -33,6 +34,7 @@ export function createSeed(): AppData {
   normalizeContracts(seed.contracts)
   syncTasks(seed)
   seed.tasks.push(...SEED_MANUAL_TASKS)
+  normalizeContentData(seed)
   initializeProjectMembers(seed)
   return seed
 }
@@ -51,6 +53,7 @@ function load(): AppData {
       normalizeContracts(saved.contracts)
       syncFrameworkPayments(saved.contracts, saved.projects)
       saved.projects.forEach((project) => syncProjectContract(project, saved.contracts))
+      normalizeContentData(saved)
       syncTasks(saved)
       initializeProjectMembers(saved)
       return saved
@@ -95,6 +98,7 @@ export function update(recipe: (draft: AppData) => void): void {
   syncFrameworkPayments(draft.contracts, draft.projects)
   draft.projects.forEach((project) => syncProjectContract(project, draft.contracts))
   syncDemoPayments(draft.contracts, draft.projects)
+  normalizeContentData(draft)
   syncTasks(draft)
   initializeProjectMembers(draft)
   commit(draft)

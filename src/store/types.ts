@@ -80,10 +80,26 @@ export interface ContentChannel {
   /** HH:MM */
   time: string
   link: string
+  postDate?: string
+  publishedAt?: string
+}
+
+export interface ContentWorkflow {
+  /** History-only migration does not assert that legacy approval was recorded. */
+  legacy?: boolean
+  revision: number
+  phase: 'draft' | 'content-review' | 'production' | 'client-review' | 'approved'
+  history: { id: string; at: string; by: string; action: string; revision: number; note: string; snapshot: string }[]
 }
 
 /** One row of the Content Plan sheet. Dates are yyyy-mm-dd or ''. */
 export interface ContentItem {
+  assignees?: { content: string[]; media: string[] }
+  workflow?: ContentWorkflow
+  sourceLink?: string
+  planLabels?: Partial<Record<'mainIdea' | 'contentDirection' | 'visualDirection', string>>
+  planHidden?: ('mainIdea' | 'contentDirection' | 'visualDirection')[]
+  planSections?: { id: string; title: string; body: string; hidden?: boolean }[]
   id: string
   stt: number
   /** Bài tặng thêm, không tính vào định mức. */
@@ -170,6 +186,7 @@ export interface TimelineStep extends TimelineStepTemplate {
 
 /** One service cycle. It closes when every step is done, not on a calendar date. All dates are yyyy-mm-dd or ''. */
 export interface Cycle {
+  contentImports?: { id: string; at: string; by: string; changes: { id: string; before?: ContentItem; after: ContentItem }[]; undoneAt?: string }[]
   no: number
   start: string
   /** Target end (T0 + cycle length); the cycle is closed when the timeline is delivered. */

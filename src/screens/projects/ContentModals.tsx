@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useApp } from '../../app/context'
 import { projectCycle } from '../../data/cycles'
 import { addDaysIso, formatDate, parseInput, TODAY } from '../../lib/format'
@@ -10,6 +10,9 @@ import type { ContentChannel, ContentItem, ContentStage, KeyNote, Platform, Proj
 import { FormActions, Modal, Req } from '../../ui/Modal'
 import { addProjectActivity, canStopProject, updateProject } from './projectLogic'
 import { inScope } from '../../lib/scope'
+import { contentAssignees } from '../../lib/content'
+
+import { PostWorkflowModal } from '../operations/PostWorkflowModal'
 
 const CATEGORIES = ['Chia sẻ', 'Thông báo', 'Review', 'Mini-game', 'Tiểu phẩm', 'Challenge', 'Khuyến mãi']
 const PLATFORMS: Platform[] = ['Facebook', 'TikTok']
@@ -22,9 +25,15 @@ function channelStatus(stage: ContentStage): ContentChannel['status'] {
  * One row of the cycle Content Plan. Opened from the project Content tab (project fixed) or
  * from the Posts page (project chosen here). Always writes to the running cycle.
  */
-export function ContentItemModal({ project, item, initialStage, cycleNo }: { project?: Project; item?: ContentItem; initialStage?: ContentStage; cycleNo?: number }) {
+export function ContentItemModal(props: { project?: Project; item?: ContentItem; initialStage?: ContentStage; cycleNo?: number; navigation?: ReactNode }) {
+  const { project, item, cycleNo, initialStage } = props
+  if (project && item) return <PostWorkflowModal project={project} item={item} cycleNo={cycleNo ?? project.cycles.find((cycle) => cycle.contents.some((entry) => entry.id === item.id))?.no ?? 0} initialStage={initialStage} navigation={props.navigation} />
+  return <LegacyContentItemModal {...props} />
+}
+
+function LegacyContentItemModal({ project, item, initialStage, cycleNo, navigation }: { project?: Project; item?: ContentItem; initialStage?: ContentStage; cycleNo?: number; navigation?: ReactNode }) {
   const { closeModal, toast, account, role } = useApp()
-  const { projects, params } = useData()
+  const { projects, params, tasks } = useData()
   const choices = projects.filter((entry) => entry.state === 'active' && runningCycle(entry) && entry.quota.posts > 0 && canStopProject(role, account, entry))
   const [projectId, setProjectId] = useState(project?.id ?? choices[0]?.id ?? '')
   const target = projects.find((entry) => entry.id === projectId && inScope(role, account, entry))
@@ -78,7 +87,9 @@ export function ContentItemModal({ project, item, initialStage, cycleNo }: { pro
         const time = field(form, 'time')
         const next: ContentItem = {
           ...current,
-          id: current.id || 'content-' + Date.now(),
+          id: current.id || 'content-' + crypto.randomUUID(),
+          assignees: current.assignees ?? { content: [], media: [] },
+          workflow: current.workflow ?? { revision: 1, phase: 'draft', history: [] },
           bonus: checked(form, 'bonus'),
           mission: field(form, 'mission') as ContentItem['mission'],
           category: field(form, 'category'),
@@ -88,6 +99,7 @@ export function ContentItemModal({ project, item, initialStage, cycleNo }: { pro
           contentDirection: field(form, 'contentDirection'),
           visualDirection: field(form, 'visualDirection'),
           documentLink: field(form, 'documentLink'),
+          planSections: current.planSections?.map((section) => ({ ...section, body: section.hidden ? section.body : field(form, 'plan-section-' + section.id) })),
           format: field(form, 'format') as ContentItem['format'],
           stage,
           publishedAt: stage === 'Đã đăng' ? publishedAt : current.publishedAt,
@@ -119,6 +131,12 @@ export function ContentItemModal({ project, item, initialStage, cycleNo }: { pro
       }}
     >
       <div className="form">
+        {navigation && <div onClickCapture={(event) => {
+          if (!(event.target instanceof Element) || !event.target.closest('button')) return
+          const form = event.currentTarget.closest('form')
+          const changed = stage !== current.stage || edit !== current.deadlineEdit || [...(form?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input,textarea') ?? [])].some((input) => input.type === 'checkbox' ? (input as HTMLInputElement).checked !== (input as HTMLInputElement).defaultChecked : input.value !== input.defaultValue) || [...(form?.querySelectorAll<HTMLSelectElement>('select') ?? [])].some((select) => [...select.options].some((option) => option.selected !== option.defaultSelected))
+          if (changed && !window.confirm('Bài có thay đổi chưa lưu. Bỏ thay đổi để chuyển bài?')) { event.preventDefault(); event.stopPropagation() }
+        }}>{navigation}</div>}
         {!editable && <p className="cd-note">Chế độ xem · {target.customer} · Chu kỳ {cycle.no}</p>}
         <fieldset className="content-item-fields" disabled={!editable}>
         {!project && (
@@ -142,13 +160,16 @@ export function ContentItemModal({ project, item, initialStage, cycleNo }: { pro
         </label>
         <fieldset className="content-plan-copy">
           <legend>Nội dung triển khai · Content Plan</legend>
-          <label className="field">Ý tưởng / thông điệp chính<textarea name="mainIdea" rows={3} defaultValue={current.mainIdea ?? ''} placeholder="Bài muốn truyền tải điều gì? Điểm thu hút chính là gì?" /></label>
-          <label className="field">Nội dung triển khai<textarea name="contentDirection" rows={6} defaultValue={current.contentDirection ?? ''} placeholder="Kịch bản, thoại, caption, nội dung ưu đãi…" /></label>
-          <label className="field">Hướng hình ảnh<textarea name="visualDirection" rows={6} defaultValue={current.visualDirection ?? ''} placeholder="Cảnh quay, góc chụp, hình minh họa, hướng thiết kế…" /></label>
+          <label className="field">{current.planLabels?.mainIdea ?? 'Ý tưởng / thông điệp chính'}<textarea name="mainIdea" rows={3} defaultValue={current.mainIdea ?? ''} placeholder="Bài muốn truyền tải điều gì? Điểm thu hút chính là gì?" /></label>
+          <label className="field">{current.planLabels?.contentDirection ?? 'Nội dung triển khai'}<textarea name="contentDirection" rows={6} defaultValue={current.contentDirection ?? ''} placeholder="Kịch bản, thoại, caption, nội dung ưu đãi…" /></label>
+          <label className="field">{current.planLabels?.visualDirection ?? 'Hướng hình ảnh'}<textarea name="visualDirection" rows={6} defaultValue={current.visualDirection ?? ''} placeholder="Cảnh quay, góc chụp, hình minh họa, hướng thiết kế…" /></label>
+          {current.planSections?.filter((section) => !section.hidden).map((section) => <label className="field" key={section.id}>{section.title}<textarea name={'plan-section-' + section.id} rows={6} defaultValue={section.body} /></label>)}
           <label className="field">Link tài liệu <small>(không bắt buộc)</small><input name="documentLink" type="url" defaultValue={current.documentLink ?? ''} placeholder="https://docs.google.com/..." /></label>
         </fieldset>
+        <section className="content-publishing-fields"><h3>Sản xuất & xuất bản</h3>
+        <div className="plan-assignees" aria-label="Nhân sự phụ trách"><span>Content <strong>{contentAssignees(tasks, target.id, cycle.no, current.id).content}</strong></span><span>Media <strong>{contentAssignees(tasks, target.id, cycle.no, current.id).media}</strong></span></div>
         <label className="field">Giai đoạn
-          <select name="stage" value={stage} onChange={(event) => setStage(event.target.value as ContentStage)}>{STAGES.map((name) => <option key={name}>{name}</option>)}</select>
+          <select name="stage" value={stage} onChange={(event) => setStage(event.target.value as ContentStage)}>{(item ? STAGES : ['Ý tưởng', 'Script']).map((name) => <option key={name}>{name}</option>)}</select>
         </label>
         {stage === 'Đã hủy' && <>
           <label className="field">Lý do hủy bài<Req /><textarea name="cancelReason" required defaultValue={current.cancellation?.reason ?? ''} /></label>
@@ -174,6 +195,7 @@ export function ContentItemModal({ project, item, initialStage, cycleNo }: { pro
             {scriptDue && <> Hạn script mặc định: {formatDate(parseInput(scriptDue))} (dựng − {params.scriptLeadDays} ngày).</>}
           </p>
         </div>
+        </section>
         </fieldset>
         {!editable && (current.documentLink || current.mediaLink) && <p className="cd-note">
           {current.documentLink && <a href={current.documentLink} target="_blank" rel="noreferrer">Mở tài liệu</a>}

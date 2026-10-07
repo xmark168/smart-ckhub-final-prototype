@@ -3,11 +3,12 @@ import { useApp } from '../../../app/context'
 import { shortDate, shortText, TODAY } from '../../../lib/format'
 import { Icon } from '../../../lib/icons'
 import { contentTiming } from '../../../lib/content'
+import { postNextStep } from '../../../lib/contentWorkflow'
 import { canEditProject } from '../../../lib/scope'
-import { currentCycle, isPublished, runningCycle, scriptDone, STAGES } from '../../../lib/sop'
+import { currentCycle, isPublished, scriptDone, STAGES } from '../../../lib/sop'
 import type { ContentStage, Project } from '../../../store/types'
 import { ContentItemModal } from '../ContentModals'
-import { addProjectActivity, statusTone, updateProject } from '../projectLogic'
+import { statusTone } from '../projectLogic'
 
 export function ContentTab({ project }: { project: Project }) {
   const { showModal, role, account } = useApp()
@@ -24,25 +25,6 @@ export function ContentTab({ project }: { project: Project }) {
     return <section className="panel"><p className="empty-copy">Chưa có chu kỳ. Nội dung được lập sau khi bắt đầu triển khai.</p></section>
   }
 
-  const changeStage = (id: string, stage: ContentStage) => {
-    if (stage === 'Đã hủy') {
-      const item = cycle.contents.find((entry) => entry.id === id)
-      if (item) showModal(<ContentItemModal project={project} item={item} initialStage="Đã hủy" />)
-      return
-    }
-    updateProject(project.id, (draft) => {
-      const running = runningCycle(draft)
-      const target = running?.contents.find((entry) => entry.id === id)
-      if (!running || !target) return
-      target.stage = stage
-      target.cancellation = undefined
-      if (stage === 'Đã đăng' && !target.publishedAt) target.publishedAt = TODAY
-      if ((stage === 'Lên lịch' || stage === 'Đã đăng') && !target.postDate) target.postDate = TODAY
-      target.channels = target.channels.map((channel) => ({ ...channel, status: stage === 'Đã đăng' ? 'Đã đăng' : stage === 'Lên lịch' ? 'Đã lên lịch' : 'Chưa lên lịch', time: stage === 'Lên lịch' || stage === 'Đã đăng' ? channel.time || '17:00' : '' }))
-      running.activity.unshift({ title: 'Nội dung #' + target.stt + ': ' + stage, detail: target.title, time: 'Vừa xong' })
-      if (stage === 'Đã đăng') addProjectActivity(draft, 'send', 'Đã đăng nội dung #' + target.stt, target.title)
-    })
-  }
   const quota = project.quota
   const active = cycle.contents.filter((item) => item.stage !== 'Đã hủy')
   const core = active.filter((item) => !item.bonus)
@@ -91,17 +73,7 @@ export function ContentTab({ project }: { project: Project }) {
                     <span className={editLate ? 'is-late' : ''}>D {shortDate(item.deadlineEdit) || '—'}</span>
                   </td>
                   <td className="c-stage">
-                    {editable ? (
-                      <select
-                        className={'stage-select tone-' + statusTone(item.stage)}
-                        value={item.stage}
-                        aria-label={'Giai đoạn nội dung #' + item.stt}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) => changeStage(item.id, event.target.value as ContentStage)}
-                      >
-                        {STAGES.map((name) => <option key={name}>{name}</option>)}
-                      </select>
-                    ) : <span className={'pill ' + statusTone(item.stage)}>{item.stage}</span>}
+                    <span className={'pill ' + statusTone(item.stage)}>{postNextStep(item)}</span>
                   </td>
                   <td className="c-timing"><span className={'pill ' + (timing === 'Trễ hạn' ? 'danger' : timing === 'Đúng hạn' ? 'ok' : 'muted')}>{timing}</span>{item.cancellation && <span className="content-sub" title={item.cancellation.reason}>{shortText(item.cancellation.reason)}</span>}</td>
                 </tr>

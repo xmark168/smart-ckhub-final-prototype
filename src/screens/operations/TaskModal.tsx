@@ -2,6 +2,7 @@ import { useApp } from '../../app/context'
 import { ACCOUNTS, shortDate, TODAY } from '../../lib/format'
 import { checked, field } from '../../lib/form'
 import { canEditProject, inScope } from '../../lib/scope'
+import { assignmentOptions, logContent } from '../../lib/contentWorkflow'
 import { update, useData } from '../../store/store'
 import type { WorkTask } from '../../store/types'
 import { FormActions, Modal, Req } from '../../ui/Modal'
@@ -38,7 +39,9 @@ export function TaskModal({ task }: { task?: WorkTask }) {
       onSubmit={(form) => {
         if (!canSave(task?.projectId ?? field(form, 'project'))) { toast('Bạn không có quyền sửa việc của dự án này.'); return }
         const values = { assignee: field(form, 'assignee'), note: field(form, 'note') || undefined }
-        update((draft) => {
+        try { update((draft) => {
+          const freshProject = draft.projects.find((entry) => entry.id === (task?.projectId ?? field(form, 'project')))
+          if (!freshProject || !(canEditProject(role, account, freshProject) || role === 'accountant' && task?.role === 'Kế toán' && inScope(role, account, freshProject))) throw new Error('Quyền sửa việc đã thay đổi.')
           if (!task) {
             draft.tasks.push({ id: 'task-' + Date.now(), projectId: field(form, 'project'), title: field(form, 'title'), role: field(form, 'taskRole') as WorkTask['role'], due: field(form, 'due'), status: 'open', ...values })
             return
@@ -46,11 +49,25 @@ export function TaskModal({ task }: { task?: WorkTask }) {
           const target = draft.tasks.find((item) => item.id === task.id)
           if (!target) return
           Object.assign(target, values)
+          if (auto) for (const project of draft.projects) for (const cycle of project.cycles) for (const post of cycle.contents) {
+            const source = `${project.id}:c${cycle.no}:${post.id}:`
+            const kind = task.source === source + 'script' ? 'content' : task.source === source + 'edit' ? 'media' : null
+            if (kind) {
+              post.assignees ??= { content: [], media: [] }
+              const assigned = values.assignee.split(',').map((name) => name.trim()).filter(Boolean)
+              if (cycle.status !== 'running' || project.state !== 'active') throw new Error('Chu kỳ đã chốt; phân công chỉ xem.')
+              if (assigned.some((name) => !assignmentOptions(project).includes(name) && !post.assignees![kind].includes(name))) throw new Error('Nhân sự chưa có quyền tham gia dự án. Cấp quyền dự án trước khi phân công.')
+              if (JSON.stringify(assigned) !== JSON.stringify(post.assignees[kind])) {
+                post.assignees[kind] = assigned
+                logContent(post, account, 'Cập nhật phân công từ việc', values.assignee)
+              }
+            }
+          }
           if (!auto) {
             const done = checked(form, 'done')
             Object.assign(target, { title: field(form, 'title'), role: field(form, 'taskRole') as WorkTask['role'], due: field(form, 'due'), status: done ? 'done' : 'open', doneAt: done ? target.doneAt || TODAY : undefined })
           }
-        })
+        }) } catch (error) { toast(error instanceof Error ? error.message : 'Không lưu được việc.'); return }
         closeModal()
         toast(task ? 'Đã cập nhật việc.' : 'Đã giao việc.')
       }}
